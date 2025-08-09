@@ -483,11 +483,18 @@ Guidelines:
       if (isAskingForAlternatives) {
         const alternativeVehicles = await this.getAlternativeVehicles(dealerId, vehicleId);
         if (alternativeVehicles.length > 0) {
-          const alternativesText = alternativeVehicles.map(vehicle => 
-            `• ${vehicle.year} ${vehicle.make} ${vehicle.model}${vehicle.trim ? ` ${vehicle.trim}` : ''} - ${vehicle.color || 'Color not specified'} - ${vehicle.price ? `$${vehicle.price.toLocaleString()}` : 'Price on request'}`
-          ).join('\n');
+          const alternativesText = alternativeVehicles.map(vehicle => {
+            const trim = vehicle.trim ? ` ${vehicle.trim}` : '';
+            const color = vehicle.color || 'Color available upon request';
+            const price = vehicle.price ? `$${vehicle.price.toLocaleString()}` : 'Price available upon request';
+            const mileage = vehicle.mileage ? ` • ${vehicle.mileage.toLocaleString()} miles` : '';
+            
+            return `• **${vehicle.year} ${vehicle.make} ${vehicle.model}${trim}**
+  - Color: ${color}
+  - Price: ${price}${mileage}`;
+          }).join('\n\n');
           
-          aiResponse += `\n\nHere are some great options from ${vehicleContext.business_name}'s inventory:\n${alternativesText}\n\nWould you like to know more about any of these vehicles or schedule a test drive?`;
+          aiResponse += `\n\nHere are some great options from ${vehicleContext.business_name}'s inventory:\n\n${alternativesText}\n\nWould you like to know more about any of these vehicles or schedule a test drive?`;
         } else {
           if (vehicleId) {
             aiResponse += `\n\nI don't have any other vehicles available in ${vehicleContext.business_name}'s inventory at the moment, but I'd be happy to help you with financing options or scheduling a test drive for this ${vehicleContext.year} ${vehicleContext.make} ${vehicleContext.model}!`;
