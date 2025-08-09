@@ -662,7 +662,7 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
                           : 'bg-gray-100 text-gray-900'
                       }`}
                     >
-                      {message.content.includes('<ul class="inventory-list">') ? (
+                      {(message.content.includes('<ul class="inventory-list">') || message.content.includes('<div class="inventory-display">')) ? (
                         <div 
                           className="text-sm"
                           dangerouslySetInnerHTML={{ __html: message.content }}

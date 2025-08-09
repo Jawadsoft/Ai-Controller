@@ -483,22 +483,42 @@ Guidelines:
       if (isAskingForAlternatives) {
         const alternativeVehicles = await this.getAlternativeVehicles(dealerId, vehicleId);
         if (alternativeVehicles.length > 0) {
-          const vehicleItems = alternativeVehicles.map(vehicle => {
-            const trim = vehicle.trim ? ` ${vehicle.trim}` : '';
-            const color = vehicle.color || 'Color available upon request';
-            const price = vehicle.price ? `$${vehicle.price.toLocaleString()}` : 'Price available upon request';
-            const mileage = vehicle.mileage ? ` • ${vehicle.mileage.toLocaleString()} miles` : '';
-            
-            return `<li class="vehicle-item" data-vehicle-id="${vehicle.id}">
-              <div class="vehicle-name">🚗 <strong>${vehicle.year} ${vehicle.make} ${vehicle.model}${trim}</strong></div>
-              <div class="vehicle-details">
-                <span class="color">Color: ${color}</span><br>
-                <span class="price">Price: ${price}</span>${mileage}
-              </div>
-            </li>`;
+          // Group vehicles by brand for better organization
+          const vehiclesByBrand = alternativeVehicles.reduce((acc, vehicle) => {
+            const brand = vehicle.make;
+            if (!acc[brand]) acc[brand] = [];
+            acc[brand].push(vehicle);
+            return acc;
+          }, {});
+
+          const brandSections = Object.entries(vehiclesByBrand).map(([brand, vehicles]) => {
+            const vehicleItems = vehicles.map(vehicle => {
+              const trim = vehicle.trim ? ` ${vehicle.trim}` : '';
+              const color = vehicle.color || 'Color available upon request';
+              const price = vehicle.price ? `$${vehicle.price.toLocaleString()}` : 'Price available upon request';
+              const mileage = vehicle.mileage ? ` | ${vehicle.mileage.toLocaleString()} miles` : '';
+              const features = vehicle.features ? ` | ${vehicle.features.split(',').slice(0, 2).join(', ')}` : '';
+              
+              return `<li class="vehicle-item" data-vehicle-id="${vehicle.id}">
+                <div class="vehicle-header">
+                  <span class="vehicle-name"><strong>${vehicle.model}${trim}</strong> (${vehicle.year})</span>
+                  <span class="vehicle-price">${price}</span>
+                </div>
+                <div class="vehicle-specs">
+                  <span class="spec-item">Color: ${color}</span>
+                  ${mileage ? `<span class="spec-item">${vehicle.mileage.toLocaleString()} miles</span>` : ''}
+                  ${features ? `<span class="spec-item">${vehicle.features.split(',').slice(0, 2).join(', ')}</span>` : ''}
+                </div>
+              </li>`;
+            }).join('');
+
+            return `<div class="brand-section">
+              <h3 class="brand-title">🚗 ${brand}</h3>
+              <ul class="brand-vehicles">${vehicleItems}</ul>
+            </div>`;
           }).join('');
           
-          const inventoryList = `<ul class="inventory-list">${vehicleItems}</ul>`;
+          const inventoryList = `<div class="inventory-display">${brandSections}</div>`;
           
           aiResponse += `\n\nHere are some great options from ${vehicleContext.business_name}'s inventory:\n\n${inventoryList}\n\nWould you like to know more about any of these vehicles or schedule a test drive?`;
         } else {

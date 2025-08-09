@@ -176,49 +176,82 @@ All colors MUST be HSL. */
     @apply border-accent;
   }
 
-  /* DAIVE Inventory List Styles */
-  .inventory-list {
-    @apply list-none p-0 m-0 space-y-3;
+  /* DAIVE Inventory Display Styles */
+  .inventory-display {
+    @apply space-y-6;
+  }
+
+  .brand-section {
+    @apply bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm;
+  }
+
+  .brand-title {
+    @apply bg-gray-50 px-4 py-3 text-lg font-bold text-gray-900 border-b border-gray-200 flex items-center;
+  }
+
+  .brand-vehicles {
+    @apply list-none p-0 m-0;
   }
 
   .vehicle-item {
-    @apply bg-gray-50 border border-gray-200 rounded-lg p-4 hover:bg-gray-100 hover:border-primary cursor-pointer transition-all duration-200;
+    @apply border-b border-gray-100 last:border-b-0 p-4 hover:bg-gray-50 cursor-pointer transition-all duration-200;
   }
 
   .vehicle-item:hover {
-    @apply shadow-md;
+    @apply bg-blue-50 border-l-4 border-l-primary;
+  }
+
+  .vehicle-header {
+    @apply flex justify-between items-start mb-2;
   }
 
   .vehicle-name {
-    @apply text-lg font-semibold text-gray-900 mb-2 flex items-center;
+    @apply text-base font-semibold text-gray-900 flex-1;
   }
 
-  .vehicle-details {
-    @apply text-sm text-gray-600 space-y-1;
+  .vehicle-price {
+    @apply text-lg font-bold text-primary ml-4;
   }
 
-  .vehicle-details .color {
-    @apply text-gray-700;
+  .vehicle-specs {
+    @apply flex flex-wrap gap-3 text-sm text-gray-600;
   }
 
-  .vehicle-details .price {
-    @apply font-medium text-primary;
+  .spec-item {
+    @apply bg-gray-100 px-2 py-1 rounded-md;
   }
 
   /* Dark mode support */
+  .dark .brand-section {
+    @apply bg-gray-800 border-gray-700;
+  }
+
+  .dark .brand-title {
+    @apply bg-gray-700 text-gray-100 border-gray-600;
+  }
+
   .dark .vehicle-item {
-    @apply bg-gray-800 border-gray-700 hover:bg-gray-700 hover:border-primary;
+    @apply border-gray-700 hover:bg-gray-700;
+  }
+
+  .dark .vehicle-item:hover {
+    @apply bg-gray-700 border-l-primary;
   }
 
   .dark .vehicle-name {
     @apply text-gray-100;
   }
 
-  .dark .vehicle-details {
+  .dark .vehicle-specs {
     @apply text-gray-300;
   }
 
-  .dark .vehicle-details .color {
-    @apply text-gray-200;
+  .dark .spec-item {
+    @apply bg-gray-600 text-gray-200;
+  }
+
+  /* Legacy inventory list styles for compatibility */
+  .inventory-list {
+    @apply list-none p-0 m-0 space-y-3;
   }
 }
