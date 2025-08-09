@@ -487,11 +487,11 @@ Guidelines:
             const trim = vehicle.trim ? ` ${vehicle.trim}` : '';
             const color = vehicle.color || 'Color available upon request';
             const price = vehicle.price ? `$${vehicle.price.toLocaleString()}` : 'Price available upon request';
-            const mileage = vehicle.mileage ? ` • ${vehicle.mileage.toLocaleString()} miles` : '';
+            const mileage = vehicle.mileage ? ` | ${vehicle.mileage.toLocaleString()} miles` : '';
             
-            return `• **${vehicle.year} ${vehicle.make} ${vehicle.model}${trim}**
-  - Color: ${color}
-  - Price: ${price}${mileage}`;
+            return `🚗 ${vehicle.year} ${vehicle.make} ${vehicle.model}${trim}
+   Color: ${color}
+   Price: ${price}${mileage}`;
           }).join('\n\n');
           
           aiResponse += `\n\nHere are some great options from ${vehicleContext.business_name}'s inventory:\n\n${alternativesText}\n\nWould you like to know more about any of these vehicles or schedule a test drive?`;
