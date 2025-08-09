@@ -1,0 +1,178 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* DealerIQ Design System - All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL. */
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    /* DEALERIQ Primary Colors - Dark Blue */
+    --primary: 220 85% 35%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 222.2 84% 4.9%;
+
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    /* DEALERIQ Accent Colors - Orange/Red */
+    --accent: 16 100% 50%;
+    --accent-foreground: 0 0% 100%;
+
+    /* DEALERIQ Destructive - Red */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    /* DEALERIQ Border - Dark Blue */
+    --border: 220 85% 35%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 220 85% 35%;
+
+    --radius: 0.75rem;
+    
+    /* DEALERIQ Specific Colors */
+    --dealer-success: 142 76% 36%;
+    --dealer-warning: 38 92% 50%;
+    --dealer-info: 220 85% 35%;
+    
+    /* DEALERIQ Chart Colors */
+    --chart-1: 220 85% 35%; /* Dark Blue */
+    --chart-2: 16 100% 50%; /* Orange/Red */
+    --chart-3: 220 70% 50%; /* Medium Blue */
+    --chart-4: 43 74% 66%; /* Yellow */
+    --chart-5: 27 87% 67%; /* Orange */
+
+    --sidebar-background: 0 0% 98%;
+
+    --sidebar-foreground: 240 5.3% 26.1%;
+
+    --sidebar-primary: 220 85% 35%;
+
+    --sidebar-primary-foreground: 0 0% 98%;
+
+    --sidebar-accent: 240 4.8% 95.9%;
+
+    --sidebar-accent-foreground: 240 5.9% 10%;
+
+    --sidebar-border: 220 13% 91%;
+
+    --sidebar-ring: 220 85% 35%;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    /* DEALERIQ Dark Mode - Dark Blue */
+    --primary: 220 85% 35%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    /* DEALERIQ Dark Mode - Orange/Red */
+    --accent: 16 100% 50%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 220 85% 35%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 220 85% 35%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 220 85% 35%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 220 85% 35%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-family: "Inter", sans-serif;
+  }
+}
+
+@layer components {
+  .btn-dealer-primary {
+    @apply bg-primary hover:bg-primary/90 text-primary-foreground font-medium px-6 py-3 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md;
+  }
+  
+  .btn-dealer-accent {
+    @apply bg-accent hover:bg-accent/90 text-accent-foreground font-medium px-6 py-3 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md;
+  }
+  
+  .card-dealer {
+    @apply bg-card rounded-xl border border-border shadow-sm hover:shadow-md transition-shadow duration-200;
+  }
+  
+  .badge-status {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+  
+  .badge-success {
+    @apply badge-status bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400;
+  }
+  
+  .badge-warning {
+    @apply badge-status bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400;
+  }
+  
+  .badge-info {
+    @apply badge-status bg-primary/10 text-primary border border-primary/20;
+  }
+  
+  .badge-accent {
+    @apply badge-status bg-accent/10 text-accent border border-accent/20;
+  }
+  
+  .text-dealer-primary {
+    @apply text-primary;
+  }
+  
+  .text-dealer-accent {
+    @apply text-accent;
+  }
+  
+  .bg-dealer-gradient {
+    @apply bg-gradient-to-r from-primary to-accent;
+  }
+  
+  .border-dealer-primary {
+    @apply border-primary;
+  }
+  
+  .border-dealer-accent {
+    @apply border-accent;
+  }
+}
