@@ -311,8 +311,8 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
       formData.append('vehicleId', vehicleId || '');
       formData.append('sessionId', sessionId);
       formData.append('customerInfo', JSON.stringify({
-        name: 'AI Bot User',
-        email: 'aibot@example.com',
+        name: 'Customer',
+        email: 'customer@dealership.com',
         dealerId: dealerId
       }));
 
@@ -460,8 +460,8 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
         sessionId,
         message,
         customerInfo: {
-          name: 'AI Bot User',
-          email: 'aibot@example.com',
+          name: 'Customer',
+          email: 'customer@dealership.com',
           dealerId: dealerId
         }
       };

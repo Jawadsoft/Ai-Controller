@@ -428,14 +428,26 @@ Guidelines:
       const enhancedSystemPrompt = systemPrompt + '\n\nIMPORTANT: Do not repeat information already mentioned. Be brief and direct.';
       openaiMessages[0].content = enhancedSystemPrompt;
 
-                // Check if user is asking for alternatives
+                // Check if user is asking for alternatives or inventory
       const isAskingForAlternatives = userMessage.toLowerCase().includes('alternative') || 
                                     userMessage.toLowerCase().includes('other') || 
                                     userMessage.toLowerCase().includes('more') || 
                                     userMessage.toLowerCase().includes('options') || 
                                     userMessage.toLowerCase().includes('different') ||
                                     userMessage.toLowerCase().includes('similar') ||
-                                    userMessage.toLowerCase().includes('compare');
+                                    userMessage.toLowerCase().includes('compare') ||
+                                    userMessage.toLowerCase().includes('inventory') ||
+                                    userMessage.toLowerCase().includes('available') ||
+                                    userMessage.toLowerCase().includes('vehicles') ||
+                                    userMessage.toLowerCase().includes('cars') ||
+                                    userMessage.toLowerCase().includes('what do you have') ||
+                                    userMessage.toLowerCase().includes('show me') ||
+                                    userMessage.toLowerCase().includes('selection') ||
+                                    userMessage.toLowerCase().includes('family') ||
+                                    userMessage.toLowerCase().includes('suv') ||
+                                    userMessage.toLowerCase().includes('sedan') ||
+                                    userMessage.toLowerCase().includes('truck') ||
+                                    (!vehicleId && conversation.messages.length <= 3); // Show inventory for general conversations
 
       // Get AI response
       let aiResponse;
