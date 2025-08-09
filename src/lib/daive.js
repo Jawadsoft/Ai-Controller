@@ -310,7 +310,13 @@ ${vehicleInfo}
 CURRENT CONVERSATION CONTEXT:
 - Dealer: ${vehicleContext.business_name}
 - Contact: ${vehicleContext.contact_name || 'Sales Team'}
-- Phone: ${vehicleContext.phone || 'Contact dealer'}`;
+- Phone: ${vehicleContext.phone || 'Contact dealer'}
+
+IMPORTANT NAMING RULES:
+- NEVER use specific names like "John", "Sarah", etc. in your responses
+- Address customers generically or not at all
+- Use phrases like "I can help you" instead of "Hey [name]!"
+- If you don't know the customer's actual name, don't make one up`;
 
       // Add style guidelines if configured
       if (dealerPrompts.style_guidelines) {
@@ -358,7 +364,9 @@ Guidelines:
 - Offer financing, test drives, and alternatives when relevant
 - Connect to human sales rep when needed
 - Use dealer prompts when appropriate
-- If customer asks about other dealerships, say "I'm here to help you with ${vehicleContext.business_name}'s inventory only"`;
+- If customer asks about other dealerships, say "I'm here to help you with ${vehicleContext.business_name}'s inventory only"
+- NEVER use specific names like "John", "Sarah", etc. in your responses
+- Address customers generically without using made-up names`;
     }
 
     return systemPrompt;
