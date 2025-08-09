@@ -28,46 +28,92 @@ class DAIVEService {
   generateFallbackResponse(userMessage, vehicleContext, dealerPrompts) {
     const message = userMessage.toLowerCase();
     
-    // Check for common patterns and provide appropriate responses
-    if (message.includes('hello') || message.includes('hi') || message.includes('hey')) {
-      return dealerPrompts.greeting || `Hi! I'm D.A.I.V.E., your AI assistant at ${vehicleContext.business_name}. How can I help you with this ${vehicleContext.year} ${vehicleContext.make} ${vehicleContext.model}?`;
+    // Use new behavior patterns if master prompt is configured
+    if (dealerPrompts.master_prompt) {
+      // Apply the new DAIVE behavior: acknowledge, clarify, recommend, close with CTA
+      
+      if (message.includes('hello') || message.includes('hi') || message.includes('hey')) {
+        return dealerPrompts.greeting || `Hi! I'm D.A.I.V.E., your warm, confident sales assistant at ${vehicleContext.business_name}. I understand you're interested in this ${vehicleContext.year} ${vehicleContext.make} ${vehicleContext.model}. What specific features matter most to you?`;
+      }
+      
+      if (message.includes('price') || message.includes('cost') || message.includes('how much')) {
+        return `I see you're considering the investment. This ${vehicleContext.year} ${vehicleContext.make} ${vehicleContext.model} is priced at $${vehicleContext.price?.toLocaleString() || 'Contact us'}. What's your ideal monthly payment range, or would you prefer to discuss our financing options?`;
+      }
+      
+      if (message.includes('test drive') || message.includes('drive') || message.includes('schedule')) {
+        return dealerPrompts.test_drive || `Perfect choice! There's nothing like experiencing this vehicle firsthand. What day works best for you - weekday or weekend?`;
+      }
+      
+      if (message.includes('finance') || message.includes('payment') || message.includes('loan')) {
+        return dealerPrompts.financing || `Great question! We've got competitive rates starting at 3.9% APR. Would you like me to calculate a quick payment estimate, or would you prefer to speak with our finance team?`;
+      }
+      
+      if (message.includes('family') || message.includes('children') || message.includes('kids')) {
+        return `I totally get it - family comes first. This vehicle offers excellent safety ratings, spacious seating, and reliable performance. What's your biggest priority: safety features, space, or fuel efficiency?`;
+      }
+      
+      if (message.includes('alternative') || message.includes('other') || message.includes('more') || message.includes('options') || message.includes('different')) {
+        return `Absolutely! I'd love to show you what else we have. Are you looking for something similar in style, or would you like to explore different options from ${vehicleContext.business_name}'s inventory?`;
+      }
+      
+      if (message.includes('feature') || message.includes('spec') || message.includes('detail')) {
+        return `Great question! This vehicle comes with advanced safety tech, modern infotainment, and comfort features. Which area interests you most - safety, technology, or comfort?`;
+      }
+      
+      if (message.includes('contact') || message.includes('speak') || message.includes('human')) {
+        return dealerPrompts.handoff || `I'd be happy to connect you with our sales team at ${vehicleContext.business_name}. They can provide detailed assistance and answer any specific questions. Shall I transfer you now?`;
+      }
+      
+      // Check for requests about other dealerships
+      if (message.includes('other dealer') || message.includes('competitor') || message.includes('different dealer') || message.includes('another dealer')) {
+        return `I'm here exclusively for ${vehicleContext.business_name} and can only help with our inventory. However, I'd love to find the perfect vehicle for you from what we have available. What are you looking for?`;
+      }
+      
+      // Default response with new behavior
+      return `I'm here to help you find the perfect fit. What questions do you have about this ${vehicleContext.year} ${vehicleContext.make} ${vehicleContext.model}, or would you like to explore other options from ${vehicleContext.business_name}?`;
+      
+    } else {
+      // Legacy fallback responses
+      if (message.includes('hello') || message.includes('hi') || message.includes('hey')) {
+        return dealerPrompts.greeting || `Hi! I'm D.A.I.V.E., your AI assistant at ${vehicleContext.business_name}. How can I help you with this ${vehicleContext.year} ${vehicleContext.make} ${vehicleContext.model}?`;
+      }
+      
+      if (message.includes('price') || message.includes('cost') || message.includes('how much')) {
+        return `$${vehicleContext.price?.toLocaleString() || 'Contact us'}. Need financing?`;
+      }
+      
+      if (message.includes('test drive') || message.includes('drive') || message.includes('schedule')) {
+        return dealerPrompts.test_drive || `What day works for your test drive at ${vehicleContext.business_name}?`;
+      }
+      
+      if (message.includes('finance') || message.includes('payment') || message.includes('loan')) {
+        return dealerPrompts.financing || `Starting at 3.9% APR. Calculate payment?`;
+      }
+      
+      if (message.includes('family') || message.includes('children') || message.includes('kids')) {
+        return `Great family choice! Spacious, safe, fuel-efficient. Test drive?`;
+      }
+      
+      if (message.includes('alternative') || message.includes('other') || message.includes('more') || message.includes('options') || message.includes('different')) {
+        return `I'll show you other options from ${vehicleContext.business_name}'s inventory!`;
+      }
+      
+      if (message.includes('feature') || message.includes('spec') || message.includes('detail')) {
+        return `Safety, technology, comfort. Need financing?`;
+      }
+      
+      if (message.includes('contact') || message.includes('speak') || message.includes('human')) {
+        return dealerPrompts.handoff || `Connecting you to a sales rep at ${vehicleContext.business_name}.`;
+      }
+      
+      // Check for requests about other dealerships
+      if (message.includes('other dealer') || message.includes('competitor') || message.includes('different dealer') || message.includes('another dealer')) {
+        return `I can only help you with vehicles from ${vehicleContext.business_name}'s inventory. I'm here exclusively for ${vehicleContext.business_name}.`;
+      }
+      
+      // Default response
+      return `How can I help you with this ${vehicleContext.year} ${vehicleContext.make} ${vehicleContext.model} from ${vehicleContext.business_name}?`;
     }
-    
-    if (message.includes('price') || message.includes('cost') || message.includes('how much')) {
-      return `$${vehicleContext.price?.toLocaleString() || 'Contact us'}. Need financing?`;
-    }
-    
-    if (message.includes('test drive') || message.includes('drive') || message.includes('schedule')) {
-      return dealerPrompts.test_drive || `What day works for your test drive at ${vehicleContext.business_name}?`;
-    }
-    
-    if (message.includes('finance') || message.includes('payment') || message.includes('loan')) {
-      return dealerPrompts.financing || `Starting at 3.9% APR. Calculate payment?`;
-    }
-    
-    if (message.includes('family') || message.includes('children') || message.includes('kids')) {
-      return `Great family choice! Spacious, safe, fuel-efficient. Test drive?`;
-    }
-    
-    if (message.includes('alternative') || message.includes('other') || message.includes('more') || message.includes('options') || message.includes('different')) {
-      return `I'll show you other options from ${vehicleContext.business_name}'s inventory!`;
-    }
-    
-    if (message.includes('feature') || message.includes('spec') || message.includes('detail')) {
-      return `Safety, technology, comfort. Need financing?`;
-    }
-    
-    if (message.includes('contact') || message.includes('speak') || message.includes('human')) {
-      return dealerPrompts.handoff || `Connecting you to a sales rep at ${vehicleContext.business_name}.`;
-    }
-    
-    // Check for requests about other dealerships
-    if (message.includes('other dealer') || message.includes('competitor') || message.includes('different dealer') || message.includes('another dealer')) {
-      return `I can only help you with vehicles from ${vehicleContext.business_name}'s inventory. I'm here exclusively for ${vehicleContext.business_name}.`;
-    }
-    
-    // Default response
-    return `How can I help you with this ${vehicleContext.year} ${vehicleContext.make} ${vehicleContext.model} from ${vehicleContext.business_name}?`;
   }
 
   // Get vehicle information for context
@@ -247,7 +293,53 @@ Price: $${vehicleContext.price?.toLocaleString() || 'Contact for pricing'}`;
 General Dealership Conversation: I can help you find the perfect vehicle from our inventory.`;
     }
 
-    const basePrompt = `You are D.A.I.V.E., an AI sales assistant EXCLUSIVELY for ${vehicleContext.business_name}. Keep responses BRIEF (2-3 sentences max).
+    // Use master prompt if available, otherwise fall back to legacy system
+    let systemPrompt = '';
+    
+    if (dealerPrompts.master_prompt) {
+      // Use the new comprehensive behavior system
+      systemPrompt = dealerPrompts.master_prompt;
+      
+      // Add dealership-specific context
+      systemPrompt += `\n\nDEALERSHIP CONTEXT:
+- You are exclusively representing: ${vehicleContext.business_name}
+- NEVER mention, offer, or reference vehicles from other dealerships
+- If asked about other dealerships, redirect to ${vehicleContext.business_name}'s inventory
+${vehicleInfo}
+
+CURRENT CONVERSATION CONTEXT:
+- Dealer: ${vehicleContext.business_name}
+- Contact: ${vehicleContext.contact_name || 'Sales Team'}
+- Phone: ${vehicleContext.phone || 'Contact dealer'}`;
+
+      // Add style guidelines if configured
+      if (dealerPrompts.style_guidelines) {
+        systemPrompt += `\n\nSTYLE GUIDELINES:\n${dealerPrompts.style_guidelines}`;
+      }
+
+      // Add sales methodology if configured
+      if (dealerPrompts.sales_methodology) {
+        systemPrompt += `\n\nSALES METHODOLOGY:\n${dealerPrompts.sales_methodology}`;
+      }
+
+      // Add facts & integrity guidelines if configured
+      if (dealerPrompts.facts_integrity) {
+        systemPrompt += `\n\nFACTS & INTEGRITY:\n${dealerPrompts.facts_integrity}`;
+      }
+
+      // Add voice behavior if configured and this is a voice interaction
+      if (dealerPrompts.voice_behavior) {
+        systemPrompt += `\n\nVOICE BEHAVIOR:\n${dealerPrompts.voice_behavior}`;
+      }
+
+      // Add refusal handling if configured
+      if (dealerPrompts.refusal_handling) {
+        systemPrompt += `\n\nREFUSAL HANDLING:\n${dealerPrompts.refusal_handling}`;
+      }
+
+    } else {
+      // Legacy system prompt for backward compatibility
+      systemPrompt = `You are D.A.I.V.E., an AI sales assistant EXCLUSIVELY for ${vehicleContext.business_name}. Keep responses BRIEF (2-3 sentences max).
 
 STRICT RULES - YOU MUST FOLLOW THESE:
 1. You can ONLY discuss vehicles from ${vehicleContext.business_name}'s inventory
@@ -267,8 +359,9 @@ Guidelines:
 - Connect to human sales rep when needed
 - Use dealer prompts when appropriate
 - If customer asks about other dealerships, say "I'm here to help you with ${vehicleContext.business_name}'s inventory only"`;
+    }
 
-    return basePrompt;
+    return systemPrompt;
   }
 
   // Process AI conversation
