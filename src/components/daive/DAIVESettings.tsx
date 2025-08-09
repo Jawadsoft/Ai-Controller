@@ -33,6 +33,12 @@ interface PromptSettings {
   financing: string;
   test_drive: string;
   handoff: string;
+  master_prompt: string;
+  style_guidelines: string;
+  sales_methodology: string;
+  facts_integrity: string;
+  voice_behavior: string;
+  refusal_handling: string;
 }
 
 interface VoiceSettings {
@@ -69,7 +75,13 @@ const DAIVESettings: React.FC = () => {
     vehicle_info: '',
     financing: '',
     test_drive: '',
-    handoff: ''
+    handoff: '',
+    master_prompt: '',
+    style_guidelines: '',
+    sales_methodology: '',
+    facts_integrity: '',
+    voice_behavior: '',
+    refusal_handling: ''
   });
   
   const [voiceSettings, setVoiceSettings] = useState<VoiceSettings>({
@@ -126,7 +138,13 @@ const DAIVESettings: React.FC = () => {
           vehicle_info: promptData.vehicle_info?.text || '',
           financing: promptData.financing?.text || '',
           test_drive: promptData.test_drive?.text || '',
-          handoff: promptData.handoff?.text || ''
+          handoff: promptData.handoff?.text || '',
+          master_prompt: promptData.master_prompt?.text || '',
+          style_guidelines: promptData.style_guidelines?.text || '',
+          sales_methodology: promptData.sales_methodology?.text || '',
+          facts_integrity: promptData.facts_integrity?.text || '',
+          voice_behavior: promptData.voice_behavior?.text || '',
+          refusal_handling: promptData.refusal_handling?.text || ''
         });
       }
 
@@ -183,7 +201,7 @@ const DAIVESettings: React.FC = () => {
   const savePrompts = async () => {
     setSaving(true);
     try {
-      const promptTypes = ['greeting', 'vehicle_info', 'financing', 'test_drive', 'handoff'];
+      const promptTypes = ['greeting', 'vehicle_info', 'financing', 'test_drive', 'handoff', 'master_prompt', 'style_guidelines', 'sales_methodology', 'facts_integrity', 'voice_behavior', 'refusal_handling'];
       
       for (const promptType of promptTypes) {
         if (prompts[promptType as keyof PromptSettings]) {
@@ -328,9 +346,45 @@ const DAIVESettings: React.FC = () => {
       vehicle_info: "This {vehicle_year} {vehicle_make} {vehicle_model} has excellent features including {features}. The price is ${price} and it has {mileage} miles. Would you like to know more about financing options at {dealership_name}?",
       financing: "I can help you with financing options at {dealership_name}. We offer competitive rates starting at {rate}% APR. Would you like to calculate your monthly payment?",
       test_drive: "Great choice! I can help you schedule a test drive at {dealership_name}. What day and time works best for you?",
-      handoff: "I'd be happy to connect you with one of our sales representatives at {dealership_name} who can provide more detailed assistance. Let me transfer you now."
+      handoff: "I'd be happy to connect you with one of our sales representatives at {dealership_name} who can provide more detailed assistance. Let me transfer you now.",
+      master_prompt: `You are "DAIVE", a warm, confident sales agent. Goals: understand the user's needs, present tailored options, and help them decide—without pressure.
+
+Style:
+- Conversational, human, concise (120–160 words unless asked).
+- Use contractions and varied sentence length.
+- Acknowledge, clarify, recommend, then close with a light CTA.
+- Mirror the user's tone and vocabulary.
+
+Sales Method:
+1) Acknowledge & empathize in 1 short line.
+2) Ask 1–2 clarifying questions max.
+3) Offer 2–3 options: {name, who it's for, 2 key benefits, 1 tradeoff}.
+4) Handle objections briefly: clarify, compare, reassure, invite next step.
+5) Close with a choice of next actions (schedule, quick quote, link, or recap).
+
+Facts & Integrity:
+- If you're unsure, say so and propose how to confirm.
+- Use tools for inventory, pricing, availability, and appointments.
+- Never invent discounts, timelines, or legal terms.
+
+Voice (if TTS):
+- Natural pacing; brief pauses before numbers or totals.
+- Keep enthusiasm measured; avoid hype words.
+
+Refusals:
+- If a request is unsafe or off-policy, decline quickly and suggest a safe alternative.
+
+Output format:
+- Plain text by default.
+- Use short bullets only when listing options.
+- Include exactly one question unless user asked for a summary or next step.`,
+      style_guidelines: "Conversational, human, concise (120–160 words unless asked). Use contractions and varied sentence length. Acknowledge, clarify, recommend, then close with a light CTA. Mirror the user's tone and vocabulary.",
+      sales_methodology: "1) Acknowledge & empathize in 1 short line. 2) Ask 1–2 clarifying questions max. 3) Offer 2–3 options: {name, who it's for, 2 key benefits, 1 tradeoff}. 4) Handle objections briefly: clarify, compare, reassure, invite next step. 5) Close with a choice of next actions (schedule, quick quote, link, or recap).",
+      facts_integrity: "If you're unsure, say so and propose how to confirm. Use tools for inventory, pricing, availability, and appointments. Never invent discounts, timelines, or legal terms.",
+      voice_behavior: "Natural pacing; brief pauses before numbers or totals. Keep enthusiasm measured; avoid hype words.",
+      refusal_handling: "If a request is unsafe or off-policy, decline quickly and suggest a safe alternative."
     });
-    toast.info('Reset to default prompts');
+    toast.info('Reset to comprehensive DAIVE prompts');
   };
 
   const setDefaultApiKeys = async () => {
@@ -445,10 +499,14 @@ const DAIVESettings: React.FC = () => {
       </div>
 
       <Tabs defaultValue="prompts" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="prompts" className="flex items-center gap-2">
             <MessageSquare className="h-4 w-4" />
-            AI Prompts
+            Quick Prompts
+          </TabsTrigger>
+          <TabsTrigger value="behavior" className="flex items-center gap-2">
+            <Settings className="h-4 w-4" />
+            Behavior
           </TabsTrigger>
           <TabsTrigger value="api" className="flex items-center gap-2">
             <Key className="h-4 w-4" />
@@ -571,6 +629,134 @@ const DAIVESettings: React.FC = () => {
                 <p className="text-sm text-gray-500">
                   {getPromptPlaceholders('handoff')}
                 </p>
+              </div>
+            </CardContent>
+          </Card>
+
+
+        </TabsContent>
+
+        {/* Behavior Configuration Tab */}
+        <TabsContent value="behavior" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Advanced Behavior Configuration</CardTitle>
+                <Button
+                  onClick={savePrompts}
+                  disabled={saving}
+                >
+                  {saving ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  ) : (
+                    <Save className="h-4 w-4 mr-2" />
+                  )}
+                  Save Behavior Settings
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Master Prompt */}
+              <div className="space-y-2">
+                <Label htmlFor="master_prompt">Master System Prompt</Label>
+                <Textarea
+                  id="master_prompt"
+                  value={prompts.master_prompt}
+                  onChange={(e) => handlePromptChange('master_prompt', e.target.value)}
+                  placeholder="Enter the main system prompt that defines DAIVE's personality and behavior..."
+                  rows={12}
+                  className="font-mono text-sm"
+                />
+                <p className="text-sm text-gray-500">
+                  This is the core prompt that defines DAIVE's personality, style, and overall behavior patterns.
+                </p>
+              </div>
+
+              {/* Style Guidelines */}
+              <div className="space-y-2">
+                <Label htmlFor="style_guidelines">Communication Style Guidelines</Label>
+                <Textarea
+                  id="style_guidelines"
+                  value={prompts.style_guidelines}
+                  onChange={(e) => handlePromptChange('style_guidelines', e.target.value)}
+                  placeholder="Enter specific style and communication guidelines..."
+                  rows={4}
+                />
+                <p className="text-sm text-gray-500">
+                  Defines how DAIVE should communicate: tone, word count, sentence structure, etc.
+                </p>
+              </div>
+
+              {/* Sales Methodology */}
+              <div className="space-y-2">
+                <Label htmlFor="sales_methodology">Sales Process Methodology</Label>
+                <Textarea
+                  id="sales_methodology"
+                  value={prompts.sales_methodology}
+                  onChange={(e) => handlePromptChange('sales_methodology', e.target.value)}
+                  placeholder="Enter the step-by-step sales process DAIVE should follow..."
+                  rows={5}
+                />
+                <p className="text-sm text-gray-500">
+                  Step-by-step sales process that DAIVE should follow in conversations.
+                </p>
+              </div>
+
+              {/* Facts & Integrity */}
+              <div className="space-y-2">
+                <Label htmlFor="facts_integrity">Facts & Integrity Guidelines</Label>
+                <Textarea
+                  id="facts_integrity"
+                  value={prompts.facts_integrity}
+                  onChange={(e) => handlePromptChange('facts_integrity', e.target.value)}
+                  placeholder="Enter guidelines for handling uncertain information and maintaining integrity..."
+                  rows={3}
+                />
+                <p className="text-sm text-gray-500">
+                  Guidelines for handling uncertain information and maintaining factual accuracy.
+                </p>
+              </div>
+
+              {/* Voice Behavior */}
+              <div className="space-y-2">
+                <Label htmlFor="voice_behavior">Voice & TTS Behavior</Label>
+                <Textarea
+                  id="voice_behavior"
+                  value={prompts.voice_behavior}
+                  onChange={(e) => handlePromptChange('voice_behavior', e.target.value)}
+                  placeholder="Enter specific voice behavior guidelines for TTS responses..."
+                  rows={3}
+                />
+                <p className="text-sm text-gray-500">
+                  Specific guidelines for voice responses including pacing, enthusiasm, and delivery.
+                </p>
+              </div>
+
+              {/* Refusal Handling */}
+              <div className="space-y-2">
+                <Label htmlFor="refusal_handling">Refusal & Safety Guidelines</Label>
+                <Textarea
+                  id="refusal_handling"
+                  value={prompts.refusal_handling}
+                  onChange={(e) => handlePromptChange('refusal_handling', e.target.value)}
+                  placeholder="Enter guidelines for handling inappropriate requests or safety concerns..."
+                  rows={3}
+                />
+                <p className="text-sm text-gray-500">
+                  Guidelines for handling inappropriate requests, safety concerns, and off-topic conversations.
+                </p>
+              </div>
+
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-blue-900">Advanced Configuration</p>
+                    <p className="text-sm text-blue-700">
+                      These settings define DAIVE's core personality and behavior patterns. Changes here will affect all conversations.
+                    </p>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
