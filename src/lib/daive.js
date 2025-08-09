@@ -284,7 +284,7 @@ class DAIVEService {
   // Build AI system prompt with context
   async buildSystemPrompt(conversation, vehicleContext, dealerPrompts) {
     let vehicleInfo = '';
-    if (vehicleContext.year && vehicleContext.make && vehicleContext.model) {
+    if (vehicleContext && vehicleContext.year && vehicleContext.make && vehicleContext.model) {
       vehicleInfo = `
 Current Vehicle: ${vehicleContext.year} ${vehicleContext.make} ${vehicleContext.model}
 Price: $${vehicleContext.price?.toLocaleString() || 'Contact for pricing'}`;
@@ -301,16 +301,20 @@ General Dealership Conversation: I can help you find the perfect vehicle from ou
       systemPrompt = dealerPrompts.master_prompt;
       
       // Add dealership-specific context
+      const businessName = vehicleContext?.business_name || 'the dealership';
+      const contactName = vehicleContext?.contact_name || 'Sales Team';
+      const phone = vehicleContext?.phone || 'Contact dealer';
+      
       systemPrompt += `\n\nDEALERSHIP CONTEXT:
-- You are exclusively representing: ${vehicleContext.business_name}
+- You are exclusively representing: ${businessName}
 - NEVER mention, offer, or reference vehicles from other dealerships
-- If asked about other dealerships, redirect to ${vehicleContext.business_name}'s inventory
+- If asked about other dealerships, redirect to ${businessName}'s inventory
 ${vehicleInfo}
 
 CURRENT CONVERSATION CONTEXT:
-- Dealer: ${vehicleContext.business_name}
-- Contact: ${vehicleContext.contact_name || 'Sales Team'}
-- Phone: ${vehicleContext.phone || 'Contact dealer'}
+- Dealer: ${businessName}
+- Contact: ${contactName}
+- Phone: ${phone}
 
 IMPORTANT NAMING RULES:
 - NEVER use specific names like "John", "Sarah", etc. in your responses
@@ -345,26 +349,28 @@ IMPORTANT NAMING RULES:
 
     } else {
       // Legacy system prompt for backward compatibility
-      systemPrompt = `You are D.A.I.V.E., an AI sales assistant EXCLUSIVELY for ${vehicleContext.business_name}. Keep responses BRIEF (2-3 sentences max).
+      const businessName = vehicleContext?.business_name || 'the dealership';
+      
+      systemPrompt = `You are D.A.I.V.E., an AI sales assistant EXCLUSIVELY for ${businessName}. Keep responses BRIEF (2-3 sentences max).
 
 STRICT RULES - YOU MUST FOLLOW THESE:
-1. You can ONLY discuss vehicles from ${vehicleContext.business_name}'s inventory
+1. You can ONLY discuss vehicles from ${businessName}'s inventory
 2. NEVER mention, offer, or reference vehicles from other dealerships
-3. If asked about other dealerships, redirect to ${vehicleContext.business_name}'s inventory
-4. If asked about vehicles not in ${vehicleContext.business_name}'s inventory, say "I can only help you with vehicles from ${vehicleContext.business_name}'s inventory"
+3. If asked about other dealerships, redirect to ${businessName}'s inventory
+4. If asked about vehicles not in ${businessName}'s inventory, say "I can only help you with vehicles from ${businessName}'s inventory"
 5. NEVER suggest checking other dealerships
 6. NEVER mention competitor dealerships
 
 ${vehicleInfo}
-Dealer: ${vehicleContext.business_name}
+Dealer: ${businessName}
 
 Guidelines:
 - Be direct and concise
-- ONLY offer vehicles from ${vehicleContext.business_name}'s inventory
+- ONLY offer vehicles from ${businessName}'s inventory
 - Offer financing, test drives, and alternatives when relevant
 - Connect to human sales rep when needed
 - Use dealer prompts when appropriate
-- If customer asks about other dealerships, say "I'm here to help you with ${vehicleContext.business_name}'s inventory only"
+- If customer asks about other dealerships, say "I'm here to help you with ${businessName}'s inventory only"
 - NEVER use specific names like "John", "Sarah", etc. in your responses
 - Address customers generically without using made-up names`;
     }
@@ -483,49 +489,37 @@ Guidelines:
       if (isAskingForAlternatives) {
         const alternativeVehicles = await this.getAlternativeVehicles(dealerId, vehicleId);
         if (alternativeVehicles.length > 0) {
-          // Group vehicles by brand for better organization
-          const vehiclesByBrand = alternativeVehicles.reduce((acc, vehicle) => {
-            const brand = vehicle.make;
-            if (!acc[brand]) acc[brand] = [];
-            acc[brand].push(vehicle);
-            return acc;
-          }, {});
-
-          const brandSections = Object.entries(vehiclesByBrand).map(([brand, vehicles]) => {
-            const vehicleItems = vehicles.map(vehicle => {
-              const trim = vehicle.trim ? ` ${vehicle.trim}` : '';
-              const color = vehicle.color || 'Color available upon request';
-              const price = vehicle.price ? `$${vehicle.price.toLocaleString()}` : 'Price available upon request';
-              const mileage = vehicle.mileage ? ` | ${vehicle.mileage.toLocaleString()} miles` : '';
-              const features = vehicle.features ? ` | ${vehicle.features.split(',').slice(0, 2).join(', ')}` : '';
-              
-              return `<li class="vehicle-item" data-vehicle-id="${vehicle.id}">
-                <div class="vehicle-header">
-                  <span class="vehicle-name"><strong>${vehicle.model}${trim}</strong> (${vehicle.year})</span>
-                  <span class="vehicle-price">${price}</span>
-                </div>
-                <div class="vehicle-specs">
-                  <span class="spec-item">Color: ${color}</span>
-                  ${mileage ? `<span class="spec-item">${vehicle.mileage.toLocaleString()} miles</span>` : ''}
-                  ${features ? `<span class="spec-item">${vehicle.features.split(',').slice(0, 2).join(', ')}</span>` : ''}
-                </div>
-              </li>`;
-            }).join('');
-
-            return `<div class="brand-section">
-              <h3 class="brand-title">🚗 ${brand}</h3>
-              <ul class="brand-vehicles">${vehicleItems}</ul>
-            </div>`;
+          // Create a simple, reliable inventory list
+          const vehicleItems = alternativeVehicles.map(vehicle => {
+            const trim = vehicle.trim ? ` ${vehicle.trim}` : '';
+            const color = vehicle.color || 'Color available upon request';
+            const price = vehicle.price ? `$${vehicle.price.toLocaleString()}` : 'Price available upon request';
+            const mileage = vehicle.mileage ? `${vehicle.mileage.toLocaleString()} miles` : '';
+            const features = vehicle.features ? vehicle.features.split(',').slice(0, 2).join(', ') : '';
+            
+            return `<li class="vehicle-item" data-vehicle-id="${vehicle.id}">
+              <div class="vehicle-header">
+                <span class="vehicle-name"><strong>${vehicle.year} ${vehicle.make} ${vehicle.model}${trim}</strong></span>
+                <span class="vehicle-price">${price}</span>
+              </div>
+              <div class="vehicle-specs">
+                <span class="spec-item">Color: ${color}</span>
+                ${mileage ? `<span class="spec-item">${mileage}</span>` : ''}
+                ${features ? `<span class="spec-item">${features}</span>` : ''}
+              </div>
+            </li>`;
           }).join('');
           
-          const inventoryList = `<div class="inventory-display">${brandSections}</div>`;
+          const inventoryList = `<ul class="inventory-list">${vehicleItems}</ul>`;
           
-          aiResponse += `\n\nHere are some great options from ${vehicleContext.business_name}'s inventory:\n\n${inventoryList}\n\nWould you like to know more about any of these vehicles or schedule a test drive?`;
+          const businessName = vehicleContext?.business_name || 'our dealership';
+          aiResponse += `\n\nHere are some great options from ${businessName}'s inventory:\n\n${inventoryList}\n\nWould you like to know more about any of these vehicles or schedule a test drive?`;
         } else {
-          if (vehicleId) {
-            aiResponse += `\n\nI don't have any other vehicles available in ${vehicleContext.business_name}'s inventory at the moment, but I'd be happy to help you with financing options or scheduling a test drive for this ${vehicleContext.year} ${vehicleContext.make} ${vehicleContext.model}!`;
+          const businessName = vehicleContext?.business_name || 'our dealership';
+          if (vehicleId && vehicleContext) {
+            aiResponse += `\n\nI don't have any other vehicles available in ${businessName}'s inventory at the moment, but I'd be happy to help you with financing options or scheduling a test drive for this ${vehicleContext.year} ${vehicleContext.make} ${vehicleContext.model}!`;
           } else {
-            aiResponse += `\n\nI don't have any vehicles available in ${vehicleContext.business_name}'s inventory at the moment, but I'd be happy to help you with financing options or scheduling a test drive!`;
+            aiResponse += `\n\nI don't have any vehicles available in ${businessName}'s inventory at the moment, but I'd be happy to help you with financing options or scheduling a test drive!`;
           }
         }
       }
