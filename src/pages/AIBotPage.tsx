@@ -614,6 +614,22 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
     }
   };
 
+  const handleVehicleClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    const vehicleItem = target.closest('.vehicle-item');
+    
+    if (vehicleItem) {
+      const vehicleId = vehicleItem.getAttribute('data-vehicle-id');
+      const vehicleName = vehicleItem.querySelector('.vehicle-name')?.textContent?.replace('🚗 ', '') || 'this vehicle';
+      
+      if (vehicleId) {
+        // Send a message asking for more details about the clicked vehicle
+        const message = `Tell me more about the ${vehicleName}`;
+        sendTextMessage(message);
+      }
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <div className="max-w-4xl mx-auto">
@@ -646,7 +662,15 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
                           : 'bg-gray-100 text-gray-900'
                       }`}
                     >
-                      <p className="text-sm">{message.content}</p>
+                      {message.content.includes('<ul class="inventory-list">') ? (
+                        <div 
+                          className="text-sm"
+                          dangerouslySetInnerHTML={{ __html: message.content }}
+                          onClick={(e) => handleVehicleClick(e)}
+                        />
+                      ) : (
+                        <p className="text-sm">{message.content}</p>
+                      )}
                       {message.transcription && (
                         <p className="text-xs opacity-70 mt-1">
                           <em>Transcribed: "{message.transcription}"</em>

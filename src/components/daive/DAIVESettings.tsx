@@ -382,10 +382,16 @@ Naming Rules:
 
 Output format:
 - Plain text by default
-- When listing vehicles, use clear formatting with car emoji and indented details:
-  🚗 Vehicle Name
-     Color: [color]
-     Price: [price] | [mileage] miles
+- When listing vehicles, use HTML list format for better presentation:
+  <ul class="inventory-list">
+    <li class="vehicle-item" data-vehicle-id="[id]">
+      <div class="vehicle-name">🚗 <strong>[Year Make Model]</strong></div>
+      <div class="vehicle-details">
+        <span class="color">Color: [color]</span><br>
+        <span class="price">Price: [price]</span> • [mileage] miles
+      </div>
+    </li>
+  </ul>
 - Use simple bullets for non-vehicle options
 - Include exactly one question unless user asked for a summary or next step`,
       style_guidelines: "Conversational, human, concise (120–160 words unless asked). Use contractions and varied sentence length. Acknowledge, clarify, recommend, then close with a light CTA. Mirror the user's tone and vocabulary.",
