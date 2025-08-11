@@ -45,6 +45,17 @@ class DAIVEService {
     return 'SMALL_TALK';
   }
 
+  // Check if a message is inventory-related
+  isInventoryQuery(text) {
+    const t = text.toLowerCase();
+    const inventoryKeywords = [
+      'inventory', 'available', 'stock', 'show me', 'what do you have', 
+      'options', 'similar', 'other', 'vehicles', 'cars', 'what\'s available',
+      'what vehicles', 'show inventory', 'list vehicles', 'available cars'
+    ];
+    return inventoryKeywords.some(keyword => t.includes(keyword));
+  }
+
   // Generate fallback response when OpenAI is not available
   generateFallbackResponse(userMessage, vehicleContext, dealerPrompts) {
     const message = userMessage.toLowerCase();
@@ -297,6 +308,10 @@ class DAIVEService {
       const limitIndex = params.length + 1;
       params.push(limit);
 
+      // Calculate the correct parameter indices for relevance scoring
+      const makeParamIndex = params.length - 2;
+      const modelParamIndex = params.length - 1;
+
       const query = `
         SELECT v.id, v.make, v.model, v.year, v.trim, v.color, v.price, v.mileage, v.status, v.features,
                COALESCE(
@@ -308,8 +323,8 @@ class DAIVEService {
                  'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=300&h=200&fit=crop&crop=center'
                ) AS image_url,
                CASE 
-                 WHEN v.make = $${params.length - 1} THEN 3
-                 WHEN v.model = $${params.length} THEN 2
+                 WHEN v.make = $${makeParamIndex} THEN 3
+                 WHEN v.model = $${modelParamIndex} THEN 2
                  ELSE 1
                END AS relevance_score
         FROM vehicles v
@@ -1040,19 +1055,49 @@ Guidelines:
         // Crew AI successfully processed the request
         console.log('✅ Crew AI processed request successfully');
         
+        // Log inventory details if this is an inventory-related query
+        if (this.isInventoryQuery(userMessage)) {
+          console.log('🔍 INVENTORY QUERY DETECTED in DAIVE service - Logging detailed inventory...');
+          try {
+            const dealerId = customerInfo.dealerId;
+            if (dealerId) {
+              const availableVehicles = await this.getAlternativeVehicles(dealerId, vehicleId, 10);
+              console.log('📊 DAIVE SERVICE INVENTORY LOG:');
+              console.log(`   Dealer ID: ${dealerId}`);
+              console.log(`   Vehicle ID: ${vehicleId || 'None (general query)'}`);
+              if (availableVehicles && availableVehicles.length > 0) {
+                availableVehicles.forEach((vehicle, index) => {
+                  console.log(`   ${index + 1}. ${vehicle.year} ${vehicle.make} ${vehicle.model}`);
+                  console.log(`      Price: $${vehicle.price?.toLocaleString() || 'N/A'}`);
+                  console.log(`      Mileage: ${vehicle.mileage?.toLocaleString() || 'N/A'} miles`);
+                  console.log(`      Status: ${vehicle.status || 'N/A'}`);
+                  console.log(`      Features: ${vehicle.features?.join(', ') || 'N/A'}`);
+                  console.log(`      Image: ${vehicle.image_url || 'N/A'}`);
+                  console.log(`      ---`);
+                });
+                console.log(`   Total: ${availableVehicles.length} vehicles available`);
+              } else {
+                console.log('   ⚠️ No available vehicles found');
+              }
+            }
+          } catch (error) {
+            console.error('❌ Error logging inventory in DAIVE service:', error);
+          }
+        }
+        
         // Save the conversation with Crew AI result
         const conversation = await this.getOrCreateConversation(vehicleId, sessionId, customerInfo);
         await this.saveConversationMessage(conversation.id, 'user', userMessage);
-        await this.saveConversationMessage(conversation.id, 'assistant', crewResult.data.response);
+        await this.saveConversationMessage(conversation.id, 'assistant', crewResult.response);
         
         return {
           success: true,
-          response: crewResult.data.response,
-          crewUsed: crewResult.data.crewUsed,
-          crewType: crewResult.data.crewType,
-          intent: crewResult.data.intent,
-          leadScore: crewResult.data.leadScore,
-          shouldHandoff: crewResult.data.shouldHandoff
+          response: crewResult.response,
+          crewUsed: crewResult.crewUsed,
+          crewType: crewResult.crewType,
+          intent: crewResult.intent,
+          leadScore: crewResult.leadScore,
+          shouldHandoff: crewResult.shouldHandoff
         };
       } else {
         // Crew AI failed, return error response

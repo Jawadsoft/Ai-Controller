@@ -5,10 +5,13 @@ import fs from 'fs';
 import jwt from 'jsonwebtoken';
 import { fileURLToPath } from 'url';
 import UnifiedAIService from '../lib/unifiedAI.js';
+import DAIVEService from '../lib/daive.js';
 const unifiedAIService = new UnifiedAIService();
+const daiveService = DAIVEService;
 
 // Debug: Check what we imported
 console.log('🔍 Imported unifiedAIService:', typeof unifiedAIService);
+console.log('🔍 Imported daiveService:', typeof daiveService);
 console.log('🔍 unifiedAIService methods:', Object.getOwnPropertyNames(unifiedAIService));
 if (unifiedAIService && typeof unifiedAIService === 'object') {
   console.log('🔍 unifiedAIService.processConversation:', typeof unifiedAIService.processConversation);
@@ -81,9 +84,9 @@ router.post('/crew-ai', async (req, res) => {
       });
     }
 
-    console.log('🚀 Processing conversation with Unified AI...');
-    const result = await unifiedAIService.processConversation(
-      sessionId || unifiedAIService.generateSessionId(),
+    console.log('🚀 Processing conversation with Crew AI...');
+    const result = await daiveService.processConversationWithCrew(
+      sessionId || daiveService.generateSessionId(),
       vehicleId,
       message,
       customerInfo || {}

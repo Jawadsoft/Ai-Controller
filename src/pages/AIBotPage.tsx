@@ -203,27 +203,39 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
 
   // Check Crew AI settings
   useEffect(() => {
-    const checkCrewAISettings = async () => {
+        const checkCrewAISettings = async () => {
       try {
+        console.log('🔍 Checking Crew AI settings for dealer:', dealerId);
         const response = await fetch(`http://localhost:3000/api/daive/crew-ai-settings?dealerId=${dealerId}`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('auth_token') || 'public'}`
           }
         });
 
+        console.log('📥 Crew AI settings response status:', response.status);
+        
         if (response.ok) {
           const data = await response.json();
+          console.log('📋 Crew AI settings response data:', data);
+          
           if (data.success && data.data.enabled) {
             setCrewAIEnabled(true);
-            console.log('✅ Crew AI is enabled');
+            setUseCrewAI(true); // Enable Crew AI by default when available
+            console.log('✅ Crew AI is enabled and activated');
           } else {
             setCrewAIEnabled(false);
+            setUseCrewAI(false);
             console.log('❌ Crew AI is disabled');
           }
+        } else {
+          console.log('❌ Crew AI settings response not OK');
+          setCrewAIEnabled(false);
+          setUseCrewAI(false);
         }
       } catch (error) {
-        console.log('Could not check Crew AI settings:', error);
+        console.log('❌ Could not check Crew AI settings:', error);
         setCrewAIEnabled(false);
+        setUseCrewAI(false);
       }
     };
 
@@ -532,9 +544,28 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
         dealerId: dealerId || 'NOT PROVIDED'
       });
 
-      // Use Crew AI if enabled, otherwise use regular chat
-      const endpoint = crewAIEnabled ? '/api/daive/crew-ai' : '/api/daive/chat';
-      console.log(`🚀 Using endpoint: ${endpoint} (Crew AI: ${crewAIEnabled ? 'Enabled' : 'Disabled'})`);
+      // Use Crew AI if both backend is enabled AND user has toggled it on
+      const endpoint = (crewAIEnabled && useCrewAI) ? '/api/daive/crew-ai' : '/api/daive/chat';
+      console.log(`🚀 Using endpoint: ${endpoint}`);
+      console.log(`   Crew AI Backend: ${crewAIEnabled ? 'Enabled' : 'Disabled'}`);
+      console.log(`   User Toggle: ${useCrewAI ? 'On' : 'Off'}`);
+      console.log(`   Final decision: ${(crewAIEnabled && useCrewAI) ? 'Crew AI' : 'Regular Chat'}`);
+      
+      // Log inventory query detection
+      const inventoryKeywords = [
+        'inventory', 'available', 'stock', 'show me', 'what do you have', 
+        'options', 'similar', 'other', 'vehicles', 'cars', 'what\'s available',
+        'what vehicles', 'show inventory', 'list vehicles', 'available cars'
+      ];
+      const isInventoryQuery = inventoryKeywords.some(keyword => 
+        message.toLowerCase().includes(keyword)
+      );
+      
+      if (isInventoryQuery) {
+        console.log('🔍 FRONTEND: Inventory query detected!');
+        console.log(`   Message: "${message}"`);
+        console.log(`   Will use: ${(crewAIEnabled && useCrewAI) ? 'Crew AI (with inventory logging)' : 'Regular Chat'}`);
+      }
       
       const response = await fetch(`http://localhost:3000${endpoint}`, {
         method: 'POST',
@@ -587,9 +618,17 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
         if (data.data?.crewUsed && data.data?.crewType) {
           setCrewType(data.data.crewType);
           console.log('🚀 Crew AI used:', data.data.crewType);
+          
+          // Log Crew AI response details
+          console.log('📋 CREW AI RESPONSE DETAILS:');
+          console.log(`   Intent: ${data.data?.intent || 'Unknown'}`);
+          console.log(`   Lead Score: ${data.data?.leadScore || 'N/A'}`);
+          console.log(`   Should Handoff: ${data.data?.shouldHandoff || 'N/A'}`);
+          console.log(`   Response Length: ${data.data?.response?.length || 0} characters`);
+        } else {
+          console.log('📊 Lead Score:', data.data?.leadScore);
+          console.log('🔄 Should Handoff:', data.data?.shouldHandoff);
         }
-        console.log('📊 Lead Score:', data.data?.leadScore);
-        console.log('🔄 Should Handoff:', data.data?.shouldHandoff);
 
         // Check if we have a valid response (try both response and message fields)
         const responseContent = data.data?.response || data.data?.message;

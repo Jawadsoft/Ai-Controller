@@ -85,12 +85,16 @@ class CrewAIService {
     
     Customer message: "${customerMessage}"
     
+    IMPORTANT: You have access to the dealership's inventory database and can provide specific vehicle information.
+    If the customer asks about available vehicles, inventory, or similar options, you can access real-time data.
+    
     Please provide a helpful, informative response that:
     1. Addresses the customer's specific question or need
     2. Is professional but friendly
     3. Provides actionable information when possible
     4. Asks follow-up questions to better understand their needs
     5. Maintains a conversational tone
+    6. Offers to show specific inventory when relevant
     
     Keep your response under 200 words and focus on being helpful.`;
 
@@ -115,11 +119,43 @@ class CrewAIService {
         }
       }
       
-      // Add dealership-specific information
+      // Add dealership-specific information and inventory access
       if (context.dealerId) {
         const dealerInfo = await this.getDealershipInfo(context.dealerId);
         if (dealerInfo) {
-          enhancedResponse += `\n\nI'm here to help you with ${dealerInfo.business_name || 'our dealership'}.`;
+          enhancedResponse += `\n\nI'm here to help you with ${dealerInfo.business_name || 'our dealership'}. I have access to our current inventory and can show you available vehicles, pricing, and help you find the perfect match for your needs.`;
+        }
+      }
+      
+      // Check if this is an inventory-related query
+      const inventoryKeywords = ['inventory', 'available', 'stock', 'show me', 'what do you have', 'options', 'similar', 'other'];
+      const isInventoryQuery = inventoryKeywords.some(keyword => 
+        customerMessage.toLowerCase().includes(keyword)
+      );
+      
+      if (isInventoryQuery && context.dealerId) {
+        enhancedResponse += `\n\nI'd be happy to show you our current inventory! I can see what vehicles we have available and help you find the perfect match.`;
+        
+        // Log inventory details to console
+        console.log('🔍 INVENTORY QUERY DETECTED - Logging available vehicles...');
+        try {
+          const availableVehicles = await this.getAvailableVehicles(context.dealerId);
+          if (availableVehicles && availableVehicles.length > 0) {
+            console.log('📊 AVAILABLE INVENTORY:');
+            availableVehicles.forEach((vehicle, index) => {
+              console.log(`   ${index + 1}. ${vehicle.year} ${vehicle.make} ${vehicle.model}`);
+              console.log(`      Price: $${vehicle.price?.toLocaleString() || 'N/A'}`);
+              console.log(`      Mileage: ${vehicle.mileage?.toLocaleString() || 'N/A'} miles`);
+              console.log(`      Status: ${vehicle.status || 'N/A'}`);
+              console.log(`      Features: ${vehicle.features?.join(', ') || 'N/A'}`);
+              console.log(`      ---`);
+            });
+            console.log(`   Total: ${availableVehicles.length} vehicles available`);
+          } else {
+            console.log('⚠️ No available vehicles found for dealer:', context.dealerId);
+          }
+        } catch (error) {
+          console.error('❌ Error fetching inventory for console log:', error);
         }
       }
       
@@ -236,7 +272,7 @@ class CrewAIService {
   async getDealershipInfo(dealerId) {
     try {
       const query = `
-        SELECT business_name, address, city, state, phone, hours
+        SELECT business_name, address, city, state, phone
         FROM dealers
         WHERE id = $1
       `;
@@ -245,6 +281,24 @@ class CrewAIService {
     } catch (error) {
       console.error('Error getting dealership info:', error);
       return null;
+    }
+  }
+
+  // Get available vehicles for a dealer
+  async getAvailableVehicles(dealerId) {
+    try {
+      const query = `
+        SELECT id, make, model, year, trim, color, price, mileage, status, features
+        FROM vehicles
+        WHERE dealer_id = $1 AND status = 'available'
+        ORDER BY year DESC, price ASC
+        LIMIT 20
+      `;
+      const result = await pool.query(query, [dealerId]);
+      return result.rows || [];
+    } catch (error) {
+      console.error('Error getting available vehicles:', error);
+      return [];
     }
   }
 
