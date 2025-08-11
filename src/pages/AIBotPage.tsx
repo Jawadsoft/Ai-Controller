@@ -62,14 +62,16 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
     { label: 'Pricing', message: 'What is the price and financing options?' },
     { label: 'Test Drive', message: 'Can I schedule a test drive?' },
     { label: 'Fuel Economy', message: 'What are the fuel efficiency ratings?' },
-    { label: 'Cargo Space', message: 'How much cargo space does it have?' }
+    { label: 'Cargo Space', message: 'How much cargo space does it have?' },
+    { label: 'Similar Options', message: 'Show me similar vehicles' }
   ] : [
     { label: 'Show Inventory', message: 'What vehicles do you have available?' },
     { label: 'Family Cars', message: 'I need a family-friendly vehicle' },
     { label: 'Financing', message: 'What financing options do you offer?' },
     { label: 'Test Drive', message: 'Can I schedule a test drive?' },
     { label: 'SUV Options', message: 'Show me your SUV selection' },
-    { label: 'Sedan Options', message: 'Show me your sedan selection' }
+    { label: 'Sedan Options', message: 'Show me your sedan selection' },
+    { label: 'New Arrivals', message: 'What new vehicles just arrived?' }
   ];
 
   const handleQuickAction = (action: QuickAction) => {
@@ -235,11 +237,16 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
 
     initializeMediaRecorder();
 
+    // Make handleVehicleAction available globally for HTML button onclick handlers
+    (window as any).handleVehicleAction = handleVehicleAction;
+
     // Cleanup function
     return () => {
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
       }
+      // Clean up global function
+      delete (window as any).handleVehicleAction;
     };
   }, []);
 
@@ -616,17 +623,43 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
 
   const handleVehicleClick = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
-    const vehicleItem = target.closest('.vehicle-item');
+    const vehicleItem = target.closest('.vehicle-compact-card');
     
     if (vehicleItem) {
       const vehicleId = vehicleItem.getAttribute('data-vehicle-id');
-      const vehicleName = vehicleItem.querySelector('.vehicle-name')?.textContent?.replace('🚗 ', '') || 'this vehicle';
+      const vehicleName = vehicleItem.querySelector('.vehicle-compact-name')?.textContent?.replace('🚗 ', '') || 'this vehicle';
       
       if (vehicleId) {
         // Send a message asking for more details about the clicked vehicle
         const message = `Tell me more about the ${vehicleName}`;
         sendTextMessage(message);
+        
+        // Show a toast to indicate the action
+        toast.success(`Getting details about the ${vehicleName}...`);
       }
+    }
+  };
+
+  // Handle vehicle action buttons (test drive, contact sales)
+  const handleVehicleAction = (vehicleId: string, action: string) => {
+    // Find the vehicle name from the DOM
+    const vehicleCard = document.querySelector(`[data-vehicle-id="${vehicleId}"]`);
+    const vehicleName = vehicleCard?.querySelector('.vehicle-compact-name')?.textContent?.replace('🚗 ', '') || 'this vehicle';
+    
+    let message = '';
+    let toastMessage = '';
+    
+    if (action === 'test-drive') {
+      message = `I would like to schedule a test drive for the ${vehicleName}. What times are available?`;
+      toastMessage = `Scheduling test drive for ${vehicleName}...`;
+    } else if (action === 'contact-sales') {
+      message = `I would like to speak with a sales representative about the ${vehicleName}. Can you help me get in touch?`;
+      toastMessage = `Connecting you with sales about ${vehicleName}...`;
+    }
+    
+    if (message) {
+      sendTextMessage(message);
+      toast.success(toastMessage);
     }
   };
 
@@ -662,7 +695,7 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
                           : 'bg-gray-100 text-gray-900'
                       }`}
                     >
-                      {(message.content.includes('<ul class="inventory-list">') || message.content.includes('<div class="inventory-display">')) ? (
+                      {message.content.includes('<div class="inventory-grid">') || message.content.includes('<ul class="inventory-list">') ? (
                         <div 
                           className="text-sm"
                           dangerouslySetInnerHTML={{ __html: message.content }}

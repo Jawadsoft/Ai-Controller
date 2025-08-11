@@ -176,82 +176,119 @@ All colors MUST be HSL. */
     @apply border-accent;
   }
 
-  /* DAIVE Inventory Display Styles */
-  .inventory-display {
-    @apply space-y-6;
+  /* DAIVE Inventory List Styles */
+  .inventory-list {
+    @apply list-none p-0 m-0 space-y-4;
   }
 
-  .brand-section {
-    @apply bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm;
+  .inventory-grid {
+    @apply grid grid-cols-1 gap-2 p-2;
   }
 
-  .brand-title {
-    @apply bg-gray-50 px-4 py-3 text-lg font-bold text-gray-900 border-b border-gray-200 flex items-center;
+  .vehicle-compact-card {
+    @apply bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md cursor-pointer transition-all duration-200 overflow-hidden;
+    @apply hover:border-primary/50 hover:scale-[1.01] flex flex-row;
+    @apply backdrop-blur-sm bg-white/95;
+    @apply ring-1 ring-gray-100;
+    @apply focus-within:ring-2 focus-within:ring-primary/50;
+    @apply min-h-[120px] max-h-[140px];
+    @apply hover:shadow-lg;
   }
 
-  .brand-vehicles {
-    @apply list-none p-0 m-0;
+  .vehicle-compact-card:hover {
+    @apply shadow-lg ring-primary/20;
   }
 
-  .vehicle-item {
-    @apply border-b border-gray-100 last:border-b-0 p-4 hover:bg-gray-50 cursor-pointer transition-all duration-200;
+  .vehicle-compact-image {
+    @apply relative w-32 h-24 sm:w-36 sm:h-28 overflow-hidden flex-shrink-0;
+    @apply bg-gradient-to-br from-gray-50 to-gray-100;
+    @apply border-r border-gray-200;
   }
 
-  .vehicle-item:hover {
-    @apply bg-blue-50 border-l-4 border-l-primary;
+  .vehicle-compact-image::after {
+    @apply absolute inset-0 bg-gradient-to-t from-black/10 to-transparent pointer-events-none;
   }
 
-  .vehicle-header {
+  .vehicle-cover-compact {
+    @apply w-full h-full object-cover transition-transform duration-300;
+  }
+
+  .vehicle-compact-card:hover .vehicle-cover-compact {
+    @apply scale-105;
+  }
+
+  .vehicle-compact-info {
+    @apply p-3 flex-1 flex flex-col justify-between;
+    @apply min-w-0;
+  }
+
+  .vehicle-compact-header {
     @apply flex justify-between items-start mb-2;
+    @apply gap-2;
   }
 
-  .vehicle-name {
-    @apply text-base font-semibold text-gray-900 flex-1;
+  .vehicle-compact-name {
+    @apply text-base sm:text-lg font-bold text-gray-900 flex items-center gap-2;
+    @apply flex-1 min-w-0;
   }
 
-  .vehicle-price {
-    @apply text-lg font-bold text-primary ml-4;
+  .vehicle-compact-price {
+    @apply text-lg font-bold text-primary bg-primary/5 px-2 py-1 rounded text-right;
+    @apply flex-shrink-0;
   }
 
-  .vehicle-specs {
-    @apply flex flex-wrap gap-3 text-sm text-gray-600;
+  .vehicle-compact-details {
+    @apply flex flex-wrap gap-2 text-xs sm:text-sm text-gray-600 mb-2;
   }
 
-  .spec-item {
-    @apply bg-gray-100 px-2 py-1 rounded-md;
+  .vehicle-compact-details .color-compact {
+    @apply bg-gray-100 px-2 py-1 rounded-full text-gray-700 font-medium;
+  }
+
+  .vehicle-compact-details .mileage-compact {
+    @apply bg-blue-50 px-2 py-1 rounded-full text-blue-700 font-medium;
+  }
+
+  .vehicle-compact-actions {
+    @apply flex gap-2 mt-auto;
+  }
+
+  .btn-test-drive-compact {
+    @apply px-3 py-1.5 bg-primary text-white text-xs font-semibold rounded-md hover:bg-primary/90 transition-all duration-200 hover:shadow-sm;
+    @apply hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-1;
+  }
+
+  .btn-contact-sales-compact {
+    @apply px-3 py-1.5 bg-gray-100 text-gray-700 text-xs font-semibold rounded-md hover:bg-gray-200 transition-all duration-200 hover:shadow-sm;
+    @apply hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-1;
   }
 
   /* Dark mode support */
-  .dark .brand-section {
-    @apply bg-gray-800 border-gray-700;
+  .dark .vehicle-compact-card {
+    @apply bg-gray-800 border-gray-700 hover:border-primary/50;
   }
 
-  .dark .brand-title {
-    @apply bg-gray-700 text-gray-100 border-gray-600;
-  }
-
-  .dark .vehicle-item {
-    @apply border-gray-700 hover:bg-gray-700;
-  }
-
-  .dark .vehicle-item:hover {
-    @apply bg-gray-700 border-l-primary;
-  }
-
-  .dark .vehicle-name {
+  .dark .vehicle-compact-name {
     @apply text-gray-100;
   }
 
-  .dark .vehicle-specs {
+  .dark .vehicle-compact-price {
+    @apply bg-primary/10 text-primary;
+  }
+
+  .dark .vehicle-compact-details {
     @apply text-gray-300;
   }
 
-  .dark .spec-item {
-    @apply bg-gray-600 text-gray-200;
+  .dark .vehicle-compact-details .color-compact {
+    @apply bg-gray-700 text-gray-200;
   }
 
-  /* Legacy inventory list styles for compatibility */
-  .inventory-list {
-    @apply list-none p-0 m-0 space-y-3;
+  .dark .vehicle-compact-details .mileage-compact {
+    @apply bg-blue-900/30 text-blue-300;
+  }
+
+  .dark .btn-contact-sales-compact {
+    @apply bg-gray-700 text-gray-200 hover:bg-gray-600;
   }
 }

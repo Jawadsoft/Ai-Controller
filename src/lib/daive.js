@@ -17,6 +17,9 @@ class DAIVEService {
   constructor() {
     this.model = process.env.OPENAI_MODEL || 'gpt-3.5-turbo';
     this.maxTokens = parseInt(process.env.OPENAI_MAX_TOKENS) || 300; // Reduced for brief responses
+    
+    // Initialize database tables
+    this.initializeUserInterestTable();
   }
 
   // Generate a unique session ID
@@ -182,7 +185,17 @@ class DAIVEService {
       if (currentVehicleId) {
         // Exclude current vehicle from alternatives
         query = `
-          SELECT v.id, v.make, v.model, v.year, v.trim, v.color, v.price, v.mileage, v.status, v.features
+          SELECT v.id, v.make, v.model, v.year, v.trim, v.color, v.price, v.mileage, v.status, v.features,
+                 COALESCE(
+                   CASE 
+                     WHEN v.photo_url_list IS NOT NULL AND array_length(v.photo_url_list, 1) > 0 
+                     THEN v.photo_url_list[1]
+                     WHEN v.images IS NOT NULL AND array_length(v.images, 1) > 0 
+                     THEN v.images[1]
+                     ELSE NULL
+                   END,
+                   'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=300&h=200&fit=crop&crop=center'
+                 ) as image_url
           FROM vehicles v
           WHERE v.dealer_id = $1 
           AND v.id != $2 
@@ -194,7 +207,17 @@ class DAIVEService {
       } else {
         // Show all available vehicles for general conversation
         query = `
-          SELECT v.id, v.make, v.model, v.year, v.trim, v.color, v.price, v.mileage, v.status, v.features
+          SELECT v.id, v.make, v.model, v.year, v.trim, v.color, v.price, v.mileage, v.status, v.features,
+                COALESCE(
+                  CASE 
+                    WHEN v.photo_url_list IS NOT NULL AND array_length(v.photo_url_list, 1) > 0 
+                    THEN v.photo_url_list[1]
+                    WHEN v.images IS NOT NULL AND array_length(v.images, 1) > 0 
+                    THEN v.images[1]
+                    ELSE NULL
+                  END,
+                  'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=300&h=200&fit=crop&crop=center'
+                ) as image_url
           FROM vehicles v
           WHERE v.dealer_id = $1 
           AND v.status = 'available'
@@ -208,6 +231,96 @@ class DAIVEService {
       return result.rows;
     } catch (error) {
       console.error('Error getting alternative vehicles:', error);
+      return [];
+    }
+  }
+
+  // Get similar vehicles based on user preferences and current selection
+  async getSimilarVehicles(dealerId, currentVehicleId, userPreferences = {}, limit = 5) {
+    try {
+      let query;
+      let params = [dealerId, limit];
+      
+      // Build dynamic WHERE clause based on user preferences
+      let whereConditions = ['v.dealer_id = $1', 'v.status = \'available\''];
+      let paramIndex = 2;
+      
+      if (currentVehicleId) {
+        whereConditions.push(`v.id != $${paramIndex}`);
+        params.splice(paramIndex - 1, 0, currentVehicleId);
+        paramIndex++;
+      }
+      
+      // Add preference-based filters
+      if (userPreferences.make) {
+        whereConditions.push(`v.make ILIKE $${paramIndex}`);
+        params.push(`%${userPreferences.make}%`);
+        paramIndex++;
+      }
+      
+      if (userPreferences.model) {
+        whereConditions.push(`v.model ILIKE $${paramIndex}`);
+        params.push(`%${userPreferences.model}%`);
+        paramIndex++;
+      }
+      
+      if (userPreferences.yearRange) {
+        whereConditions.push(`v.year BETWEEN $${paramIndex} AND $${paramIndex + 1}`);
+        params.push(userPreferences.yearRange.min, userPreferences.yearRange.max);
+        paramIndex += 2;
+      }
+      
+      if (userPreferences.priceRange) {
+        whereConditions.push(`v.price BETWEEN $${paramIndex} AND $${paramIndex + 1}`);
+        params.push(userPreferences.priceRange.min, userPreferences.priceRange.max);
+        paramIndex += 2;
+      }
+      
+      if (userPreferences.bodyType) {
+        whereConditions.push(`v.body_type ILIKE $${paramIndex}`);
+        params.push(`%${userPreferences.bodyType}%`);
+        paramIndex++;
+      }
+      
+      query = `
+        SELECT v.id, v.make, v.model, v.year, v.trim, v.color, v.price, v.mileage, v.status, v.features,
+               COALESCE(
+                 CASE 
+                   WHEN v.photo_url_list IS NOT NULL AND array_length(v.photo_url_list, 1) > 0 
+                   THEN v.photo_url_list[1]
+                   WHEN v.images IS NOT NULL AND array_length(v.images, 1) > 0 
+                   THEN v.images[1]
+                   ELSE NULL
+                 END,
+                 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=300&h=200&fit=crop&crop=center'
+               ) as image_url,
+               CASE 
+                 WHEN v.make = $${paramIndex} THEN 3
+                 WHEN v.model = $${paramIndex + 1} THEN 2
+                 ELSE 1
+               END as relevance_score
+        FROM vehicles v
+        WHERE ${whereConditions.join(' AND ')}
+        ORDER BY relevance_score DESC, v.created_at DESC
+        LIMIT $${paramIndex + 2}
+      `;
+      
+      // Add current vehicle make/model for relevance scoring
+      if (currentVehicleId) {
+        const currentVehicle = await this.getVehicleContext(currentVehicleId, dealerId);
+        if (currentVehicle) {
+          params.push(currentVehicle.make, currentVehicle.model);
+        } else {
+          params.push('', '');
+        }
+      } else {
+        params.push('', '');
+      }
+      
+      const result = await pool.query(query, params);
+      return result.rows;
+    } catch (error) {
+      console.error('Error getting similar vehicles:', error);
       return [];
     }
   }
@@ -284,7 +397,7 @@ class DAIVEService {
   // Build AI system prompt with context
   async buildSystemPrompt(conversation, vehicleContext, dealerPrompts) {
     let vehicleInfo = '';
-    if (vehicleContext && vehicleContext.year && vehicleContext.make && vehicleContext.model) {
+    if (vehicleContext.year && vehicleContext.make && vehicleContext.model) {
       vehicleInfo = `
 Current Vehicle: ${vehicleContext.year} ${vehicleContext.make} ${vehicleContext.model}
 Price: $${vehicleContext.price?.toLocaleString() || 'Contact for pricing'}`;
@@ -301,20 +414,16 @@ General Dealership Conversation: I can help you find the perfect vehicle from ou
       systemPrompt = dealerPrompts.master_prompt;
       
       // Add dealership-specific context
-      const businessName = vehicleContext?.business_name || 'the dealership';
-      const contactName = vehicleContext?.contact_name || 'Sales Team';
-      const phone = vehicleContext?.phone || 'Contact dealer';
-      
       systemPrompt += `\n\nDEALERSHIP CONTEXT:
-- You are exclusively representing: ${businessName}
+- You are exclusively representing: ${vehicleContext.business_name}
 - NEVER mention, offer, or reference vehicles from other dealerships
-- If asked about other dealerships, redirect to ${businessName}'s inventory
+- If asked about other dealerships, redirect to ${vehicleContext.business_name}'s inventory
 ${vehicleInfo}
 
 CURRENT CONVERSATION CONTEXT:
-- Dealer: ${businessName}
-- Contact: ${contactName}
-- Phone: ${phone}
+- Dealer: ${vehicleContext.business_name}
+- Contact: ${vehicleContext.contact_name || 'Sales Team'}
+- Phone: ${vehicleContext.phone || 'Contact dealer'}
 
 IMPORTANT NAMING RULES:
 - NEVER use specific names like "John", "Sarah", etc. in your responses
@@ -349,28 +458,25 @@ IMPORTANT NAMING RULES:
 
     } else {
       // Legacy system prompt for backward compatibility
-      const businessName = vehicleContext?.business_name || 'the dealership';
-      
-      systemPrompt = `You are D.A.I.V.E., an AI sales assistant EXCLUSIVELY for ${businessName}. Keep responses BRIEF (2-3 sentences max).
+      systemPrompt = `You are D.A.I.V.E., an AI sales assistant EXCLUSIVELY for ${vehicleContext.business_name}. Keep responses BRIEF (2-3 sentences max).
 
 STRICT RULES - YOU MUST FOLLOW THESE:
-1. You can ONLY discuss vehicles from ${businessName}'s inventory
+1. You can ONLY discuss vehicles from ${vehicleContext.business_name}'s inventory
 2. NEVER mention, offer, or reference vehicles from other dealerships
-3. If asked about other dealerships, redirect to ${businessName}'s inventory
-4. If asked about vehicles not in ${businessName}'s inventory, say "I can only help you with vehicles from ${businessName}'s inventory"
+3. If asked about other dealerships, redirect to ${vehicleContext.business_name}'s inventory
+4. If asked about vehicles not in ${vehicleContext.business_name}'s inventory, say "I can only help you with vehicles from ${vehicleContext.business_name}'s inventory"
 5. NEVER suggest checking other dealerships
 6. NEVER mention competitor dealerships
 
 ${vehicleInfo}
-Dealer: ${businessName}
+Dealer: ${vehicleContext.business_name}
 
 Guidelines:
-- Be direct and concise
-- ONLY offer vehicles from ${businessName}'s inventory
+- ONLY offer vehicles from ${vehicleContext.business_name}'s inventory
 - Offer financing, test drives, and alternatives when relevant
 - Connect to human sales rep when needed
 - Use dealer prompts when appropriate
-- If customer asks about other dealerships, say "I'm here to help you with ${businessName}'s inventory only"
+- If customer asks about other dealerships, say "I'm here to help you with ${vehicleContext.business_name}'s inventory only"
 - NEVER use specific names like "John", "Sarah", etc. in your responses
 - Address customers generically without using made-up names`;
     }
@@ -487,41 +593,82 @@ Guidelines:
 
       // If asking for alternatives, get and include alternative vehicles
       if (isAskingForAlternatives) {
-        const alternativeVehicles = await this.getAlternativeVehicles(dealerId, vehicleId);
-        if (alternativeVehicles.length > 0) {
-          // Create a simple, reliable inventory list
-          const vehicleItems = alternativeVehicles.map(vehicle => {
+        // Get user preferences to provide better recommendations
+        const userPreferences = await this.getUserPreferences(conversation.id);
+        
+        // Use similar vehicles if we have user preferences, otherwise use alternative vehicles
+        let recommendedVehicles;
+        if (userPreferences.length > 0 && vehicleId) {
+          // Build preferences object from user interests
+          const preferences = {};
+          for (const pref of userPreferences) {
+            if (pref.vehicle_id) {
+              const vehicle = await this.getVehicleContext(pref.vehicle_id);
+              if (vehicle) {
+                if (!preferences.make && vehicle.make) preferences.make = vehicle.make;
+                if (!preferences.model && vehicle.model) preferences.model = vehicle.model;
+                if (!preferences.yearRange) preferences.yearRange = { min: vehicle.year - 2, max: vehicle.year + 2 };
+                if (!preferences.priceRange && vehicle.price) {
+                  const priceRange = vehicle.price * 0.8;
+                  preferences.priceRange = { min: priceRange, max: vehicle.price * 1.2 };
+                }
+              }
+            }
+          }
+          
+          recommendedVehicles = await this.getSimilarVehicles(dealerId, vehicleId, preferences, 6);
+        } else {
+          recommendedVehicles = await this.getAlternativeVehicles(dealerId, vehicleId, 6);
+        }
+        
+        if (recommendedVehicles.length > 0) {
+          const vehicleItems = recommendedVehicles.map(vehicle => {
             const trim = vehicle.trim ? ` ${vehicle.trim}` : '';
             const color = vehicle.color || 'Color available upon request';
             const price = vehicle.price ? `$${vehicle.price.toLocaleString()}` : 'Price available upon request';
-            const mileage = vehicle.mileage ? `${vehicle.mileage.toLocaleString()} miles` : '';
-            const features = vehicle.features ? vehicle.features.split(',').slice(0, 2).join(', ') : '';
+            const mileage = vehicle.mileage ? ` • ${vehicle.mileage.toLocaleString()} miles` : '';
+            const imageUrl = vehicle.image_url || 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=300&h=200&fit=crop&crop=center';
             
-            return `<li class="vehicle-item" data-vehicle-id="${vehicle.id}">
-              <div class="vehicle-header">
-                <span class="vehicle-name"><strong>${vehicle.year} ${vehicle.make} ${vehicle.model}${trim}</strong></span>
-                <span class="vehicle-price">${price}</span>
+            return `<li class="vehicle-compact-card" data-vehicle-id="${vehicle.id}">
+              <div class="vehicle-compact-image">
+                <img src="${imageUrl}" alt="${vehicle.year} ${vehicle.make} ${vehicle.model}" class="vehicle-cover-compact" />
               </div>
-              <div class="vehicle-specs">
-                <span class="spec-item">Color: ${color}</span>
-                ${mileage ? `<span class="spec-item">${mileage}</span>` : ''}
-                ${features ? `<span class="spec-item">${features}</span>` : ''}
+              <div class="vehicle-compact-info">
+                <div class="vehicle-compact-header">
+                  <div class="vehicle-compact-name">🚗 <strong>${vehicle.year} ${vehicle.make} ${vehicle.model}${trim}</strong></div>
+                  <div class="vehicle-compact-price">${price}</div>
+                </div>
+                <div class="vehicle-compact-details">
+                  <span class="color-compact">${color}</span>
+                  <span class="mileage-compact">${mileage}</span>
+                </div>
+                <div class="vehicle-compact-actions">
+                  <button class="btn-test-drive-compact" onclick="handleVehicleAction('${vehicle.id}', 'test-drive')">Test Drive</button>
+                  <button class="btn-contact-sales-compact" onclick="handleVehicleAction('${vehicle.id}', 'contact-sales')">Contact Sales</button>
+                </div>
               </div>
             </li>`;
           }).join('');
           
-          const inventoryList = `<ul class="inventory-list">${vehicleItems}</ul>`;
+          const inventoryList = `<div class="inventory-grid">${vehicleItems}</div>`;
           
-          const businessName = vehicleContext?.business_name || 'our dealership';
-          aiResponse += `\n\nHere are some great options from ${businessName}'s inventory:\n\n${inventoryList}\n\nWould you like to know more about any of these vehicles or schedule a test drive?`;
-        } else {
-          const businessName = vehicleContext?.business_name || 'our dealership';
-          if (vehicleId && vehicleContext) {
-            aiResponse += `\n\nI don't have any other vehicles available in ${businessName}'s inventory at the moment, but I'd be happy to help you with financing options or scheduling a test drive for this ${vehicleContext.year} ${vehicleContext.make} ${vehicleContext.model}!`;
+          if (userPreferences.length > 0) {
+            aiResponse += `\n\nBased on your interests, here are some similar vehicles that match your preferences from ${vehicleContext.business_name}'s inventory:\n\n${inventoryList}\n\nThese vehicles are selected based on what you've shown interest in. Would you like to know more about any of these or schedule a test drive?`;
           } else {
-            aiResponse += `\n\nI don't have any vehicles available in ${businessName}'s inventory at the moment, but I'd be happy to help you with financing options or scheduling a test drive!`;
+            aiResponse += `\n\nHere are some great options from ${vehicleContext.business_name}'s inventory:\n\n${inventoryList}\n\nWould you like to know more about any of these vehicles or schedule a test drive?`;
+          }
+        } else {
+          if (vehicleId) {
+            aiResponse += `\n\nI don't have any other vehicles available in ${vehicleContext.business_name}'s inventory at the moment, but I'd be happy to help you with financing options or scheduling a test drive for this ${vehicleContext.year} ${vehicleContext.make} ${vehicleContext.model}!`;
+          } else {
+            aiResponse += `\n\nI don't have any vehicles available in ${vehicleContext.business_name}'s inventory at the moment, but I'd be happy to help you with financing options or scheduling a test drive!`;
           }
         }
+      }
+
+      // Track user interest if they're asking about a specific vehicle
+      if (vehicleId && userMessage.toLowerCase().includes('tell me more')) {
+        await this.trackUserInterest(conversation.id, vehicleId, 'vehicle_inquiry', userMessage);
       }
 
       // Add messages to conversation
@@ -709,6 +856,75 @@ Guidelines:
     }
   }
 
+  // Track user preferences and interests
+  async trackUserInterest(conversationId, vehicleId, interestType, userMessage) {
+    try {
+      const query = `
+        INSERT INTO daive_user_interests 
+        (conversation_id, vehicle_id, interest_type, user_message, interest_level, created_at)
+        VALUES ($1, $2, $3, $4, $5, NOW())
+        ON CONFLICT (conversation_id, vehicle_id, interest_type) 
+        DO UPDATE SET 
+          interest_level = LEAST(daive_user_interests.interest_level + 1, 5),
+          user_message = $4,
+          updated_at = NOW()
+        RETURNING *
+      `;
+      
+      // Determine interest level based on message content
+      let interestLevel = 1;
+      const message = userMessage.toLowerCase();
+      
+      if (message.includes('test drive') || message.includes('schedule') || message.includes('drive')) {
+        interestLevel = 4;
+      } else if (message.includes('price') || message.includes('cost') || message.includes('finance')) {
+        interestLevel = 3;
+      } else if (message.includes('feature') || message.includes('detail') || message.includes('spec')) {
+        interestLevel = 2;
+      } else if (message.includes('buy') || message.includes('purchase') || message.includes('interested')) {
+        interestLevel = 5;
+      }
+      
+      const result = await pool.query(query, [
+        conversationId,
+        vehicleId,
+        interestType,
+        userMessage,
+        interestLevel
+      ]);
+
+      return result.rows[0];
+    } catch (error) {
+      console.error('Error tracking user interest:', error);
+      // Don't throw error as this is not critical
+      return null;
+    }
+  }
+
+  // Get user preferences based on conversation history
+  async getUserPreferences(conversationId) {
+    try {
+      const query = `
+        SELECT 
+          vehicle_id,
+          interest_type,
+          interest_level,
+          user_message,
+          created_at
+        FROM daive_user_interests 
+        WHERE conversation_id = $1
+        ORDER BY interest_level DESC, created_at DESC
+        LIMIT 10
+      `;
+      
+      const result = await pool.query(query, [conversationId]);
+      return result.rows;
+    } catch (error) {
+      console.error('Error getting user preferences:', error);
+      return [];
+    }
+  }
+
   // Get analytics for dealer
   async getAnalytics(dealerId, startDate, endDate) {
     try {
@@ -730,6 +946,39 @@ Guidelines:
     } catch (error) {
       console.error('Error getting analytics:', error);
       return [];
+    }
+  }
+
+  // Initialize database tables for user interest tracking
+  async initializeUserInterestTable() {
+    try {
+      const createTableQuery = `
+        CREATE TABLE IF NOT EXISTS daive_user_interests (
+          id SERIAL PRIMARY KEY,
+          conversation_id UUID NOT NULL,
+          vehicle_id UUID,
+          interest_type VARCHAR(50) NOT NULL,
+          user_message TEXT NOT NULL,
+          interest_level INTEGER DEFAULT 1 CHECK (interest_level >= 1 AND interest_level <= 5),
+          created_at TIMESTAMP DEFAULT NOW(),
+          updated_at TIMESTAMP DEFAULT NOW(),
+          UNIQUE(conversation_id, vehicle_id, interest_type)
+        );
+        
+        CREATE INDEX IF NOT EXISTS idx_daive_user_interests_conversation 
+        ON daive_user_interests(conversation_id);
+        
+        CREATE INDEX IF NOT EXISTS idx_daive_user_interests_vehicle 
+        ON daive_user_interests(vehicle_id);
+        
+        CREATE INDEX IF NOT EXISTS idx_daive_user_interests_interest_level 
+        ON daive_user_interests(interest_level DESC);
+      `;
+      
+      await pool.query(createTableQuery);
+      console.log('✅ User interest tracking table initialized');
+    } catch (error) {
+      console.error('Error initializing user interest table:', error);
     }
   }
 }
