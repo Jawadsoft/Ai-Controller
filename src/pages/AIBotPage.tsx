@@ -630,8 +630,8 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
       const vehicleName = vehicleItem.querySelector('.vehicle-compact-name')?.textContent?.replace('🚗 ', '') || 'this vehicle';
       
       if (vehicleId) {
-        // Send a message asking for more details about the clicked vehicle
-        const message = `Tell me more about the ${vehicleName}`;
+        // Send a more specific message to focus on the selected vehicle
+        const message = `I want to know more about this specific ${vehicleName}. What are its features, pricing, and availability?`;
         sendTextMessage(message);
         
         // Show a toast to indicate the action

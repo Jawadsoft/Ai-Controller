@@ -570,6 +570,16 @@ Guidelines:
                                     userMessage.toLowerCase().includes('truck') ||
                                     (!vehicleId && conversation.messages.length <= 3); // Show inventory for general conversations
 
+      // Check if user is asking about a specific vehicle (not alternatives)
+      const isAskingAboutSpecificVehicle = vehicleId && (
+        userMessage.toLowerCase().includes('this specific') ||
+        userMessage.toLowerCase().includes('this vehicle') ||
+        userMessage.toLowerCase().includes('this car') ||
+        userMessage.toLowerCase().includes('features') ||
+        userMessage.toLowerCase().includes('pricing') ||
+        userMessage.toLowerCase().includes('availability')
+      );
+
       // Get AI response
       let aiResponse;
       if (openai) {
@@ -610,7 +620,7 @@ Guidelines:
       }
 
       // If asking for alternatives, get and include alternative vehicles
-      if (isAskingForAlternatives) {
+      if (isAskingForAlternatives && !isAskingAboutSpecificVehicle) {
         // Get user preferences to provide better recommendations
         const userPreferences = await this.getUserPreferences(conversation.id);
         
@@ -685,7 +695,7 @@ Guidelines:
       }
 
       // Track user interest if they're asking about a specific vehicle
-      if (vehicleId && userMessage.toLowerCase().includes('tell me more')) {
+      if (vehicleId && (userMessage.toLowerCase().includes('tell me more') || isAskingAboutSpecificVehicle)) {
         await this.trackUserInterest(conversation.id, vehicleId, 'vehicle_inquiry', userMessage);
       }
 
