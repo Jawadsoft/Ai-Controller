@@ -5,7 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
-import { Car, Calendar, MapPin, DollarSign, MessageSquare, Phone, Mail, ArrowLeft, Brain, X, Send, Mic, MicOff } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Car, Calendar, MapPin, DollarSign, MessageSquare, Phone, Mail, ArrowLeft, Brain, X, Send, Mic, MicOff, Settings, Save, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Vehicle {
@@ -46,6 +48,7 @@ const VehicleDetail = () => {
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(0);
   const [showChat, setShowChat] = useState(false);
+  const [showDAIVESettings, setShowDAIVESettings] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -929,6 +932,15 @@ const VehicleDetail = () => {
               <Button 
                 variant="outline" 
                 className="w-full"
+                onClick={() => setShowDAIVESettings(true)}
+              >
+                <Settings className="h-4 w-4 mr-2" />
+                D.A.I.V.E. Settings
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                className="w-full"
                 onClick={handleContactDealer}
               >
                 <MessageSquare className="h-4 w-4 mr-2" />
@@ -1118,6 +1130,242 @@ const VehicleDetail = () => {
                   <Send className="h-4 w-4" />
                 </Button>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* D.A.I.V.E. Settings Modal */}
+      {showDAIVESettings && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            {/* Settings Header */}
+            <div className="flex items-center justify-between p-6 border-b sticky top-0 bg-white z-10">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
+                  <Brain className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold">D.A.I.V.E. AI Assistant Settings</h3>
+                  <p className="text-sm text-gray-500">
+                    Configure AI behavior for {vehicle?.year} {vehicle?.make} {vehicle?.model}
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowDAIVESettings(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* Settings Content */}
+            <div className="p-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* AI Behavior Settings */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <Brain className="h-5 w-5" />
+                      <span>AI Behavior</span>
+                    </CardTitle>
+                    <CardDescription>
+                      Configure how D.A.I.V.E. interacts with customers
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="autoGreeting">Auto Greeting</Label>
+                      <Switch id="autoGreeting" defaultChecked />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="enableQuickActions">Quick Action Buttons</Label>
+                      <Switch id="enableQuickActions" defaultChecked />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="showInventorySuggestions">Show Inventory Suggestions</Label>
+                      <Switch id="showInventorySuggestions" defaultChecked />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="enableLeadScoring">Enable Lead Scoring</Label>
+                      <Switch id="enableLeadScoring" defaultChecked />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="enableHandoff">Enable Human Handoff</Label>
+                      <Switch id="enableHandoff" defaultChecked />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Voice Settings */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <Mic className="h-5 w-5" />
+                      <span>Voice Settings</span>
+                    </CardTitle>
+                    <CardDescription>
+                      Configure voice input and output behavior
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="voiceEnabled">Voice Input</Label>
+                      <Switch 
+                        id="voiceEnabled" 
+                        checked={voiceEnabled}
+                        onCheckedChange={setVoiceEnabled}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="autoVoiceResponse">Auto Voice Response</Label>
+                      <Switch id="autoVoiceResponse" defaultChecked />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="voiceQuality">Voice Quality</Label>
+                      <select 
+                        id="voiceQuality" 
+                        className="w-full p-2 border rounded-md"
+                        defaultValue="hd"
+                      >
+                        <option value="standard">Standard</option>
+                        <option value="hd">HD</option>
+                        <option value="ultra">Ultra HD</option>
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="voiceEmotion">Voice Emotion</Label>
+                      <select 
+                        id="voiceEmotion" 
+                        className="w-full p-2 border rounded-md"
+                        defaultValue="friendly"
+                      >
+                        <option value="neutral">Neutral</option>
+                        <option value="friendly">Friendly</option>
+                        <option value="professional">Professional</option>
+                        <option value="enthusiastic">Enthusiastic</option>
+                      </select>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Response Settings */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <MessageSquare className="h-5 w-5" />
+                      <span>Response Settings</span>
+                    </CardTitle>
+                    <CardDescription>
+                      Configure AI response behavior and style
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="responseLength">Response Length</Label>
+                      <select 
+                        id="responseLength" 
+                        className="w-full p-2 border rounded-md"
+                        defaultValue="medium"
+                      >
+                        <option value="short">Short & Concise</option>
+                        <option value="medium">Medium</option>
+                        <option value="long">Detailed</option>
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="personality">AI Personality</Label>
+                      <select 
+                        id="personality" 
+                        className="w-full p-2 border rounded-md"
+                        defaultValue="friendly"
+                      >
+                        <option value="professional">Professional</option>
+                        <option value="friendly">Friendly</option>
+                        <option value="enthusiastic">Enthusiastic</option>
+                        <option value="casual">Casual</option>
+                      </select>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="conversationMemory">Conversation Memory</Label>
+                      <select 
+                        id="conversationMemory" 
+                        className="w-full p-2 border rounded-md"
+                        defaultValue="4"
+                      >
+                        <option value="2">2 messages</option>
+                        <option value="4">4 messages</option>
+                        <option value="6">6 messages</option>
+                        <option value="8">8 messages</option>
+                      </select>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Lead Management */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <Users className="h-5 w-5" />
+                      <span>Lead Management</span>
+                    </CardTitle>
+                    <CardDescription>
+                      Configure lead qualification and follow-up
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="autoQualification">Auto Lead Qualification</Label>
+                      <Switch id="autoQualification" defaultChecked />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="minScoreForLead">Minimum Lead Score</Label>
+                      <Input 
+                        id="minScoreForLead" 
+                        type="number" 
+                        min="0" 
+                        max="100" 
+                        defaultValue="50"
+                        className="w-full"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="autoHandoffScore">Auto Handoff Score</Label>
+                      <Input 
+                        id="autoHandoffScore" 
+                        type="number" 
+                        min="0" 
+                        max="100" 
+                        defaultValue="80"
+                        className="w-full"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="autoFollowUp">Auto Follow-up</Label>
+                      <Switch id="autoFollowUp" defaultChecked />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-end space-x-3 mt-6 pt-6 border-t">
+                <Button variant="outline" onClick={() => setShowDAIVESettings(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={() => {
+                  toast({
+                    title: "Settings Saved",
+                    description: "D.A.I.V.E. settings have been updated successfully!",
+                  });
+                  setShowDAIVESettings(false);
+                }}>
+                  <Save className="h-4 w-4 mr-2" />
+                  Save Settings
+                </Button>
+              </div>
             </div>
           </div>
         </div>

@@ -23,7 +23,8 @@ import {
   TestTube,
   Trash2,
   Upload,
-  Download
+  Download,
+  Brain
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -39,6 +40,13 @@ interface PromptSettings {
   facts_integrity: string;
   voice_behavior: string;
   refusal_handling: string;
+  // New AI bot specific prompts
+  inventory_greeting: string;
+  family_vehicle_prompt: string;
+  similar_vehicles_prompt: string;
+  new_arrivals_prompt: string;
+  suv_selection_prompt: string;
+  sedan_selection_prompt: string;
 }
 
 interface VoiceSettings {
@@ -51,6 +59,11 @@ interface VoiceSettings {
   ttsProvider: string;
   openaiVoice?: string;
   elevenLabsVoice?: string;
+  // New AI bot voice settings
+  autoVoiceResponse: boolean;
+  voiceQuality: 'standard' | 'hd' | 'ultra';
+  voiceEmotion: 'neutral' | 'friendly' | 'professional' | 'enthusiastic';
+  recordingQuality: 'low' | 'medium' | 'high';
 }
 
 interface LeadSettings {
@@ -58,6 +71,11 @@ interface LeadSettings {
   minScoreForLead: number;
   autoHandoffScore: number;
   notificationEmail: string;
+  // New AI bot lead settings
+  conversationTracking: boolean;
+  interestDetection: boolean;
+  autoFollowUp: boolean;
+  followUpDelay: number; // hours
 }
 
 interface ApiSettings {
@@ -67,6 +85,22 @@ interface ApiSettings {
   deepgram_key: string;
   voice_provider: string;
   dealer_id: string;
+}
+
+// New interface for AI bot behavior
+interface AIBotBehavior {
+  enableQuickActions: boolean;
+  showInventorySuggestions: boolean;
+  enableVoiceInput: boolean;
+  enableVoiceOutput: boolean;
+  autoGreeting: boolean;
+  conversationMemory: number; // number of messages to remember
+  responseLength: 'short' | 'medium' | 'long';
+  personality: 'professional' | 'friendly' | 'enthusiastic' | 'casual';
+  enableLeadScoring: boolean;
+  enableHandoff: boolean;
+  maxConversationLength: number;
+  enableAnalytics: boolean;
 }
 
 const DAIVESettings: React.FC = () => {
@@ -81,7 +115,14 @@ const DAIVESettings: React.FC = () => {
     sales_methodology: '',
     facts_integrity: '',
     voice_behavior: '',
-    refusal_handling: ''
+    refusal_handling: '',
+    // New AI bot specific prompts
+    inventory_greeting: '',
+    family_vehicle_prompt: '',
+    similar_vehicles_prompt: '',
+    new_arrivals_prompt: '',
+    suv_selection_prompt: '',
+    sedan_selection_prompt: ''
   });
   
   const [voiceSettings, setVoiceSettings] = useState<VoiceSettings>({
@@ -93,14 +134,24 @@ const DAIVESettings: React.FC = () => {
     speechProvider: 'whisper',
     ttsProvider: 'elevenlabs',
     openaiVoice: 'alloy',
-    elevenLabsVoice: 'jessica'
+    elevenLabsVoice: 'jessica',
+    // New AI bot voice settings
+    autoVoiceResponse: false,
+    voiceQuality: 'hd',
+    voiceEmotion: 'friendly',
+    recordingQuality: 'high'
   });
   
   const [leadSettings, setLeadSettings] = useState<LeadSettings>({
     autoQualification: true,
     minScoreForLead: 50,
     autoHandoffScore: 80,
-    notificationEmail: ''
+    notificationEmail: '',
+    // New AI bot lead settings
+    conversationTracking: true,
+    interestDetection: true,
+    autoFollowUp: false,
+    followUpDelay: 24
   });
 
   const [apiSettings, setApiSettings] = useState<ApiSettings>({
@@ -110,6 +161,22 @@ const DAIVESettings: React.FC = () => {
     deepgram_key: '',
     voice_provider: 'elevenlabs',
     dealer_id: ''
+  });
+
+  // New AI bot behavior state
+  const [aiBotBehavior, setAiBotBehavior] = useState<AIBotBehavior>({
+    enableQuickActions: true,
+    showInventorySuggestions: true,
+    enableVoiceInput: true,
+    enableVoiceOutput: true,
+    autoGreeting: true,
+    conversationMemory: 10,
+    responseLength: 'medium',
+    personality: 'friendly',
+    enableLeadScoring: true,
+    enableHandoff: true,
+    maxConversationLength: 50,
+    enableAnalytics: true
   });
 
   const [showApiKeys, setShowApiKeys] = useState(false);
@@ -144,7 +211,14 @@ const DAIVESettings: React.FC = () => {
           sales_methodology: promptData.sales_methodology?.text || '',
           facts_integrity: promptData.facts_integrity?.text || '',
           voice_behavior: promptData.voice_behavior?.text || '',
-          refusal_handling: promptData.refusal_handling?.text || ''
+          refusal_handling: promptData.refusal_handling?.text || '',
+          // New AI bot specific prompts
+          inventory_greeting: promptData.inventory_greeting?.text || '',
+          family_vehicle_prompt: promptData.family_vehicle_prompt?.text || '',
+          similar_vehicles_prompt: promptData.similar_vehicles_prompt?.text || '',
+          new_arrivals_prompt: promptData.new_arrivals_prompt?.text || '',
+          suv_selection_prompt: promptData.suv_selection_prompt?.text || '',
+          sedan_selection_prompt: promptData.sedan_selection_prompt?.text || ''
         });
       }
 
@@ -187,7 +261,12 @@ const DAIVESettings: React.FC = () => {
           speechProvider: voiceSettingsData.speechProvider || 'whisper',
           ttsProvider: voiceSettingsData.ttsProvider || 'elevenlabs',
           openaiVoice: voiceSettingsData.openaiVoice || 'alloy',
-          elevenLabsVoice: voiceSettingsData.elevenLabsVoice || 'jessica'
+          elevenLabsVoice: voiceSettingsData.elevenLabsVoice || 'jessica',
+          // New AI bot voice settings
+          autoVoiceResponse: voiceSettingsData.autoVoiceResponse || false,
+          voiceQuality: voiceSettingsData.voiceQuality || 'hd',
+          voiceEmotion: voiceSettingsData.voiceEmotion || 'friendly',
+          recordingQuality: voiceSettingsData.recordingQuality || 'high'
         });
       }
     } catch (error) {
@@ -276,7 +355,12 @@ const DAIVESettings: React.FC = () => {
           voiceProvider: voiceSettings.voiceProvider,
           speechProvider: voiceSettings.speechProvider,
           ttsProvider: voiceSettings.ttsProvider,
-          openaiVoice: voiceSettings.openaiVoice
+          openaiVoice: voiceSettings.openaiVoice,
+          // New AI bot voice settings
+          autoVoiceResponse: voiceSettings.autoVoiceResponse,
+          voiceQuality: voiceSettings.voiceQuality,
+          voiceEmotion: voiceSettings.voiceEmotion,
+          recordingQuality: voiceSettings.recordingQuality
         })
       });
       
@@ -398,7 +482,14 @@ Output format:
       sales_methodology: "1) Acknowledge & empathize in 1 short line. 2) Ask 1–2 clarifying questions max. 3) Offer 2–3 options: {name, who it's for, 2 key benefits, 1 tradeoff}. 4) Handle objections briefly: clarify, compare, reassure, invite next step. 5) Close with a choice of next actions (schedule, quick quote, link, or recap).",
       facts_integrity: "If you're unsure, say so and propose how to confirm. Use tools for inventory, pricing, availability, and appointments. Never invent discounts, timelines, or legal terms.",
       voice_behavior: "Natural pacing; brief pauses before numbers or totals. Keep enthusiasm measured; avoid hype words.",
-      refusal_handling: "If a request is unsafe or off-policy, decline quickly and suggest a safe alternative."
+      refusal_handling: "If a request is unsafe or off-policy, decline quickly and suggest a safe alternative.",
+      // New AI bot specific prompts
+      inventory_greeting: "Hi, I'm D.A.I.V.E.! I can help you find the perfect vehicle from our inventory. What are you looking for today?",
+      family_vehicle_prompt: "I'd love to help you find the perfect family vehicle. What's most important to you: safety features, space, fuel efficiency, or all-around reliability?",
+      similar_vehicles_prompt: "Great choice! Let me show you some similar options that might also interest you. What specific features are you looking for?",
+      new_arrivals_prompt: "I'm excited to show you our newest arrivals! These vehicles are fresh off the truck and ready for you to explore. What type of vehicle interests you most?",
+      suv_selection_prompt: "SUVs are perfect for families and active lifestyles. I have several great options to show you. What size SUV are you looking for: compact, midsize, or full-size?",
+      sedan_selection_prompt: "Sedans offer great fuel efficiency and comfort. I have several excellent options in our inventory. What's your priority: luxury, economy, or sporty performance?"
     });
     toast.info('Reset to comprehensive DAIVE prompts');
   };
@@ -515,7 +606,7 @@ Output format:
       </div>
 
       <Tabs defaultValue="prompts" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="prompts" className="flex items-center gap-2">
             <MessageSquare className="h-4 w-4" />
             Quick Prompts
@@ -523,6 +614,10 @@ Output format:
           <TabsTrigger value="behavior" className="flex items-center gap-2">
             <Settings className="h-4 w-4" />
             Behavior
+          </TabsTrigger>
+          <TabsTrigger value="aibot" className="flex items-center gap-2">
+            <Brain className="h-4 w-4" />
+            AI Bot
           </TabsTrigger>
           <TabsTrigger value="api" className="flex items-center gap-2">
             <Key className="h-4 w-4" />
@@ -770,6 +865,289 @@ Output format:
                     <p className="text-sm font-medium text-blue-900">Advanced Configuration</p>
                     <p className="text-sm text-blue-700">
                       These settings define DAIVE's core personality and behavior patterns. Changes here will affect all conversations.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* AI Bot Configuration Tab */}
+        <TabsContent value="aibot" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>AI Bot Behavior Configuration</CardTitle>
+                <Button
+                  onClick={savePrompts}
+                  disabled={saving}
+                >
+                  {saving ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  ) : (
+                    <Save className="h-4 w-4 mr-2" />
+                  )}
+                  Save AI Bot Settings
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* AI Bot Behavior Settings */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Core Behavior</h3>
+                
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Enable Quick Actions</Label>
+                    <p className="text-sm text-gray-500">
+                      Show quick action buttons for common questions
+                    </p>
+                  </div>
+                  <Switch
+                    checked={aiBotBehavior.enableQuickActions}
+                    onCheckedChange={(checked) => 
+                      setAiBotBehavior(prev => ({ ...prev, enableQuickActions: checked }))
+                    }
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Show Inventory Suggestions</Label>
+                    <p className="text-sm text-gray-500">
+                      Automatically suggest similar vehicles from inventory
+                    </p>
+                  </div>
+                  <Switch
+                    checked={aiBotBehavior.showInventorySuggestions}
+                    onCheckedChange={(checked) => 
+                      setAiBotBehavior(prev => ({ ...prev, showInventorySuggestions: checked }))
+                    }
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Auto Greeting</Label>
+                    <p className="text-sm text-gray-500">
+                      Automatically send greeting message when chat opens
+                    </p>
+                  </div>
+                  <Switch
+                    checked={aiBotBehavior.autoGreeting}
+                    onCheckedChange={(checked) => 
+                      setAiBotBehavior(prev => ({ ...prev, autoGreeting: checked }))
+                    }
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Enable Lead Scoring</Label>
+                    <p className="text-sm text-gray-500">
+                      Automatically score conversations for lead qualification
+                    </p>
+                  </div>
+                  <Switch
+                    checked={aiBotBehavior.enableLeadScoring}
+                    onCheckedChange={(checked) => 
+                      setAiBotBehavior(prev => ({ ...prev, enableLeadScoring: checked }))
+                    }
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Enable Handoff</Label>
+                    <p className="text-sm text-gray-500">
+                      Allow automatic handoff to human agents
+                    </p>
+                  </div>
+                  <Switch
+                    checked={aiBotBehavior.enableHandoff}
+                    onCheckedChange={(checked) => 
+                      setAiBotBehavior(prev => ({ ...prev, enableHandoff: checked }))
+                    }
+                  />
+                </div>
+              </div>
+
+              {/* AI Bot Advanced Settings */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Advanced Settings</h3>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="conversationMemory">Conversation Memory</Label>
+                  <div className="flex items-center gap-4">
+                    <Input
+                      id="conversationMemory"
+                      type="range"
+                      min="5"
+                      max="20"
+                      step="1"
+                      value={aiBotBehavior.conversationMemory}
+                      onChange={(e) => 
+                        setAiBotBehavior(prev => ({ ...prev, conversationMemory: parseInt(e.target.value) }))
+                      }
+                      className="flex-1"
+                    />
+                    <span className="text-sm font-medium w-12">
+                      {aiBotBehavior.conversationMemory} messages
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-500">
+                    Number of previous messages to remember for context
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="responseLength">Response Length</Label>
+                  <select
+                    id="responseLength"
+                    value={aiBotBehavior.responseLength}
+                    onChange={(e) => 
+                      setAiBotBehavior(prev => ({ ...prev, responseLength: e.target.value as 'short' | 'medium' | 'long' }))
+                    }
+                    className="w-full p-2 border rounded-md"
+                  >
+                    <option value="short">Short (50-100 words)</option>
+                    <option value="medium">Medium (100-200 words)</option>
+                    <option value="long">Long (200+ words)</option>
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="personality">AI Personality</Label>
+                  <select
+                    id="personality"
+                    value={aiBotBehavior.personality}
+                    onChange={(e) => 
+                      setAiBotBehavior(prev => ({ ...prev, personality: e.target.value as 'professional' | 'friendly' | 'enthusiastic' | 'casual' }))
+                    }
+                    className="w-full p-2 border rounded-md"
+                  >
+                    <option value="professional">Professional & Formal</option>
+                    <option value="friendly">Friendly & Approachable</option>
+                    <option value="enthusiastic">Enthusiastic & Energetic</option>
+                    <option value="casual">Casual & Relaxed</option>
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="maxConversationLength">Max Conversation Length</Label>
+                  <div className="flex items-center gap-4">
+                    <Input
+                      id="maxConversationLength"
+                      type="range"
+                      min="20"
+                      max="100"
+                      step="5"
+                      value={aiBotBehavior.maxConversationLength}
+                      onChange={(e) => 
+                        setAiBotBehavior(prev => ({ ...prev, maxConversationLength: parseInt(e.target.value) }))
+                      }
+                      className="flex-1"
+                    />
+                    <span className="text-sm font-medium w-12">
+                      {aiBotBehavior.maxConversationLength} messages
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-500">
+                    Maximum number of messages before suggesting handoff
+                  </p>
+                </div>
+              </div>
+
+              {/* AI Bot Specific Prompts */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Specialized Prompts</h3>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="inventory_greeting">Inventory Greeting</Label>
+                  <Textarea
+                    id="inventory_greeting"
+                    value={prompts.inventory_greeting}
+                    onChange={(e) => handlePromptChange('inventory_greeting', e.target.value)}
+                    placeholder="Enter greeting message for general inventory inquiries..."
+                    rows={3}
+                  />
+                  <p className="text-sm text-gray-500">
+                    Used when customers ask about general inventory without a specific vehicle
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="family_vehicle_prompt">Family Vehicle Prompt</Label>
+                  <Textarea
+                    id="family_vehicle_prompt"
+                    value={prompts.family_vehicle_prompt}
+                    onChange={(e) => handlePromptChange('family_vehicle_prompt', e.target.value)}
+                    placeholder="Enter response for family vehicle inquiries..."
+                    rows={3}
+                  />
+                  <p className="text-sm text-gray-500">
+                    Used when customers ask about family-friendly vehicles
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="similar_vehicles_prompt">Similar Vehicles Prompt</Label>
+                  <Textarea
+                    id="similar_vehicles_prompt"
+                    value={prompts.similar_vehicles_prompt}
+                    onChange={(e) => handlePromptChange('similar_vehicles_prompt', e.target.value)}
+                    placeholder="Enter response for similar vehicle requests..."
+                    rows={3}
+                  />
+                  <p className="text-sm text-gray-500">
+                    Used when customers ask to see similar vehicle options
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="new_arrivals_prompt">New Arrivals Prompt</Label>
+                    <Textarea
+                      id="new_arrivals_prompt"
+                      value={prompts.new_arrivals_prompt}
+                      onChange={(e) => handlePromptChange('new_arrivals_prompt', e.target.value)}
+                      placeholder="Enter response for new arrivals inquiries..."
+                      rows={3}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="suv_selection_prompt">SUV Selection Prompt</Label>
+                    <Textarea
+                      id="suv_selection_prompt"
+                      value={prompts.suv_selection_prompt}
+                      onChange={(e) => handlePromptChange('suv_selection_prompt', e.target.value)}
+                      placeholder="Enter response for SUV inquiries..."
+                      rows={3}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="sedan_selection_prompt">Sedan Selection Prompt</Label>
+                  <Textarea
+                    id="sedan_selection_prompt"
+                    value={prompts.sedan_selection_prompt}
+                    onChange={(e) => handlePromptChange('sedan_selection_prompt', e.target.value)}
+                    placeholder="Enter response for sedan inquiries..."
+                    rows={3}
+                  />
+                </div>
+              </div>
+
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-blue-900">AI Bot Configuration</p>
+                    <p className="text-sm text-blue-700">
+                      These settings control how the AI bot behaves in conversations, including personality, response style, and specialized prompts for different scenarios.
                     </p>
                   </div>
                 </div>
@@ -1271,6 +1649,75 @@ Output format:
                       <span className="text-sm font-medium w-12">
                         {voiceSettings.voicePitch}x
                       </span>
+                    </div>
+                  </div>
+
+                  {/* New AI Bot Voice Settings */}
+                  <div className="space-y-4 pt-4 border-t">
+                    <h4 className="font-medium text-sm">AI Bot Voice Enhancements</h4>
+                    
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label>Auto Voice Response</Label>
+                        <p className="text-sm text-gray-500">
+                          Automatically generate voice for all AI responses
+                        </p>
+                      </div>
+                      <Switch
+                        checked={voiceSettings.autoVoiceResponse}
+                        onCheckedChange={(checked) => 
+                          setVoiceSettings(prev => ({ ...prev, autoVoiceResponse: checked }))
+                        }
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="voiceQuality">Voice Quality</Label>
+                      <select
+                        id="voiceQuality"
+                        value={voiceSettings.voiceQuality}
+                        onChange={(e) => 
+                          setVoiceSettings(prev => ({ ...prev, voiceQuality: e.target.value as 'standard' | 'hd' | 'ultra' }))
+                        }
+                        className="w-full p-2 border rounded-md"
+                      >
+                        <option value="standard">Standard (Fast)</option>
+                        <option value="hd">HD (Balanced)</option>
+                        <option value="ultra">Ultra HD (Best Quality)</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="voiceEmotion">Voice Emotion</Label>
+                      <select
+                        id="voiceEmotion"
+                        value={voiceSettings.voiceEmotion}
+                        onChange={(e) => 
+                          setVoiceSettings(prev => ({ ...prev, voiceEmotion: e.target.value as 'neutral' | 'friendly' | 'professional' | 'enthusiastic' }))
+                        }
+                        className="w-full p-2 border rounded-md"
+                      >
+                        <option value="neutral">Neutral</option>
+                        <option value="friendly">Friendly</option>
+                        <option value="professional">Professional</option>
+                        <option value="enthusiastic">Enthusiastic</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="recordingQuality">Recording Quality</Label>
+                      <select
+                        id="recordingQuality"
+                        value={voiceSettings.recordingQuality}
+                        onChange={(e) => 
+                          setVoiceSettings(prev => ({ ...prev, recordingQuality: e.target.value as 'low' | 'medium' | 'high' }))
+                        }
+                        className="w-full p-2 border rounded-md"
+                      >
+                        <option value="low">Low (Fast Processing)</option>
+                        <option value="medium">Medium (Balanced)</option>
+                        <option value="high">High (Best Accuracy)</option>
+                      </select>
                     </div>
                   </div>
                 </>
