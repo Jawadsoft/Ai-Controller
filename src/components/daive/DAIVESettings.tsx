@@ -47,6 +47,8 @@ interface PromptSettings {
   new_arrivals_prompt: string;
   suv_selection_prompt: string;
   sedan_selection_prompt: string;
+  budget_inquiry_prompt: string;
+  financing_calculation_prompt: string;
 }
 
 interface VoiceSettings {
@@ -122,21 +124,23 @@ const DAIVESettings: React.FC = () => {
     similar_vehicles_prompt: '',
     new_arrivals_prompt: '',
     suv_selection_prompt: '',
-    sedan_selection_prompt: ''
+    sedan_selection_prompt: '',
+    budget_inquiry_prompt: '',
+    financing_calculation_prompt: ''
   });
   
   const [voiceSettings, setVoiceSettings] = useState<VoiceSettings>({
-    enabled: false,
+    enabled: true, // Enable voice by default
     language: 'en-US',
     voiceSpeed: 1.0,
     voicePitch: 1.0,
-    voiceProvider: 'elevenlabs',
+    voiceProvider: 'openai', // Change to OpenAI TTS for better reliability
     speechProvider: 'whisper',
-    ttsProvider: 'elevenlabs',
+    ttsProvider: 'openai', // Use OpenAI TTS as default
     openaiVoice: 'alloy',
     elevenLabsVoice: 'jessica',
     // New AI bot voice settings
-    autoVoiceResponse: false,
+    autoVoiceResponse: true, // Enable auto voice response
     voiceQuality: 'hd',
     voiceEmotion: 'friendly',
     recordingQuality: 'high'
@@ -169,7 +173,7 @@ const DAIVESettings: React.FC = () => {
     showInventorySuggestions: true,
     enableVoiceInput: true,
     enableVoiceOutput: true,
-    autoGreeting: true,
+    autoGreeting: false, // Disabled to prevent repetitive greetings
     conversationMemory: 10,
     responseLength: 'medium',
     personality: 'friendly',
@@ -218,7 +222,9 @@ const DAIVESettings: React.FC = () => {
           similar_vehicles_prompt: promptData.similar_vehicles_prompt?.text || '',
           new_arrivals_prompt: promptData.new_arrivals_prompt?.text || '',
           suv_selection_prompt: promptData.suv_selection_prompt?.text || '',
-          sedan_selection_prompt: promptData.sedan_selection_prompt?.text || ''
+          sedan_selection_prompt: promptData.sedan_selection_prompt?.text || '',
+          budget_inquiry_prompt: promptData.budget_inquiry_prompt?.text || '',
+          financing_calculation_prompt: promptData.financing_calculation_prompt?.text || ''
         });
       }
 
@@ -250,8 +256,12 @@ const DAIVESettings: React.FC = () => {
       });
 
       const voiceData = await voiceResponse.json();
+      console.log('🔍 Voice Settings Response:', voiceData);
+      
       if (voiceData.success) {
         const voiceSettingsData = voiceData.data;
+        console.log('📊 Voice Settings Data from DB:', voiceSettingsData);
+        
         setVoiceSettings({
           enabled: voiceSettingsData.enabled || false,
           language: voiceSettingsData.language || 'en-US',
@@ -268,6 +278,15 @@ const DAIVESettings: React.FC = () => {
           voiceEmotion: voiceSettingsData.voiceEmotion || 'friendly',
           recordingQuality: voiceSettingsData.recordingQuality || 'high'
         });
+        
+        console.log('✅ Voice Settings Updated:', {
+          enabled: voiceSettingsData.enabled || false,
+          ttsProvider: voiceSettingsData.ttsProvider || 'elevenlabs',
+          openaiVoice: voiceSettingsData.openaiVoice || 'alloy',
+          autoVoiceResponse: voiceSettingsData.autoVoiceResponse || false
+        });
+      } else {
+        console.log('❌ Voice Settings Failed to Load:', voiceData);
       }
     } catch (error) {
       console.error('Error fetching settings:', error);
@@ -280,7 +299,15 @@ const DAIVESettings: React.FC = () => {
   const savePrompts = async () => {
     setSaving(true);
     try {
-      const promptTypes = ['greeting', 'vehicle_info', 'financing', 'test_drive', 'handoff', 'master_prompt', 'style_guidelines', 'sales_methodology', 'facts_integrity', 'voice_behavior', 'refusal_handling'];
+      const promptTypes = [
+        'greeting', 'vehicle_info', 'financing', 'test_drive', 'handoff', 
+        'master_prompt', 'style_guidelines', 'sales_methodology', 'facts_integrity', 
+        'voice_behavior', 'refusal_handling',
+        // New AI bot specific prompts
+        'inventory_greeting', 'family_vehicle_prompt', 'similar_vehicles_prompt',
+        'new_arrivals_prompt', 'suv_selection_prompt', 'sedan_selection_prompt',
+        'budget_inquiry_prompt', 'financing_calculation_prompt'
+      ];
       
       for (const promptType of promptTypes) {
         if (prompts[promptType as keyof PromptSettings]) {
@@ -340,34 +367,72 @@ const DAIVESettings: React.FC = () => {
   const saveVoiceSettings = async () => {
     setSaving(true);
     try {
+      const voiceSettingsToSave = {
+        enabled: voiceSettings.enabled,
+        language: voiceSettings.language,
+        voiceSpeed: voiceSettings.voiceSpeed,
+        voicePitch: voiceSettings.voicePitch,
+        voiceProvider: voiceSettings.voiceProvider,
+        speechProvider: voiceSettings.speechProvider,
+        ttsProvider: voiceSettings.ttsProvider,
+        openaiVoice: voiceSettings.openaiVoice,
+        // New AI bot voice settings
+        autoVoiceResponse: voiceSettings.autoVoiceResponse,
+        voiceQuality: voiceSettings.voiceQuality,
+        voiceEmotion: voiceSettings.voiceEmotion,
+        recordingQuality: voiceSettings.recordingQuality
+      };
+      
+      console.log('💾 Saving Voice Settings:', voiceSettingsToSave);
+      
       // Save all voice settings in a single request
-      await fetch('http://localhost:3000/api/daive/voice-settings', {
+      const response = await fetch('http://localhost:3000/api/daive/voice-settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        },
+        body: JSON.stringify(voiceSettingsToSave)
+      });
+      
+      const result = await response.json();
+      console.log('💾 Voice Settings Save Response:', result);
+      
+      if (result.success) {
+        toast.success('Voice settings saved successfully');
+        console.log('✅ Voice settings saved to database');
+      } else {
+        toast.error('Failed to save voice settings');
+        console.log('❌ Voice settings save failed:', result);
+      }
+    } catch (error) {
+      console.error('Error saving voice settings:', error);
+      toast.error('Failed to save voice settings');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const saveAIBotSettings = async () => {
+    setSaving(true);
+    try {
+      // Save AI bot behavior settings
+      await fetch('http://localhost:3000/api/daive/ai-bot-settings', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
         },
         body: JSON.stringify({
-          enabled: voiceSettings.enabled,
-          language: voiceSettings.language,
-          voiceSpeed: voiceSettings.voiceSpeed,
-          voicePitch: voiceSettings.voicePitch,
-          voiceProvider: voiceSettings.voiceProvider,
-          speechProvider: voiceSettings.speechProvider,
-          ttsProvider: voiceSettings.ttsProvider,
-          openaiVoice: voiceSettings.openaiVoice,
-          // New AI bot voice settings
-          autoVoiceResponse: voiceSettings.autoVoiceResponse,
-          voiceQuality: voiceSettings.voiceQuality,
-          voiceEmotion: voiceSettings.voiceEmotion,
-          recordingQuality: voiceSettings.recordingQuality
+          behavior: aiBotBehavior,
+          leadSettings: leadSettings
         })
       });
       
-      toast.success('Voice settings saved successfully');
+      toast.success('AI Bot settings saved successfully');
     } catch (error) {
-      console.error('Error saving voice settings:', error);
-      toast.error('Failed to save voice settings');
+      console.error('Error saving AI Bot settings:', error);
+      toast.error('Failed to save AI Bot settings');
     } finally {
       setSaving(false);
     }
@@ -399,6 +464,36 @@ const DAIVESettings: React.FC = () => {
     }
   };
 
+  const checkCurrentVoiceSettings = async () => {
+    try {
+      console.log('🔍 Checking current voice settings in database...');
+      
+      const response = await fetch('http://localhost:3000/api/daive/voice-settings', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        }
+      });
+
+      const data = await response.json();
+      console.log('📊 Current Voice Settings from API:', data);
+      
+      if (data.success) {
+        console.log('✅ Voice Settings Loaded Successfully');
+        console.log('📋 Settings Details:', data.data);
+        
+        // Show current settings in a toast
+        const settings = data.data;
+        toast.success(`Voice: ${settings.enabled ? 'ON' : 'OFF'}, TTS: ${settings.ttsProvider || 'Not set'}, Auto: ${settings.autoVoiceResponse ? 'ON' : 'OFF'}`);
+      } else {
+        console.log('❌ Failed to load voice settings:', data);
+        toast.error('Failed to load voice settings');
+      }
+    } catch (error) {
+      console.error('Error checking voice settings:', error);
+      toast.error('Error checking voice settings');
+    }
+  };
+
   const deleteApiSetting = async (settingType: string) => {
     try {
       const response = await fetch(`http://localhost:3000/api/daive/api-settings/${settingType}`, {
@@ -426,12 +521,25 @@ const DAIVESettings: React.FC = () => {
 
   const resetToDefaults = () => {
     setPrompts({
-      greeting: "Hi, I'm D.A.I.V.E., your AI sales assistant at {dealership_name}. How can I help you with this {vehicle_year} {vehicle_make} {vehicle_model}?",
-      vehicle_info: "This {vehicle_year} {vehicle_make} {vehicle_model} has excellent features including {features}. The price is ${price} and it has {mileage} miles. Would you like to know more about financing options at {dealership_name}?",
-      financing: "I can help you with financing options at {dealership_name}. We offer competitive rates starting at {rate}% APR. Would you like to calculate your monthly payment?",
+      greeting: "Hello! I'm D.A.I.V.E., your AI sales assistant. I can help you with information about this {vehicle_year} {vehicle_make} {vehicle_model} or any other vehicles in our inventory. What would you like to know?",
+      vehicle_info: "This {vehicle_year} {vehicle_make} {vehicle_model} has {features}. The price is ${price} with {mileage} miles. What specific aspect would you like me to focus on: features, pricing, or availability?",
+      financing: "Based on your budget of ${monthly_budget} per month, I can help you find vehicles that fit your payment range. Let me check our current inventory and financing options to show you what's available within your budget.",
       test_drive: "Great choice! I can help you schedule a test drive at {dealership_name}. What day and time works best for you?",
       handoff: "I'd be happy to connect you with one of our sales representatives at {dealership_name} who can provide more detailed assistance. Let me transfer you now.",
       master_prompt: `You are "DAIVE", a warm, confident sales agent. Goals: understand the user's needs, present tailored options, and help them decide—without pressure.
+
+Core Principles:
+1) Think first: make a brief plan of what you need, then call tools; don't guess facts.
+2) Prioritize outcomes: match needs, handle objections, and ask for micro-commitments.
+3) Be concise, warm, and specific. No fluff. No hallucinations.
+4) Safety & honesty: if uncertain, say so and offer to check.
+
+Budget & Financing Intelligence:
+- When customers mention monthly budgets (e.g., "$3,000 per month"), immediately use tools to search inventory
+- Calculate financing options based on their stated budget
+- Show specific vehicles that fit their payment range
+- Use the budget_inquiry_prompt and financing_calculation_prompt for appropriate responses
+- Always verify current inventory and pricing before making recommendations
 
 Style:
 - Conversational, human, concise (120–160 words unless asked).
@@ -450,6 +558,7 @@ Facts & Integrity:
 - If you're unsure, say so and propose how to confirm.
 - Use tools for inventory, pricing, availability, and appointments.
 - Never invent discounts, timelines, or legal terms.
+- Always verify information before presenting it as fact.
 
 Voice (if TTS):
 - Natural pacing; brief pauses before numbers or totals.
@@ -478,9 +587,9 @@ Output format:
   </ul>
 - Use simple bullets for non-vehicle options
 - Include exactly one question unless user asked for a summary or next step`,
-      style_guidelines: "Conversational, human, concise (120–160 words unless asked). Use contractions and varied sentence length. Acknowledge, clarify, recommend, then close with a light CTA. Mirror the user's tone and vocabulary.",
-      sales_methodology: "1) Acknowledge & empathize in 1 short line. 2) Ask 1–2 clarifying questions max. 3) Offer 2–3 options: {name, who it's for, 2 key benefits, 1 tradeoff}. 4) Handle objections briefly: clarify, compare, reassure, invite next step. 5) Close with a choice of next actions (schedule, quick quote, link, or recap).",
-      facts_integrity: "If you're unsure, say so and propose how to confirm. Use tools for inventory, pricing, availability, and appointments. Never invent discounts, timelines, or legal terms.",
+      style_guidelines: "Conversational, human, concise (120–160 words unless asked). Use contractions and varied sentence length. Acknowledge, clarify, recommend, then close with a light CTA. Mirror the user's tone and vocabulary. Think first, prioritize outcomes, be specific without fluff, and maintain safety & honesty.",
+      sales_methodology: "1) Think first: make a brief plan of what you need, then call tools. 2) Acknowledge & empathize in 1 short line. 3) Ask 1–2 clarifying questions max. 4) Offer 2–3 options: {name, who it's for, 2 key benefits, 1 tradeoff}. 5) Handle objections briefly: clarify, compare, reassure, invite next step. 6) Prioritize outcomes: ask for micro-commitments. 7) Close with a choice of next actions (schedule, quick quote, link, or recap).",
+      facts_integrity: "Think first: make a brief plan before calling tools. If you're unsure, say so and propose how to confirm. Use tools for inventory, pricing, availability, and appointments. Never invent discounts, timelines, or legal terms. Always verify information before presenting it as fact.",
       voice_behavior: "Natural pacing; brief pauses before numbers or totals. Keep enthusiasm measured; avoid hype words.",
       refusal_handling: "If a request is unsafe or off-policy, decline quickly and suggest a safe alternative.",
       // New AI bot specific prompts
@@ -489,7 +598,9 @@ Output format:
       similar_vehicles_prompt: "Great choice! Let me show you some similar options that might also interest you. What specific features are you looking for?",
       new_arrivals_prompt: "I'm excited to show you our newest arrivals! These vehicles are fresh off the truck and ready for you to explore. What type of vehicle interests you most?",
       suv_selection_prompt: "SUVs are perfect for families and active lifestyles. I have several great options to show you. What size SUV are you looking for: compact, midsize, or full-size?",
-      sedan_selection_prompt: "Sedans offer great fuel efficiency and comfort. I have several excellent options in our inventory. What's your priority: luxury, economy, or sporty performance?"
+      sedan_selection_prompt: "Sedans offer great fuel efficiency and comfort. I have several excellent options in our inventory. What's your priority: luxury, economy, or sporty performance?",
+      budget_inquiry_prompt: "Perfect! With a budget of ${monthly_budget} per month, I can help you find vehicles that fit your payment range. Let me search our inventory for options within your budget and show you what's available.",
+      financing_calculation_prompt: "Great! Let me calculate financing options for you. With a ${monthly_budget} monthly budget, I can show you vehicles that fit your payment range. Would you like me to search for specific vehicle types or show you all available options within your budget?"
     });
     toast.info('Reset to comprehensive DAIVE prompts');
   };
@@ -767,6 +878,29 @@ Output format:
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
+              {/* Core Principles */}
+              <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-500">
+                <h3 className="font-semibold text-blue-900 mb-3">Core DAIVE Principles</h3>
+                <div className="space-y-2 text-sm text-blue-800">
+                  <div className="flex items-start gap-2">
+                    <span className="font-medium">1.</span>
+                    <span><strong>Think first:</strong> Make a brief plan of what you need, then call tools; don't guess facts.</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="font-medium">2.</span>
+                    <span><strong>Prioritize outcomes:</strong> Match needs, handle objections, and ask for micro-commitments.</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="font-medium">3.</span>
+                    <span><strong>Be concise, warm, and specific:</strong> No fluff. No hallucinations.</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="font-medium">4.</span>
+                    <span><strong>Safety & honesty:</strong> If uncertain, say so and offer to check.</span>
+                  </div>
+                </div>
+              </div>
+
               {/* Master Prompt */}
               <div className="space-y-2">
                 <Label htmlFor="master_prompt">Master System Prompt</Label>
@@ -880,7 +1014,7 @@ Output format:
               <div className="flex items-center justify-between">
                 <CardTitle>AI Bot Behavior Configuration</CardTitle>
                 <Button
-                  onClick={savePrompts}
+                  onClick={saveAIBotSettings}
                   disabled={saving}
                 >
                   {saving ? (
@@ -932,6 +1066,9 @@ Output format:
                     <Label>Auto Greeting</Label>
                     <p className="text-sm text-gray-500">
                       Automatically send greeting message when chat opens
+                    </p>
+                    <p className="text-xs text-amber-600 font-medium">
+                      ⚠️ Disabled by default to prevent repetitive greetings
                     </p>
                   </div>
                   <Switch
@@ -1139,6 +1276,34 @@ Output format:
                     rows={3}
                   />
                 </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="budget_inquiry_prompt">Budget Inquiry Prompt</Label>
+                  <Textarea
+                    id="budget_inquiry_prompt"
+                    value={prompts.budget_inquiry_prompt}
+                    onChange={(e) => handlePromptChange('budget_inquiry_prompt', e.target.value)}
+                    placeholder="Enter response when customers share their budget..."
+                    rows={3}
+                  />
+                  <p className="text-sm text-gray-500">
+                    Used when customers mention their monthly budget or payment range
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="financing_calculation_prompt">Financing Calculation Prompt</Label>
+                  <Textarea
+                    id="financing_calculation_prompt"
+                    value={prompts.financing_calculation_prompt}
+                    onChange={(e) => handlePromptChange('financing_calculation_prompt', e.target.value)}
+                    placeholder="Enter response for financing calculations..."
+                    rows={3}
+                  />
+                  <p className="text-sm text-gray-500">
+                    Used when customers want to calculate payments or financing options
+                  </p>
+                </div>
               </div>
 
               <div className="bg-blue-50 p-4 rounded-lg">
@@ -1148,6 +1313,19 @@ Output format:
                     <p className="text-sm font-medium text-blue-900">AI Bot Configuration</p>
                     <p className="text-sm text-blue-700">
                       These settings control how the AI bot behaves in conversations, including personality, response style, and specialized prompts for different scenarios.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-amber-50 p-4 rounded-lg border-l-4 border-amber-400">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-amber-900">Greeting Behavior Fix</p>
+                    <p className="text-sm text-amber-700">
+                      Auto Greeting is disabled by default to prevent DAIVE from repeatedly sending greeting messages. 
+                      If you want DAIVE to greet users, enable this setting but ensure your greeting prompt is contextual and not repetitive.
                     </p>
                   </div>
                 </div>
@@ -1432,17 +1610,40 @@ Output format:
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle>Voice Configuration</CardTitle>
-                <Button
-                  onClick={saveVoiceSettings}
-                  disabled={saving}
-                >
-                  {saving ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  ) : (
-                    <Save className="h-4 w-4 mr-2" />
-                  )}
-                  Save Voice Settings
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={checkCurrentVoiceSettings}
+                  >
+                    <Eye className="h-4 w-4 mr-2" />
+                    Check Settings
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => testApiConnection('openai_tts')}
+                    disabled={testingApi === 'openai_tts'}
+                  >
+                    {testingApi === 'openai_tts' ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900 mr-2"></div>
+                    ) : (
+                      <TestTube className="h-4 w-4 mr-2" />
+                    )}
+                    Test Voice
+                  </Button>
+                  <Button
+                    onClick={saveVoiceSettings}
+                    disabled={saving}
+                  >
+                    {saving ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    ) : (
+                      <Save className="h-4 w-4 mr-2" />
+                    )}
+                    Save Voice Settings
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -1460,6 +1661,23 @@ Output format:
                   }
                 />
               </div>
+
+              {/* Voice Status Indicator */}
+              {voiceSettings.enabled && (
+                <div className="bg-green-50 p-3 rounded-lg border border-green-200">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <div className="text-sm">
+                      <span className="font-medium text-green-800">Voice Status: </span>
+                      <span className="text-green-700">
+                        {voiceSettings.ttsProvider === 'openai' ? 'OpenAI TTS' : voiceSettings.ttsProvider === 'elevenlabs' ? 'ElevenLabs' : voiceSettings.ttsProvider} 
+                        {voiceSettings.ttsProvider === 'openai' && voiceSettings.openaiVoice && ` (${voiceSettings.openaiVoice})`}
+                        {voiceSettings.ttsProvider === 'elevenlabs' && voiceSettings.elevenLabsVoice && ` (${voiceSettings.elevenLabsVoice})`}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {voiceSettings.enabled && (
                 <>
@@ -1735,6 +1953,38 @@ Output format:
                   </div>
                 </div>
               </div>
+
+              {/* Voice Troubleshooting Section */}
+              <div className="bg-amber-50 p-4 rounded-lg border-l-4 border-amber-400">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-amber-900">Voice Not Working? Try These Steps:</p>
+                    <div className="space-y-2 text-sm text-amber-700 mt-2">
+                      <div className="flex items-start gap-2">
+                        <span className="font-medium">1.</span>
+                        <span>Check that "Enable Voice Responses" is turned ON</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="font-medium">2.</span>
+                        <span>Verify your OpenAI API key is valid and has credits</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="font-medium">3.</span>
+                        <span>Test your OpenAI API connection using the "Test" button</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="font-medium">4.</span>
+                        <span>Check your browser's audio permissions and volume settings</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="font-medium">5.</span>
+                        <span>Try switching between different voice providers (OpenAI, ElevenLabs)</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -1880,6 +2130,82 @@ Output format:
                 <p className="text-sm text-gray-500">
                   Email address to receive notifications for qualified leads
                 </p>
+              </div>
+
+              {/* New AI Bot Lead Settings */}
+              <div className="space-y-4 pt-4 border-t">
+                <h4 className="font-medium text-sm">AI Bot Lead Enhancement</h4>
+                
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Conversation Tracking</Label>
+                    <p className="text-sm text-gray-500">
+                      Track all conversations for lead analysis
+                    </p>
+                  </div>
+                  <Switch
+                    checked={leadSettings.conversationTracking}
+                    onCheckedChange={(checked) => 
+                      setLeadSettings(prev => ({ ...prev, conversationTracking: checked }))
+                    }
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Interest Detection</Label>
+                    <p className="text-sm text-gray-500">
+                      Automatically detect customer interests from conversations
+                    </p>
+                  </div>
+                  <Switch
+                    checked={leadSettings.interestDetection}
+                    onCheckedChange={(checked) => 
+                      setLeadSettings(prev => ({ ...prev, interestDetection: checked }))
+                    }
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Auto Follow-up</Label>
+                    <p className="text-sm text-gray-500">
+                      Automatically send follow-up messages to interested customers
+                    </p>
+                  </div>
+                  <Switch
+                    checked={leadSettings.autoFollowUp}
+                    onCheckedChange={(checked) => 
+                      setLeadSettings(prev => ({ ...prev, autoFollowUp: checked }))
+                    }
+                  />
+                </div>
+
+                {leadSettings.autoFollowUp && (
+                  <div className="space-y-2">
+                    <Label htmlFor="followUpDelay">Follow-up Delay (hours)</Label>
+                    <div className="flex items-center gap-4">
+                      <Input
+                        id="followUpDelay"
+                        type="range"
+                        min="1"
+                        max="72"
+                        step="1"
+                        value={leadSettings.followUpDelay}
+                        onChange={(e) => 
+                          setLeadSettings(prev => ({ ...prev, followUpDelay: parseInt(e.target.value) }))
+                        }
+                        className="flex-1"
+                      />
+                      <span className="text-sm font-medium w-12">
+                        {leadSettings.followUpDelay}h
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-500">
+                      Delay before sending automatic follow-up messages
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div className="bg-green-50 p-4 rounded-lg">

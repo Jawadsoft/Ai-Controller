@@ -5,10 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Car, Calendar, MapPin, DollarSign, MessageSquare, Phone, Mail, ArrowLeft, Brain, X, Send, Mic, MicOff, Settings, Save, Users } from "lucide-react";
+import { Car, Calendar, MapPin, DollarSign, MessageSquare, Phone, Mail, ArrowLeft, Brain, X, Send, Mic, MicOff, Volume2, VolumeX, TestTube } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 interface Vehicle {
   id: string;
@@ -48,7 +47,6 @@ const VehicleDetail = () => {
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(0);
   const [showChat, setShowChat] = useState(false);
-  const [showDAIVESettings, setShowDAIVESettings] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -69,6 +67,7 @@ const VehicleDetail = () => {
   const audioChunksRef = useRef<Blob[]>([]);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const { user, getDealerId, isAuthenticated } = useAuth();
 
   // Helper function to parse photo_url_list (now properly an array)
   const parsePhotoUrlList = (photoUrlList: string[] | null | undefined): string[] => {
@@ -92,6 +91,26 @@ const VehicleDetail = () => {
       fetchVehicle();
     }
   }, [id, vin, hash]);
+
+  useEffect(() => {
+    if (vehicle) {
+      fetchVoiceSettings();
+    }
+  }, [vehicle]);
+
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      console.log('🔐 User authenticated, checking voice configuration...');
+      checkVoiceConfiguration();
+    }
+  }, [isAuthenticated, user]);
+
+  useEffect(() => {
+    if (vehicle && isAuthenticated) {
+      console.log('🚗 Vehicle loaded and user authenticated, initializing voice...');
+      initializeVoice();
+    }
+  }, [vehicle, isAuthenticated]);
 
   // Initialize chat when opened
   useEffect(() => {
@@ -192,6 +211,17 @@ const VehicleDetail = () => {
     setIsLoading(true);
 
     try {
+      const dealerId = getCurrentDealerId();
+      if (!dealerId) {
+        console.error('❌ No dealer ID available for voice functionality');
+        toast({
+          title: "Error",
+          description: "Dealer ID not found. Please log in or contact support.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const payload = {
         vehicleId: vehicle.id,
         sessionId,
@@ -199,7 +229,7 @@ const VehicleDetail = () => {
         customerInfo: {
           name: 'Vehicle Detail Customer',
           email: 'customer@example.com',
-          dealerId: vehicle.dealer_id || '0aa94346-ed1d-420e-8823-bcd97bf6456f'
+          dealerId: dealerId
         }
       };
 
@@ -207,7 +237,7 @@ const VehicleDetail = () => {
         vehicleId: vehicle.id,
         sessionId,
         message: message.substring(0, 50) + '...',
-        dealerId: vehicle.dealer_id
+        dealerId: dealerId
       });
 
       const response = await fetch('http://localhost:3000/api/daive/chat', {
@@ -242,6 +272,7 @@ const VehicleDetail = () => {
           console.log('🔊 Using backend audio response:', audioUrl);
         } else if (voiceEnabled) {
           // Fallback to local speech generation
+          console.log('🔊 No backend audio response, generating locally...');
           audioUrl = await generateSpeech(data.data.response);
           console.log('🔊 Generated local audio response:', audioUrl);
         }
@@ -257,7 +288,10 @@ const VehicleDetail = () => {
 
         // Play audio if generated
         if (audioUrl) {
+          console.log('🎵 Playing audio response for text message...');
           playAudio(audioUrl);
+        } else {
+          console.log('⚠️ No audio URL available for text message playback');
         }
 
         // Check if lead was generated
@@ -297,27 +331,77 @@ const VehicleDetail = () => {
     }
   };
 
-  // Fetch voice settings when chat opens
+  // Check if voice is properly configured (simplified for public access)
+  const checkVoiceConfiguration = async () => {
+    try {
+      const dealerId = getCurrentDealerId();
+      if (!dealerId) {
+        console.log('⚠️ No dealer ID available for voice configuration check');
+        return false;
+      }
+
+      // Check if dealer has voice enabled and API keys configured
+      const response = await fetch(`http://localhost:3000/api/daive/voice-settings`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data.enabled) {
+          console.log('✅ Voice configuration verified for dealer');
+          return true;
+        }
+      }
+
+      console.log('⚠️ Voice not properly configured for dealer');
+      return false;
+    } catch (error) {
+      console.error('Error checking voice configuration:', error);
+      return false;
+    }
+  };
+
+  // Enhanced voice settings fetch with configuration check
   const fetchVoiceSettings = async () => {
     try {
-      // Get dealer ID from vehicle or use default
-      const dealerId = vehicle?.dealer_id || '0aa94346-ed1d-420e-8823-bcd97bf6456f';
-      
-      const response = await fetch(`http://localhost:3000/api/daive/voice-settings?dealerId=${dealerId}`, {
+      const dealerId = getCurrentDealerId();
+      if (!dealerId) {
+        console.log('⚠️ No dealer ID available, using default voice settings');
+        setVoiceSettings({
+          enabled: true,
+          language: 'en-US',
+          voiceSpeed: 1.0,
+          voicePitch: 1.0,
+          voiceProvider: 'elevenlabs'
+        });
+        setVoiceEnabled(true);
+        return;
+      }
+
+      // Fetch dealer-specific voice settings
+      const response = await fetch(`http://localhost:3000/api/daive/voice-settings`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token') || 'public'}`
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
         }
       });
 
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
-          setVoiceSettings(data.data);
-          setVoiceEnabled(data.data.enabled);
+          setVoiceSettings({
+            enabled: data.data.enabled || true,
+            language: data.data.language || 'en-US',
+            voiceSpeed: data.data.voiceSpeed || 1.0,
+            voicePitch: data.data.voicePitch || 1.0,
+            voiceProvider: data.data.voiceProvider || 'elevenlabs'
+          });
+          setVoiceEnabled(data.data.enabled || true);
+          console.log('✅ Voice settings loaded from dealer configuration');
         }
       } else {
-        console.log('Voice settings not available, using defaults');
-        // Use default voice settings
+        console.log('⚠️ Could not load dealer voice settings, using defaults');
         setVoiceSettings({
           enabled: true,
           language: 'en-US',
@@ -329,7 +413,7 @@ const VehicleDetail = () => {
       }
     } catch (error) {
       console.error('Error fetching voice settings:', error);
-      // Use default voice settings on error
+      // Use default settings on error
       setVoiceSettings({
         enabled: true,
         language: 'en-US',
@@ -341,101 +425,25 @@ const VehicleDetail = () => {
     }
   };
 
-  // Generate speech from text using ElevenLabs
+  // Generate speech from text (simplified for public access)
   const generateSpeech = async (text: string): Promise<string | null> => {
-    if (!voiceSettings.enabled) {
+    if (!voiceEnabled) {
       return null;
     }
 
     try {
-      // Get dealer ID from vehicle or use default
-      const dealerId = vehicle?.dealer_id || '0aa94346-ed1d-420e-8823-bcd97bf6456f';
-      
-      // Get the API settings from the dealer's settings
-      const apiResponse = await fetch(`http://localhost:3000/api/daive/api-settings?dealerId=${dealerId}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token') || 'public'}`
-        }
-      });
-
-      if (!apiResponse.ok) {
-        console.log('No API settings found, skipping voice generation');
+      const dealerId = getCurrentDealerId();
+      if (!dealerId) {
+        console.log('⚠️ No dealer ID available for local speech generation');
         return null;
       }
 
-      const apiData = await apiResponse.json();
-      const voiceProvider = voiceSettings.voiceProvider || 'elevenlabs';
-
-      if (voiceProvider === 'deepgram') {
-        // Use Deepgram TTS
-        const deepgramKey = apiData.data?.deepgram_key?.value;
-        
-        if (!deepgramKey) {
-          console.log('No Deepgram API key found, skipping voice generation');
-          return null;
-        }
-
-        console.log('🎤 Using Deepgram TTS for speech generation...');
-        
-        const speechResponse = await fetch('https://api.deepgram.com/v1/speak', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Token ${deepgramKey}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            text: text
-          })
-        });
-
-        if (speechResponse.ok) {
-          const audioBuffer = await speechResponse.arrayBuffer();
-          const audioBlob = new Blob([audioBuffer], { type: 'audio/mp3' });
-          const audioUrl = URL.createObjectURL(audioBlob);
-          console.log('✅ Deepgram TTS successful');
-          return audioUrl;
-        } else {
-          const errorText = await speechResponse.text();
-          console.error('Deepgram TTS failed:', speechResponse.status, errorText);
-          return null;
-        }
-      } else {
-        // Use ElevenLabs TTS (default)
-        const elevenLabsKey = apiData.data?.elevenlabs_key?.value;
-
-        if (!elevenLabsKey) {
-          console.log('No ElevenLabs API key found, skipping voice generation');
-          return null;
-        }
-
-        // Use Rachel voice (21m00Tcm4TlvDq8ikWAM) for consistent experience
-        const voiceId = "21m00Tcm4TlvDq8ikWAM";
-        
-        const speechResponse = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
-          method: 'POST',
-          headers: {
-            'xi-api-key': elevenLabsKey,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            text: text,
-            model_id: "eleven_monolingual_v1",
-            voice_settings: {
-              stability: 0.5,
-              similarity_boost: 0.5
-            }
-          })
-        });
-
-        if (speechResponse.ok) {
-          const audioBlob = await speechResponse.blob();
-          const audioUrl = URL.createObjectURL(audioBlob);
-          return audioUrl;
-        } else {
-          console.error('Speech generation failed:', speechResponse.status);
-          return null;
-        }
-      }
+      console.log('🔊 Generating speech for dealer:', dealerId);
+      
+      // For now, we'll rely on backend TTS generation
+      // Local speech generation can be implemented later if needed
+      console.log('💡 Speech will be generated by the backend');
+      return null;
     } catch (error) {
       console.error('Error generating speech:', error);
       return null;
@@ -444,22 +452,73 @@ const VehicleDetail = () => {
 
   // Play audio function
   const playAudio = (audioUrl: string) => {
-    const audio = new Audio(audioUrl);
-    setIsPlayingAudio(true);
-    
-    audio.onended = () => {
+    try {
+      // Construct full URL if it's a relative path
+      let fullAudioUrl = audioUrl;
+      if (audioUrl.startsWith('/')) {
+        fullAudioUrl = `http://localhost:3000${audioUrl}`;
+      }
+      
+      console.log('🔊 Playing audio from:', fullAudioUrl);
+      
+      // Create a new audio element for each playback
+      const audio = new Audio();
+      audio.crossOrigin = 'anonymous'; // Enable CORS
+      audio.preload = 'auto';
+      
+      // Set up event listeners
+      audio.addEventListener('canplaythrough', () => {
+        console.log('🎵 Audio loaded successfully, playing...');
+        setIsPlayingAudio(true);
+        audio.play().catch(err => {
+          console.error('❌ Could not play audio:', err);
+          setIsPlayingAudio(false);
+          toast({
+            title: "Audio Playback Error",
+            description: "Could not play audio response. Please check your audio settings.",
+            variant: "destructive",
+          });
+        });
+      });
+      
+      audio.addEventListener('ended', () => {
+        console.log('✅ Audio playback completed');
+        setIsPlayingAudio(false);
+      });
+      
+      audio.addEventListener('error', (e) => {
+        console.error('❌ Audio loading error:', e);
+        setIsPlayingAudio(false);
+        toast({
+          title: "Audio Loading Error",
+          description: "Could not load audio response. Please try again.",
+          variant: "destructive",
+        });
+      });
+      
+      audio.addEventListener('play', () => {
+        console.log('▶️ Audio started playing');
+        setIsPlayingAudio(true);
+      });
+      
+      audio.addEventListener('pause', () => {
+        console.log('⏸️ Audio paused');
+        setIsPlayingAudio(false);
+      });
+      
+      // Set the source and start loading
+      audio.src = fullAudioUrl;
+      audio.load();
+      
+    } catch (error) {
+      console.error('❌ Error setting up audio playback:', error);
       setIsPlayingAudio(false);
-    };
-    
-    audio.onerror = () => {
-      setIsPlayingAudio(false);
-      console.error('Error playing audio');
-    };
-    
-    audio.play().catch(error => {
-      console.error('Error playing audio:', error);
-      setIsPlayingAudio(false);
-    });
+      toast({
+        title: "Audio Error",
+        description: "Failed to set up audio playback. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   // Start recording audio
@@ -539,16 +598,16 @@ const VehicleDetail = () => {
       formData.append('vehicleId', vehicle?.id || '');
       formData.append('sessionId', sessionId);
       formData.append('customerInfo', JSON.stringify({
-        name: 'Vehicle Detail Customer',
-        email: 'customer@example.com',
-        dealerId: vehicle?.dealer_id || '0aa94346-ed1d-420e-8823-bcd97bf6456f'
+        name: user?.dealerProfile?.contact_name || 'Guest User',
+        email: user?.email || 'guest@example.com',
+        dealerId: getCurrentDealerId()
       }));
 
       console.log('📤 Sending voice data to backend:', {
         size: (audioBlob.size / 1024).toFixed(2) + ' KB',
         vehicleId: vehicle?.id,
         sessionId,
-        dealerId: vehicle?.dealer_id,
+        dealerId: getCurrentDealerId(),
         url: 'http://localhost:3000/api/daive/voice'
       });
 
@@ -604,6 +663,7 @@ const VehicleDetail = () => {
               console.log('🔊 Using backend audio response for voice input:', audioUrl);
             } else if (voiceEnabled) {
               // Fallback to local speech generation
+              console.log('🔊 No backend audio response, generating locally...');
               audioUrl = await generateSpeech(aiResponse);
               console.log('🔊 Generated local audio response for voice input:', audioUrl);
             }
@@ -619,7 +679,10 @@ const VehicleDetail = () => {
 
             // Play audio if generated
             if (audioUrl) {
+              console.log('🎵 Playing audio response...');
               playAudio(audioUrl);
+            } else {
+              console.log('⚠️ No audio URL available for playback');
             }
           }
 
@@ -668,6 +731,91 @@ const VehicleDetail = () => {
   const handleDAIVEChat = () => {
     setShowChat(true);
     fetchVoiceSettings(); // Fetch voice settings when chat opens
+  };
+
+  const toggleVoiceMode = () => {
+    setVoiceEnabled(!voiceEnabled);
+    toast({
+      title: voiceEnabled ? "Voice Disabled" : "Voice Enabled",
+      description: voiceEnabled ? "Voice responses will now be disabled." : "Voice responses will now be enabled.",
+    });
+  };
+
+  // Initialize voice functionality
+  const initializeVoice = async () => {
+    try {
+      console.log('🎤 Initializing voice functionality...');
+      
+      // Check if voice is supported
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        console.log('⚠️ Voice recording not supported in this browser');
+        // setVoiceSupported(false); // This state variable doesn't exist in the original file
+        return;
+      }
+
+      // Check voice configuration
+      const voiceConfigured = await checkVoiceConfiguration();
+      if (!voiceConfigured) {
+        console.log('⚠️ Voice not properly configured');
+        setVoiceEnabled(false);
+        return;
+      }
+
+      console.log('✅ Voice functionality initialized successfully');
+      // setVoiceSupported(true); // This state variable doesn't exist in the original file
+      setVoiceEnabled(true);
+    } catch (error) {
+      console.error('Error initializing voice:', error);
+      // setVoiceSupported(false); // This state variable doesn't exist in the original file
+      setVoiceEnabled(false);
+    }
+  };
+
+  // Get dealer ID from authenticated user or fallback to vehicle's dealer ID
+  const getCurrentDealerId = (): string | null => {
+    // First try to get from authenticated user
+    const authDealerId = getDealerId();
+    if (authDealerId) {
+      return authDealerId;
+    }
+    
+    // Fallback to vehicle's dealer ID
+    if (vehicle?.dealer_id) {
+      return vehicle.dealer_id;
+    }
+    
+    return null;
+  };
+
+  const handleVoiceTest = async () => {
+    if (!voiceEnabled || isLoading) return; // Prevent multiple clicks
+    setIsLoading(true);
+
+    try {
+      const testText = "Hello! This is a test of the voice response system.";
+      console.log('🧪 Testing voice response with:', testText);
+      const audioUrl = await generateSpeech(testText);
+      if (audioUrl) {
+        console.log('✅ Test audio generated, playing...');
+        playAudio(audioUrl);
+      } else {
+        console.log('❌ Test audio generation failed');
+        toast({
+          title: "Voice Test Failed",
+          description: "Could not generate test audio. Check API configuration.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error during voice test:', error);
+      toast({
+        title: "Voice Test Failed",
+        description: "Failed to generate test audio. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (loading) {
@@ -932,15 +1080,6 @@ const VehicleDetail = () => {
               <Button 
                 variant="outline" 
                 className="w-full"
-                onClick={() => setShowDAIVESettings(true)}
-              >
-                <Settings className="h-4 w-4 mr-2" />
-                D.A.I.V.E. Settings
-              </Button>
-              
-              <Button 
-                variant="outline" 
-                className="w-full"
                 onClick={handleContactDealer}
               >
                 <MessageSquare className="h-4 w-4 mr-2" />
@@ -984,7 +1123,7 @@ const VehicleDetail = () => {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setVoiceEnabled(!voiceEnabled)}
+                  onClick={toggleVoiceMode}
                   className={`${voiceEnabled ? 'bg-blue-100 text-blue-700' : 'text-gray-500'}`}
                   title={voiceEnabled ? 'Voice Enabled' : 'Voice Disabled'}
                 >
@@ -1078,6 +1217,84 @@ const VehicleDetail = () => {
 
             {/* Chat Input */}
             <div className="p-4 border-t">
+              {/* Voice Controls */}
+              <div className="flex items-center gap-2 mb-4">
+                <Button
+                  onClick={toggleVoiceMode}
+                  variant={voiceEnabled ? "default" : "outline"}
+                  size="sm"
+                  className="flex items-center gap-2"
+                >
+                  {voiceEnabled ? (
+                    <>
+                      <Volume2 className="h-4 w-4" />
+                      Voice Enabled
+                    </>
+                  ) : (
+                    <>
+                      <VolumeX className="h-4 w-4" />
+                      Voice Disabled
+                    </>
+                  )}
+                </Button>
+                
+                {voiceEnabled && (
+                  <>
+                                      <Button
+                    onClick={startRecording}
+                    disabled={isRecording || isLoading}
+                    variant={isRecording ? "destructive" : "outline"}
+                    size="sm"
+                    className="flex items-center gap-2"
+                  >
+                    {isRecording ? (
+                      <>
+                        <MicOff className="h-4 w-4" />
+                        Stop Recording
+                      </>
+                    ) : (
+                      <>
+                        <Mic className="h-4 w-4" />
+                        Start Recording
+                      </>
+                    )}
+                  </Button>
+                    
+                    {/* Voice Test Button */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleVoiceTest}
+                      disabled={!voiceEnabled || isLoading}
+                      className="flex items-center gap-2"
+                    >
+                      <TestTube className="h-4 w-4" />
+                      {isAuthenticated ? 'Test Voice' : 'Login to Test Voice'}
+                    </Button>
+                    
+                    {/* Authentication Status */}
+                    {!isAuthenticated && (
+                      <div className="text-sm text-amber-600 bg-amber-50 px-3 py-2 rounded-md">
+                        🔐 Please log in to access voice features with your dealer settings
+                      </div>
+                    )}
+                    
+                    {isAuthenticated && getCurrentDealerId() && (
+                      <div className="text-sm text-green-600 bg-green-50 px-3 py-2 rounded-md">
+                        ✅ Using dealer settings: {getCurrentDealerId()}
+                      </div>
+                    )}
+                  </>
+                )}
+                
+                {isPlayingAudio && (
+                  <div className="flex items-center gap-2 text-sm text-blue-600">
+                    <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
+                    Playing audio...
+                  </div>
+                )}
+              </div>
+
               {/* Voice Status */}
               {voiceEnabled && (
                 <div className="mb-2 flex items-center space-x-2 text-xs text-blue-600">
@@ -1130,242 +1347,6 @@ const VehicleDetail = () => {
                   <Send className="h-4 w-4" />
                 </Button>
               </form>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* D.A.I.V.E. Settings Modal */}
-      {showDAIVESettings && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            {/* Settings Header */}
-            <div className="flex items-center justify-between p-6 border-b sticky top-0 bg-white z-10">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
-                  <Brain className="h-6 w-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold">D.A.I.V.E. AI Assistant Settings</h3>
-                  <p className="text-sm text-gray-500">
-                    Configure AI behavior for {vehicle?.year} {vehicle?.make} {vehicle?.model}
-                  </p>
-                </div>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowDAIVESettings(false)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-
-            {/* Settings Content */}
-            <div className="p-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* AI Behavior Settings */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
-                      <Brain className="h-5 w-5" />
-                      <span>AI Behavior</span>
-                    </CardTitle>
-                    <CardDescription>
-                      Configure how D.A.I.V.E. interacts with customers
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="autoGreeting">Auto Greeting</Label>
-                      <Switch id="autoGreeting" defaultChecked />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="enableQuickActions">Quick Action Buttons</Label>
-                      <Switch id="enableQuickActions" defaultChecked />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="showInventorySuggestions">Show Inventory Suggestions</Label>
-                      <Switch id="showInventorySuggestions" defaultChecked />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="enableLeadScoring">Enable Lead Scoring</Label>
-                      <Switch id="enableLeadScoring" defaultChecked />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="enableHandoff">Enable Human Handoff</Label>
-                      <Switch id="enableHandoff" defaultChecked />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Voice Settings */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
-                      <Mic className="h-5 w-5" />
-                      <span>Voice Settings</span>
-                    </CardTitle>
-                    <CardDescription>
-                      Configure voice input and output behavior
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="voiceEnabled">Voice Input</Label>
-                      <Switch 
-                        id="voiceEnabled" 
-                        checked={voiceEnabled}
-                        onCheckedChange={setVoiceEnabled}
-                      />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="autoVoiceResponse">Auto Voice Response</Label>
-                      <Switch id="autoVoiceResponse" defaultChecked />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="voiceQuality">Voice Quality</Label>
-                      <select 
-                        id="voiceQuality" 
-                        className="w-full p-2 border rounded-md"
-                        defaultValue="hd"
-                      >
-                        <option value="standard">Standard</option>
-                        <option value="hd">HD</option>
-                        <option value="ultra">Ultra HD</option>
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="voiceEmotion">Voice Emotion</Label>
-                      <select 
-                        id="voiceEmotion" 
-                        className="w-full p-2 border rounded-md"
-                        defaultValue="friendly"
-                      >
-                        <option value="neutral">Neutral</option>
-                        <option value="friendly">Friendly</option>
-                        <option value="professional">Professional</option>
-                        <option value="enthusiastic">Enthusiastic</option>
-                      </select>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Response Settings */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
-                      <MessageSquare className="h-5 w-5" />
-                      <span>Response Settings</span>
-                    </CardTitle>
-                    <CardDescription>
-                      Configure AI response behavior and style
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="responseLength">Response Length</Label>
-                      <select 
-                        id="responseLength" 
-                        className="w-full p-2 border rounded-md"
-                        defaultValue="medium"
-                      >
-                        <option value="short">Short & Concise</option>
-                        <option value="medium">Medium</option>
-                        <option value="long">Detailed</option>
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="personality">AI Personality</Label>
-                      <select 
-                        id="personality" 
-                        className="w-full p-2 border rounded-md"
-                        defaultValue="friendly"
-                      >
-                        <option value="professional">Professional</option>
-                        <option value="friendly">Friendly</option>
-                        <option value="enthusiastic">Enthusiastic</option>
-                        <option value="casual">Casual</option>
-                      </select>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="conversationMemory">Conversation Memory</Label>
-                      <select 
-                        id="conversationMemory" 
-                        className="w-full p-2 border rounded-md"
-                        defaultValue="4"
-                      >
-                        <option value="2">2 messages</option>
-                        <option value="4">4 messages</option>
-                        <option value="6">6 messages</option>
-                        <option value="8">8 messages</option>
-                      </select>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Lead Management */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
-                      <Users className="h-5 w-5" />
-                      <span>Lead Management</span>
-                    </CardTitle>
-                    <CardDescription>
-                      Configure lead qualification and follow-up
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="autoQualification">Auto Lead Qualification</Label>
-                      <Switch id="autoQualification" defaultChecked />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="minScoreForLead">Minimum Lead Score</Label>
-                      <Input 
-                        id="minScoreForLead" 
-                        type="number" 
-                        min="0" 
-                        max="100" 
-                        defaultValue="50"
-                        className="w-full"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="autoHandoffScore">Auto Handoff Score</Label>
-                      <Input 
-                        id="autoHandoffScore" 
-                        type="number" 
-                        min="0" 
-                        max="100" 
-                        defaultValue="80"
-                        className="w-full"
-                      />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="autoFollowUp">Auto Follow-up</Label>
-                      <Switch id="autoFollowUp" defaultChecked />
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex justify-end space-x-3 mt-6 pt-6 border-t">
-                <Button variant="outline" onClick={() => setShowDAIVESettings(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={() => {
-                  toast({
-                    title: "Settings Saved",
-                    description: "D.A.I.V.E. settings have been updated successfully!",
-                  });
-                  setShowDAIVESettings(false);
-                }}>
-                  <Save className="h-4 w-4 mr-2" />
-                  Save Settings
-                </Button>
-              </div>
             </div>
           </div>
         </div>
