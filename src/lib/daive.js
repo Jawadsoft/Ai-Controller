@@ -548,14 +548,6 @@ Guidelines:
       // Check for repetition with previous assistant message
       const prevAssistant = [...messages].reverse().find(m => m.role === 'assistant')?.content || '';
       let repetitionDetected = false;
-      if (prevAssistant && aiResponse) {
-        // Check if response ends with same content as previous assistant
-        const lastSentence = aiResponse.slice(-80);
-        const prevLastSentence = prevAssistant.slice(-80);
-        if (lastSentence === prevLastSentence && lastSentence.length > 12) {
-          repetitionDetected = true;
-        }
-      }
 
                 // Check if user is asking for alternatives or inventory
       const isAskingForAlternatives = userMessage.toLowerCase().includes('alternative') || 
@@ -604,6 +596,17 @@ Guidelines:
         console.log('OpenAI not available, using fallback response');
         // Fallback response when OpenAI is not available
         aiResponse = this.generateFallbackResponse(userMessage, vehicleContext, dealerPrompts);
+      }
+
+      // Check for repetition with previous assistant message (now that aiResponse is defined)
+      if (prevAssistant && aiResponse) {
+        // Check if response ends with same content as previous assistant
+        const lastSentence = aiResponse.slice(-80);
+        const prevLastSentence = prevAssistant.slice(-80);
+        if (lastSentence === prevLastSentence && lastSentence.length > 12) {
+          repetitionDetected = true;
+          console.log('Repetition detected, response may need regeneration');
+        }
       }
 
       // If asking for alternatives, get and include alternative vehicles
