@@ -689,7 +689,7 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
                     className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
                     <div
-                      className={`max-w-[80%] rounded-lg px-3 py-2 ${
+                      className={`max-w-[85%] rounded-lg px-3 py-2 ${
                         message.role === 'user'
                           ? 'bg-blue-500 text-white'
                           : 'bg-gray-100 text-gray-900'
@@ -697,7 +697,7 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
                     >
                       {message.content.includes('<div class="inventory-grid">') || message.content.includes('<ul class="inventory-list">') ? (
                         <div 
-                          className="text-sm"
+                          className="text-sm max-w-full"
                           dangerouslySetInnerHTML={{ __html: message.content }}
                           onClick={(e) => handleVehicleClick(e)}
                         />

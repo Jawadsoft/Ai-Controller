@@ -183,6 +183,58 @@ All colors MUST be HSL. */
 
   .inventory-grid {
     @apply grid grid-cols-1 gap-2 p-2;
+    @apply max-w-full overflow-hidden;
+    @apply max-h-80 overflow-y-auto;
+    @apply bg-gradient-to-br from-gray-50 to-gray-100;
+    @apply rounded-lg border border-gray-200;
+  }
+
+  /* Mobile responsive adjustments */
+  @media (max-width: 640px) {
+    .inventory-grid {
+      @apply max-h-64 gap-1.5 p-1.5;
+    }
+    
+    .vehicle-compact-card {
+      @apply min-h-[64px] max-h-[76px];
+      font-size: 0.55rem;
+    }
+    
+    .vehicle-compact-info {
+      @apply p-2;
+    }
+    
+    .vehicle-compact-header {
+      @apply mb-1;
+    }
+    
+    .vehicle-compact-actions {
+      @apply gap-1;
+    }
+    
+    .btn-test-drive-compact,
+    .btn-contact-sales-compact {
+      @apply px-2 py-1 text-xs;
+    }
+  }
+
+  /* Custom scrollbar for inventory grid */
+  .inventory-grid::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .inventory-grid::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 3px;
+  }
+
+  .inventory-grid::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+  }
+
+  .inventory-grid::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
   }
 
   .vehicle-compact-card {
@@ -191,31 +243,34 @@ All colors MUST be HSL. */
     @apply backdrop-blur-sm bg-white/95;
     @apply ring-1 ring-gray-100;
     @apply focus-within:ring-2 focus-within:ring-primary/50;
-    @apply min-h-[120px] max-h-[140px];
+    @apply min-h-[72px] max-h-[84px]; /* 40% smaller */
     @apply hover:shadow-lg;
+    @apply max-w-full;
+    font-size: 0.6rem; /* ~40% smaller text */
   }
-
+  
   .vehicle-compact-card:hover {
     @apply shadow-lg ring-primary/20;
   }
-
+  
   .vehicle-compact-image {
-    @apply relative w-32 h-24 sm:w-36 sm:h-28 overflow-hidden flex-shrink-0;
+    @apply relative w-[4.8rem] h-[2.88rem] sm:w-[5.76rem] sm:h-[3.36rem] overflow-hidden flex-shrink-0; /* 40% smaller from original w-32/h-24 and sm:w-36/h-28 */
     @apply bg-gradient-to-br from-gray-50 to-gray-100;
     @apply border-r border-gray-200;
   }
-
+  
   .vehicle-compact-image::after {
     @apply absolute inset-0 bg-gradient-to-t from-black/10 to-transparent pointer-events-none;
   }
-
+  
   .vehicle-cover-compact {
     @apply w-full h-full object-cover transition-transform duration-300;
   }
-
+  
   .vehicle-compact-card:hover .vehicle-cover-compact {
     @apply scale-105;
   }
+  
 
   .vehicle-compact-info {
     @apply p-3 flex-1 flex flex-col justify-between;

@@ -6,7 +6,7 @@ import { pool } from '../database/connection.js';
 let openai = null;
 try {
   openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY || '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',
+    apiKey: process.env.OPENAI_API_KEY,
   });
 } catch (error) {
   console.log('OpenAI client initialization failed:', error.message);
@@ -15,8 +15,8 @@ try {
 
 class DAIVEService {
   constructor() {
-    this.model = process.env.OPENAI_MODEL || 'gpt-3.5-turbo';
-    this.maxTokens = parseInt(process.env.OPENAI_MAX_TOKENS) || 300; // Reduced for brief responses
+    this.model = process.env.OPENAI_MODEL || 'gpt-4o-mini'; // fast + very capable
+    this.maxTokens = parseInt(process.env.OPENAI_MAX_TOKENS) || 700; // Increased for better responses
     
     // Initialize database tables
     this.initializeUserInterestTable();
@@ -25,6 +25,20 @@ class DAIVEService {
   // Generate a unique session ID
   generateSessionId() {
     return `daive_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  // Detect user intent for better response routing
+  detectIntent(text) {
+    const t = text.toLowerCase();
+    if (/\b(test\s*drive|schedule|drive)\b/.test(t)) return 'TEST_DRIVE';
+    if (/\b(price|cost|how much|o\.t\.d|out the door)\b/.test(t)) return 'PRICE';
+    if (/\b(finance|payment|loan|apr)\b/.test(t)) return 'FINANCE';
+    if (/\b(alternative|other|options|similar|inventory|available|stock|show me)\b/.test(t)) return 'ALTERNATIVES';
+    if (/\b(feature|spec|details?|safety|mpg|mileage)\b/.test(t)) return 'FEATURES';
+    if (/\b(human|agent|representative|talk to|call me)\b/.test(t)) return 'HANDOFF';
+    if (/\b(trade[\s-]*in|tradein|valuation)\b/.test(t)) return 'TRADE_IN';
+    if (/\b(hi|hello|hey)\b/.test(t)) return 'GREET';
+    return 'SMALL_TALK';
   }
 
   // Generate fallback response when OpenAI is not available
@@ -48,7 +62,7 @@ class DAIVEService {
       }
       
       if (message.includes('finance') || message.includes('payment') || message.includes('loan')) {
-        return dealerPrompts.financing || `Great question! We've got competitive rates starting at 3.9% APR. Would you like me to calculate a quick payment estimate, or would you prefer to speak with our finance team?`;
+        return dealerPrompts.financing || `Great question! We do offer competitive financing options and quick payment estimates. Would you like a rough monthly estimate or to speak with our finance team?`;
       }
       
       if (message.includes('family') || message.includes('children') || message.includes('kids')) {
@@ -90,7 +104,7 @@ class DAIVEService {
       }
       
       if (message.includes('finance') || message.includes('payment') || message.includes('loan')) {
-        return dealerPrompts.financing || `Starting at 3.9% APR. Calculate payment?`;
+        return dealerPrompts.financing || `We offer competitive financing options. Calculate payment?`;
       }
       
       if (message.includes('family') || message.includes('children') || message.includes('kids')) {
@@ -238,84 +252,67 @@ class DAIVEService {
   // Get similar vehicles based on user preferences and current selection
   async getSimilarVehicles(dealerId, currentVehicleId, userPreferences = {}, limit = 5) {
     try {
-      let query;
-      let params = [dealerId, limit];
-      
       // Build dynamic WHERE clause based on user preferences
-      let whereConditions = ['v.dealer_id = $1', 'v.status = \'available\''];
-      let paramIndex = 2;
-      
-      if (currentVehicleId) {
-        whereConditions.push(`v.id != $${paramIndex}`);
-        params.splice(paramIndex - 1, 0, currentVehicleId);
-        paramIndex++;
+      const where = ['v.dealer_id = $1', "v.status = 'available'"];
+      const params = [dealerId];
+
+      if (currentVehicleId) { 
+        where.push(`v.id <> $${params.length + 1}`); 
+        params.push(currentVehicleId); 
       }
       
-      // Add preference-based filters
-      if (userPreferences.make) {
-        whereConditions.push(`v.make ILIKE $${paramIndex}`);
-        params.push(`%${userPreferences.make}%`);
-        paramIndex++;
+      if (userPreferences.make) { 
+        where.push(`v.make ILIKE $${params.length + 1}`);  
+        params.push(`%${userPreferences.make}%`); 
       }
       
-      if (userPreferences.model) {
-        whereConditions.push(`v.model ILIKE $${paramIndex}`);
-        params.push(`%${userPreferences.model}%`);
-        paramIndex++;
+      if (userPreferences.model) { 
+        where.push(`v.model ILIKE $${params.length + 1}`); 
+        params.push(`%${userPreferences.model}%`); 
       }
       
       if (userPreferences.yearRange) {
-        whereConditions.push(`v.year BETWEEN $${paramIndex} AND $${paramIndex + 1}`);
+        where.push(`v.year BETWEEN $${params.length + 1} AND $${params.length + 2}`);
         params.push(userPreferences.yearRange.min, userPreferences.yearRange.max);
-        paramIndex += 2;
       }
       
       if (userPreferences.priceRange) {
-        whereConditions.push(`v.price BETWEEN $${paramIndex} AND $${paramIndex + 1}`);
+        where.push(`v.price BETWEEN $${params.length + 1} AND $${params.length + 2}`);
         params.push(userPreferences.priceRange.min, userPreferences.priceRange.max);
-        paramIndex += 2;
       }
       
       if (userPreferences.bodyType) {
-        whereConditions.push(`v.body_type ILIKE $${paramIndex}`);
+        where.push(`v.body_type ILIKE $${params.length + 1}`);
         params.push(`%${userPreferences.bodyType}%`);
-        paramIndex++;
       }
-      
-      query = `
+
+      // relevance anchors (add at end so they're stable)
+      const currentVehicle = currentVehicleId ? await this.getVehicleContext(currentVehicleId, dealerId) : null;
+      params.push(currentVehicle?.make ?? '', currentVehicle?.model ?? '');
+
+      const limitIndex = params.length + 1;
+      params.push(limit);
+
+      const query = `
         SELECT v.id, v.make, v.model, v.year, v.trim, v.color, v.price, v.mileage, v.status, v.features,
                COALESCE(
                  CASE 
-                   WHEN v.photo_url_list IS NOT NULL AND array_length(v.photo_url_list, 1) > 0 
-                   THEN v.photo_url_list[1]
-                   WHEN v.images IS NOT NULL AND array_length(v.images, 1) > 0 
-                   THEN v.images[1]
+                   WHEN v.photo_url_list IS NOT NULL AND array_length(v.photo_url_list, 1) > 0 THEN v.photo_url_list[1]
+                   WHEN v.images IS NOT NULL AND array_length(v.images, 1) > 0 THEN v.images[1]
                    ELSE NULL
                  END,
                  'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=300&h=200&fit=crop&crop=center'
-               ) as image_url,
+               ) AS image_url,
                CASE 
-                 WHEN v.make = $${paramIndex} THEN 3
-                 WHEN v.model = $${paramIndex + 1} THEN 2
+                 WHEN v.make = $${params.length - 1} THEN 3
+                 WHEN v.model = $${params.length} THEN 2
                  ELSE 1
-               END as relevance_score
+               END AS relevance_score
         FROM vehicles v
-        WHERE ${whereConditions.join(' AND ')}
+        WHERE ${where.join(' AND ')}
         ORDER BY relevance_score DESC, v.created_at DESC
-        LIMIT $${paramIndex + 2}
+        LIMIT $${limitIndex}
       `;
-      
-      // Add current vehicle make/model for relevance scoring
-      if (currentVehicleId) {
-        const currentVehicle = await this.getVehicleContext(currentVehicleId, dealerId);
-        if (currentVehicle) {
-          params.push(currentVehicle.make, currentVehicle.model);
-        } else {
-          params.push('', '');
-        }
-      } else {
-        params.push('', '');
-      }
       
       const result = await pool.query(query, params);
       return result.rows;
@@ -548,6 +545,18 @@ Guidelines:
       const enhancedSystemPrompt = systemPrompt + '\n\nIMPORTANT: Do not repeat information already mentioned. Be brief and direct.';
       openaiMessages[0].content = enhancedSystemPrompt;
 
+      // Check for repetition with previous assistant message
+      const prevAssistant = [...messages].reverse().find(m => m.role === 'assistant')?.content || '';
+      let repetitionDetected = false;
+      if (prevAssistant && aiResponse) {
+        // Check if response ends with same content as previous assistant
+        const lastSentence = aiResponse.slice(-80);
+        const prevLastSentence = prevAssistant.slice(-80);
+        if (lastSentence === prevLastSentence && lastSentence.length > 12) {
+          repetitionDetected = true;
+        }
+      }
+
                 // Check if user is asking for alternatives or inventory
       const isAskingForAlternatives = userMessage.toLowerCase().includes('alternative') || 
                                     userMessage.toLowerCase().includes('other') || 
@@ -573,11 +582,17 @@ Guidelines:
       let aiResponse;
       if (openai) {
         try {
+          const temperature = Number(process.env.OPENAI_TEMP ?? 0.6);
+          const presence_penalty = 0.2;   // reduce repetition, encourage new info
+          const frequency_penalty = 0.3;  // reduce verbatim repeats
+          
           const completion = await openai.chat.completions.create({
             model: this.model,
             messages: openaiMessages,
             max_tokens: this.maxTokens,
-            temperature: 0.5, // Lower temperature for more focused responses
+            temperature,
+            presence_penalty,
+            frequency_penalty
           });
           aiResponse = completion.choices[0].message.content;
         } catch (error) {
