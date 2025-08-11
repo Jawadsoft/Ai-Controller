@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
-import { Mic, MicOff, Loader2, Send, Volume2, VolumeX, Play, Square } from 'lucide-react';
+import { Mic, MicOff, Loader2, Send, Volume2, VolumeX, Play, Square, Users } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Message {
@@ -42,11 +42,26 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
   const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  
+  // Helper function to validate and sanitize messages
+  const validateMessage = (message: Message): Message => {
+    return {
+      role: message.role || 'assistant',
+      content: message.content || 'No content available',
+      timestamp: message.timestamp || new Date().toISOString(),
+      transcription: message.transcription,
+      audioUrl: message.audioUrl
+    };
+  };
   const [inputMessage, setInputMessage] = useState('');
   const [sessionId, setSessionId] = useState<string>('');
   const [isVoiceEnabled, setIsVoiceEnabled] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(true);
+  const [useCrewAI, setUseCrewAI] = useState(false);
+  const [crewAIEnabled, setCrewAIEnabled] = useState(false);
+  const [crewType, setCrewType] = useState<string>('N/A');
+  const [backendStatus, setBackendStatus] = useState<string>('Unknown');
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -97,6 +112,14 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+  
+  // Debug messages
+  useEffect(() => {
+    console.log('🔍 Current messages:', messages);
+    if (messages.some(msg => !msg.content)) {
+      console.warn('⚠️ Found message without content:', messages.filter(msg => !msg.content));
+    }
+  }, [messages]);
 
   const sendInitialGreeting = async () => {
     let greeting;
@@ -136,11 +159,11 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
       }
     }
     
-    setMessages([{
+    setMessages([validateMessage({
       role: 'assistant',
-      content: greeting,
+      content: greeting || 'Hello! How can I help you today?',
       timestamp: new Date().toISOString()
-    }]);
+    })]);
   };
 
   // Check API settings on component mount
@@ -176,6 +199,35 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
     };
 
     checkApiSettings();
+  }, [dealerId]);
+
+  // Check Crew AI settings
+  useEffect(() => {
+    const checkCrewAISettings = async () => {
+      try {
+        const response = await fetch(`http://localhost:3000/api/daive/crew-ai-settings?dealerId=${dealerId}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('auth_token') || 'public'}`
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.data.enabled) {
+            setCrewAIEnabled(true);
+            console.log('✅ Crew AI is enabled');
+          } else {
+            setCrewAIEnabled(false);
+            console.log('❌ Crew AI is disabled');
+          }
+        }
+      } catch (error) {
+        console.log('Could not check Crew AI settings:', error);
+        setCrewAIEnabled(false);
+      }
+    };
+
+    checkCrewAISettings();
   }, [dealerId]);
 
   // Initialize media recorder when component mounts
@@ -387,12 +439,12 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
           };
 
           // Add assistant response
-          const assistantMessage: Message = {
-            role: 'assistant',
-            content: aiResponse,
-            audioUrl: audioResponseUrl,
-            timestamp: new Date().toISOString()
-          };
+                  const assistantMessage: Message = {
+          role: 'assistant',
+          content: aiResponse || 'No response available',
+          audioUrl: audioResponseUrl,
+          timestamp: new Date().toISOString()
+        };
 
           setMessages(prev => [...prev, userMessage, assistantMessage]);
 
@@ -453,7 +505,7 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
 
     const userMessage: Message = {
       role: 'user',
-      content: message,
+      content: message || 'Empty message',
       timestamp: new Date().toISOString()
     };
 
@@ -480,7 +532,11 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
         dealerId: dealerId || 'NOT PROVIDED'
       });
 
-      const response = await fetch('http://localhost:3000/api/daive/chat', {
+      // Use Crew AI if enabled, otherwise use regular chat
+      const endpoint = crewAIEnabled ? '/api/daive/crew-ai' : '/api/daive/chat';
+      console.log(`🚀 Using endpoint: ${endpoint} (Crew AI: ${crewAIEnabled ? 'Enabled' : 'Disabled'})`);
+      
+      const response = await fetch(`http://localhost:3000${endpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -513,21 +569,68 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
 
       const data = await response.json();
       console.log('📥 Response data:', data);
+      console.log('🔍 Response structure:', {
+        success: data.success,
+        hasData: !!data.data,
+        dataKeys: data.data ? Object.keys(data.data) : 'No data',
+        response: data.data?.response,
+        responseType: typeof data.data?.response,
+        responseLength: data.data?.response?.length
+      });
 
       if (data.success) {
         console.log('✅ Text chat successful');
-        console.log('🤖 AI Response:', data.data.response?.substring(0, 100) + '...');
-        console.log('📊 Lead Score:', data.data.leadScore);
-        console.log('🔄 Should Handoff:', data.data.shouldHandoff);
+        console.log('🤖 AI Response:', data.data?.response?.substring(0, 100) + '...');
+        console.log('📋 Full response data:', data.data);
+        
+        // Update crew type if Crew AI was used
+        if (data.data?.crewUsed && data.data?.crewType) {
+          setCrewType(data.data.crewType);
+          console.log('🚀 Crew AI used:', data.data.crewType);
+        }
+        console.log('📊 Lead Score:', data.data?.leadScore);
+        console.log('🔄 Should Handoff:', data.data?.shouldHandoff);
+
+        // Check if we have a valid response (try both response and message fields)
+        const responseContent = data.data?.response || data.data?.message;
+        console.log('🔍 Response content found:', responseContent);
+        console.log('🔍 Response content length:', responseContent?.length);
+        console.log('🔍 Response content type:', typeof responseContent);
+        console.log('🔍 Full data structure:', data.data);
+        
+        if (!responseContent) {
+          console.error('❌ No response content in data:', data.data);
+          
+          // Provide a fallback response instead of failing
+          const fallbackResponse = "I apologize, but I'm having trouble generating a response right now. This could be due to a temporary issue with the AI service. Please try again in a moment, or contact support if the problem persists.";
+          
+          const fallbackMessage: Message = {
+            role: 'assistant',
+            content: fallbackResponse,
+            timestamp: new Date().toISOString()
+          };
+          
+          setMessages(prev => [...prev, fallbackMessage]);
+          toast.warning('AI response was empty, showing fallback message');
+          return;
+        }
 
         const assistantMessage: Message = {
           role: 'assistant',
-          content: data.data.response,
+          content: responseContent,
           audioUrl: data.data.audioResponseUrl,
           timestamp: new Date().toISOString()
         };
 
-        setMessages(prev => [...prev, assistantMessage]);
+        console.log('📝 Creating assistant message:', assistantMessage);
+        console.log('📝 Message content length:', assistantMessage.content?.length);
+
+        setMessages(prev => {
+          const newMessages = [...prev, assistantMessage];
+          console.log('📝 Updated messages array:', newMessages.length, 'messages');
+          console.log('📝 Last message content:', newMessages[newMessages.length - 1]?.content);
+          return newMessages;
+        });
 
         // Check if lead was generated
         if (data.data.leadScore > 50) {
@@ -663,6 +766,44 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
     }
   };
 
+  // Test backend connection
+  const testBackendConnection = async () => {
+    try {
+      setBackendStatus('Testing...');
+      const response = await fetch('http://localhost:3000/api/daive/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          vehicleId: null,
+          sessionId: 'test-session',
+          message: 'Hello, this is a test message',
+          customerInfo: {
+            name: 'Test User',
+            email: 'test@example.com',
+            dealerId: dealerId
+          }
+        }),
+      });
+      
+      const data = await response.json();
+      console.log('🧪 Backend test response:', data);
+      
+      if (data.success && data.data?.response) {
+        setBackendStatus('✅ Working');
+        toast.success('Backend is working! Response: ' + data.data.response.substring(0, 50) + '...');
+      } else {
+        setBackendStatus('❌ No Response');
+        toast.error('Backend responded but no AI response generated');
+      }
+    } catch (error) {
+      console.error('❌ Backend test failed:', error);
+      setBackendStatus('❌ Failed');
+      toast.error('Backend connection failed: ' + error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <div className="max-w-4xl mx-auto">
@@ -673,9 +814,22 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
                 <span className="text-white text-sm font-bold">D</span>
               </div>
               D.A.I.V.E. AI Bot
-                             <Badge variant="secondary" className="ml-auto">
-                 {vehicleInfo ? `${vehicleInfo.year} ${vehicleInfo.make} ${vehicleInfo.model}` : 'Dealer Inventory'}
-               </Badge>
+              <div className="ml-auto flex items-center gap-2">
+                <Badge variant="secondary">
+                  {vehicleInfo ? `${vehicleInfo.year} ${vehicleInfo.make} ${vehicleInfo.model}` : 'Dealer Inventory'}
+                </Badge>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={testBackendConnection}
+                  className="h-6 px-2 text-xs"
+                >
+                  Test Backend
+                </Button>
+                <span className="text-xs text-gray-500">
+                  {backendStatus}
+                </span>
+              </div>
             </CardTitle>
           </CardHeader>
 
@@ -683,7 +837,14 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
             {/* Messages Area */}
             <div className="flex-1 overflow-y-auto px-4 pb-4" ref={scrollAreaRef}>
               <div className="space-y-4">
-                {messages.map((message, index) => (
+                {messages.filter(message => message && message.content).map((message, index) => {
+                  console.log(`🎨 Rendering message ${index}:`, {
+                    role: message.role,
+                    contentLength: message.content?.length,
+                    contentPreview: message.content?.substring(0, 50) + '...'
+                  });
+                  
+                  return (
                   <div
                     key={index}
                     className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
@@ -695,14 +856,14 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
                           : 'bg-gray-100 text-gray-900'
                       }`}
                     >
-                      {message.content.includes('<div class="inventory-grid">') || message.content.includes('<ul class="inventory-list">') ? (
+                      {message.content && (message.content.includes('<div class="inventory-grid">') || message.content.includes('<ul class="inventory-list">')) ? (
                         <div 
                           className="text-sm max-w-full"
                           dangerouslySetInnerHTML={{ __html: message.content }}
                           onClick={(e) => handleVehicleClick(e)}
                         />
                       ) : (
-                        <p className="text-sm">{message.content}</p>
+                        <p className="text-sm">{message.content || 'No content available'}</p>
                       )}
                       {message.transcription && (
                         <p className="text-xs opacity-70 mt-1">
@@ -733,7 +894,8 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
                       </p>
                     </div>
                   </div>
-                ))}
+                );
+                })}
                 {isProcessing && (
                   <div className="flex justify-start">
                     <div className="bg-gray-100 rounded-lg px-3 py-2">
@@ -748,6 +910,26 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
                 <div ref={messagesEndRef} />
               </div>
             </div>
+
+            {/* Crew AI Status */}
+            {crewAIEnabled && (
+              <div className="p-2 border-t border-gray-200 bg-gradient-to-r from-green-50 to-emerald-50">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4 text-green-600" />
+                    <span className="text-sm font-medium text-green-800">Crew AI</span>
+                    <Badge variant="secondary" className="text-xs">
+                      {useCrewAI ? 'Active' : 'Standby'}
+                    </Badge>
+                  </div>
+                  {crewType !== 'N/A' && (
+                    <span className="text-xs text-green-600">
+                      Using: {crewType}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Quick Action Buttons */}
             {showQuickActions && messages.length <= 1 && (
@@ -785,8 +967,23 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
                   onClick={toggleVoiceMode}
                   className={isVoiceEnabled ? 'bg-blue-50 border-blue-200' : ''}
                   disabled={isProcessing}
+                  title="Toggle Voice Mode"
                 >
                   {isVoiceEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setUseCrewAI(!useCrewAI)}
+                  className={useCrewAI ? 'bg-green-50 border-green-200' : ''}
+                  disabled={isProcessing || !crewAIEnabled}
+                  title={crewAIEnabled ? 'Toggle Crew AI' : 'Crew AI not available'}
+                >
+                  <Users className="h-4 w-4" />
+                  {useCrewAI && crewAIEnabled && (
+                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full animate-pulse" />
+                  )}
                 </Button>
                 {isVoiceEnabled && (
                   <Button

@@ -105,6 +105,20 @@ interface AIBotBehavior {
   enableAnalytics: boolean;
 }
 
+// New interface for Crew AI settings
+interface CrewAISettings {
+  enabled: boolean;
+  autoRouting: boolean;
+  enableSalesCrew: boolean;
+  enableCustomerServiceCrew: boolean;
+  enableInventoryCrew: boolean;
+  crewCollaboration: boolean;
+  agentMemory: boolean;
+  performanceTracking: boolean;
+  fallbackToTraditional: boolean;
+  crewSelection: 'auto' | 'manual' | 'hybrid';
+}
+
 const DAIVESettings: React.FC = () => {
   const [prompts, setPrompts] = useState<PromptSettings>({
     greeting: '',
@@ -181,6 +195,20 @@ const DAIVESettings: React.FC = () => {
     enableHandoff: true,
     maxConversationLength: 50,
     enableAnalytics: true
+  });
+
+  // New Crew AI settings state
+  const [crewAISettings, setCrewAISettings] = useState<CrewAISettings>({
+    enabled: false, // Start disabled for safety
+    autoRouting: true,
+    enableSalesCrew: true,
+    enableCustomerServiceCrew: true,
+    enableInventoryCrew: false,
+    crewCollaboration: true,
+    agentMemory: true,
+    performanceTracking: true,
+    fallbackToTraditional: true,
+    crewSelection: 'auto'
   });
 
   const [showApiKeys, setShowApiKeys] = useState(false);
@@ -287,6 +315,26 @@ const DAIVESettings: React.FC = () => {
         });
       } else {
         console.log('❌ Voice Settings Failed to Load:', voiceData);
+      }
+      
+      // Fetch Crew AI settings
+      let dealerId = apiSettings.dealer_id;
+      if (!dealerId) {
+        dealerId = '0aa94346-ed1d-420e-8823-bcd97bf6456f'; // Fallback dealer ID
+      }
+      
+      const crewAIResponse = await fetch(`http://localhost:3000/api/daive/crew-ai-settings?dealerId=${dealerId}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        }
+      });
+      
+      const crewAIData = await crewAIResponse.json();
+      if (crewAIData.success) {
+        console.log('✅ Crew AI Settings Loaded:', crewAIData.data);
+        setCrewAISettings(crewAIData.data);
+      } else {
+        console.log('❌ Crew AI Settings Failed to Load:', crewAIData);
       }
     } catch (error) {
       console.error('Error fetching settings:', error);
@@ -433,6 +481,62 @@ const DAIVESettings: React.FC = () => {
     } catch (error) {
       console.error('Error saving AI Bot settings:', error);
       toast.error('Failed to save AI Bot settings');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const saveCrewAISettings = async () => {
+    setSaving(true);
+    try {
+      // Get dealer ID from API settings or try to get it from the current user context
+      let dealerId = apiSettings.dealer_id;
+      
+      // If no dealer ID in API settings, try to get it from the current user's token
+      if (!dealerId) {
+        try {
+          const token = localStorage.getItem('auth_token');
+          if (token) {
+            // Decode JWT token to get user info (this is a simple approach)
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            dealerId = payload.dealer_id || payload.dealerId;
+          }
+        } catch (e) {
+          console.log('Could not extract dealer ID from token');
+        }
+      }
+      
+      // If still no dealer ID, use the one we know works
+      if (!dealerId) {
+        dealerId = '0aa94346-ed1d-420e-8823-bcd97bf6456f';
+      }
+      
+      console.log('💾 Saving Crew AI settings for dealer:', dealerId);
+      
+      // Save Crew AI settings with dealer ID
+      const response = await fetch('http://localhost:3000/api/daive/crew-ai-settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        },
+        body: JSON.stringify({
+          dealerId,
+          settings: crewAISettings
+        })
+      });
+      
+      if (response.ok) {
+        toast.success('Crew AI settings saved successfully');
+        // Refresh the settings to show the updated values
+        await fetchSettings();
+      } else {
+        const errorData = await response.json();
+        toast.error(`Failed to save Crew AI settings: ${errorData.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error saving Crew AI settings:', error);
+      toast.error('Failed to save Crew AI settings');
     } finally {
       setSaving(false);
     }
@@ -717,7 +821,7 @@ Output format:
       </div>
 
       <Tabs defaultValue="prompts" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-8">
           <TabsTrigger value="prompts" className="flex items-center gap-2">
             <MessageSquare className="h-4 w-4" />
             Quick Prompts
@@ -729,6 +833,10 @@ Output format:
           <TabsTrigger value="aibot" className="flex items-center gap-2">
             <Brain className="h-4 w-4" />
             AI Bot
+          </TabsTrigger>
+          <TabsTrigger value="crew-ai" className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            Crew AI
           </TabsTrigger>
           <TabsTrigger value="api" className="flex items-center gap-2">
             <Key className="h-4 w-4" />
@@ -1330,6 +1438,227 @@ Output format:
                   </div>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Crew AI Tab */}
+        <TabsContent value="crew-ai" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Crew AI Configuration</CardTitle>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCrewAISettings(prev => ({ ...prev, enabled: !prev.enabled }))}
+                  >
+                    {crewAISettings.enabled ? 'Disable' : 'Enable'} Crew AI
+                  </Button>
+                  <Button
+                    onClick={saveCrewAISettings}
+                    disabled={saving}
+                  >
+                    {saving ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    ) : (
+                      <Save className="h-4 w-4 mr-2" />
+                    )}
+                    Save Crew AI Settings
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Crew AI Master Switch */}
+              <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+                <div className="space-y-1">
+                  <Label className="text-lg font-semibold text-blue-900">Enable Crew AI</Label>
+                  <p className="text-sm text-blue-700">
+                    Activate specialized AI agents that work together to provide enhanced customer service
+                  </p>
+                </div>
+                <Switch
+                  checked={crewAISettings.enabled}
+                  onCheckedChange={(checked) => 
+                    setCrewAISettings(prev => ({ ...prev, enabled: checked }))
+                  }
+                />
+              </div>
+
+              {crewAISettings.enabled && (
+                <>
+                  {/* Crew Selection */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold">Crew Configuration</h3>
+                    
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label>Auto Routing</Label>
+                        <p className="text-sm text-gray-500">
+                          Automatically route conversations to appropriate crews
+                        </p>
+                      </div>
+                      <Switch
+                        checked={crewAISettings.autoRouting}
+                        onCheckedChange={(checked) => 
+                          setCrewAISettings(prev => ({ ...prev, autoRouting: checked }))
+                        }
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label>Sales Crew</Label>
+                        <p className="text-sm text-gray-500">
+                          Enable specialized sales agents for vehicle inquiries
+                        </p>
+                      </div>
+                      <Switch
+                        checked={crewAISettings.enableSalesCrew}
+                        onCheckedChange={(checked) => 
+                          setCrewAISettings(prev => ({ ...prev, enableSalesCrew: checked }))
+                        }
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label>Customer Service Crew</Label>
+                        <p className="text-sm text-gray-500">
+                          Enable general customer service agents
+                        </p>
+                      </div>
+                      <Switch
+                        checked={crewAISettings.enableCustomerServiceCrew}
+                        onCheckedChange={(checked) => 
+                          setCrewAISettings(prev => ({ ...prev, enableCustomerServiceCrew: checked }))
+                        }
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label>Inventory Crew</Label>
+                        <p className="text-sm text-gray-500">
+                          Enable specialized inventory management agents
+                        </p>
+                      </div>
+                      <Switch
+                        checked={crewAISettings.enableInventoryCrew}
+                        onCheckedChange={(checked) => 
+                          setCrewAISettings(prev => ({ ...prev, enableInventoryCrew: checked }))
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  {/* Advanced Settings */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold">Advanced Settings</h3>
+                    
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label>Crew Collaboration</Label>
+                        <p className="text-sm text-gray-500">
+                          Allow agents to collaborate and share information
+                        </p>
+                      </div>
+                      <Switch
+                        checked={crewAISettings.crewCollaboration}
+                        onCheckedChange={(checked) => 
+                          setCrewAISettings(prev => ({ ...prev, crewCollaboration: checked }))
+                        }
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label>Agent Memory</Label>
+                        <p className="text-sm text-gray-500">
+                          Enable agents to remember conversation context
+                        </p>
+                      </div>
+                      <Switch
+                        checked={crewAISettings.agentMemory}
+                        onCheckedChange={(checked) => 
+                          setCrewAISettings(prev => ({ ...prev, agentMemory: checked }))
+                        }
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label>Performance Tracking</Label>
+                        <p className="text-sm text-gray-500">
+                          Track agent performance and effectiveness
+                        </p>
+                      </div>
+                      <Switch
+                        checked={crewAISettings.performanceTracking}
+                        onCheckedChange={(checked) => 
+                          setCrewAISettings(prev => ({ ...prev, performanceTracking: checked }))
+                        }
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label>Fallback to Traditional</Label>
+                        <p className="text-sm text-gray-500">
+                          Use traditional DAIVE if Crew AI fails
+                        </p>
+                      </div>
+                      <Switch
+                        checked={crewAISettings.fallbackToTraditional}
+                        onCheckedChange={(checked) => 
+                          setCrewAISettings(prev => ({ ...prev, fallbackToTraditional: checked }))
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  {/* Crew Selection Strategy */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold">Crew Selection Strategy</h3>
+                    
+                    <div className="space-y-2">
+                      <Label>Crew Selection Mode</Label>
+                      <select
+                        value={crewAISettings.crewSelection}
+                        onChange={(e) => setCrewAISettings(prev => ({ 
+                          ...prev, 
+                          crewSelection: e.target.value as 'auto' | 'manual' | 'hybrid' 
+                        }))}
+                        className="w-full p-2 border border-gray-300 rounded-md"
+                      >
+                        <option value="auto">Automatic - AI decides best crew</option>
+                        <option value="manual">Manual - User selects crew</option>
+                        <option value="hybrid">Hybrid - AI suggests, user confirms</option>
+                      </select>
+                      <p className="text-sm text-gray-500">
+                        Choose how crews are selected for conversations
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Information Panel */}
+                  <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-400">
+                    <div className="flex items-start gap-2">
+                      <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium text-blue-900">Crew AI Benefits</p>
+                        <p className="text-sm text-blue-700">
+                          Crew AI provides specialized agents for different aspects of vehicle sales, 
+                          including lead qualification, vehicle expertise, financing, and test drive coordination. 
+                          This results in more accurate, specialized responses and better customer experience.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

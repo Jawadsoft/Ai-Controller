@@ -4,7 +4,15 @@ import path from 'path';
 import fs from 'fs';
 import jwt from 'jsonwebtoken';
 import { fileURLToPath } from 'url';
-import daiveService from '../lib/daive.js';
+import UnifiedAIService from '../lib/unifiedAI.js';
+const unifiedAIService = new UnifiedAIService();
+
+// Debug: Check what we imported
+console.log('🔍 Imported unifiedAIService:', typeof unifiedAIService);
+console.log('🔍 unifiedAIService methods:', Object.getOwnPropertyNames(unifiedAIService));
+if (unifiedAIService && typeof unifiedAIService === 'object') {
+  console.log('🔍 unifiedAIService.processConversation:', typeof unifiedAIService.processConversation);
+}
 import WhisperService from '../lib/whisper.js';
 import DeepgramService from '../lib/deepgram-v3.js';
 import DeepgramTTSService from '../lib/deepgram-tts.js';
@@ -53,16 +61,257 @@ router.get('/health', (req, res) => {
   });
 });
 
+// POST /api/daive/crew-ai - Process conversation with Crew AI
+router.post('/crew-ai', async (req, res) => {
+  try {
+    const { vehicleId, sessionId, message, customerInfo } = req.body;
+
+    console.log('🚀 Crew AI endpoint called with:', {
+      vehicleId,
+      sessionId,
+      messageLength: message?.length || 0,
+      customerInfo: customerInfo ? 'Provided' : 'Not provided'
+    });
+
+    if (!message) {
+      console.log('❌ Validation failed: Message is required');
+      return res.status(400).json({ 
+        success: false,
+        error: 'Message is required' 
+      });
+    }
+
+    console.log('🚀 Processing conversation with Unified AI...');
+    const result = await unifiedAIService.processConversation(
+      sessionId || unifiedAIService.generateSessionId(),
+      vehicleId,
+      message,
+      customerInfo || {}
+    );
+
+    // Generate speech response if voice is enabled
+    let audioResponseUrl = null;
+    try {
+      let dealerId = null;
+      if (vehicleId) {
+        const vehicleQuery = 'SELECT dealer_id FROM vehicles WHERE id = $1';
+        const vehicleResult = await pool.query(vehicleQuery, [vehicleId]);
+        if (vehicleResult.rows.length > 0) {
+          dealerId = vehicleResult.rows[0].dealer_id;
+        }
+      }
+
+      if (dealerId) {
+        // Get dealer-specific voice settings
+        const voiceQuery = `
+          SELECT 
+            vs.enabled,
+            vs.tts_provider,
+            vs.openai_voice,
+            vs.elevenlabs_voice,
+            vs.voice_quality
+          FROM voice_settings vs
+          WHERE vs.dealer_id = $1
+        `;
+        const voiceResult = await pool.query(voiceQuery, [dealerId]);
+        
+        if (voiceResult.rows.length > 0 && voiceResult.rows[0].enabled) {
+          const voiceSettings = voiceResult.rows[0];
+          console.log('🎵 Generating TTS response with dealer settings:', voiceSettings);
+          
+          audioResponseUrl = await this.generateTTSResponse(
+            result.response || result.aiResponse,
+            voiceSettings,
+            dealerId
+          );
+        }
+      }
+
+      // Fallback to global voice settings if dealer-specific not available
+      if (!audioResponseUrl) {
+        const globalVoiceQuery = `
+          SELECT 
+            vs.enabled,
+            vs.tts_provider,
+            vs.openai_voice,
+            vs.elevenlabs_voice,
+            vs.voice_quality
+          FROM voice_settings vs
+          WHERE vs.dealer_id IS NULL
+          LIMIT 1
+        `;
+        const globalVoiceResult = await pool.query(globalVoiceQuery);
+        
+        if (globalVoiceResult.rows.length > 0 && globalVoiceResult.rows[0].enabled) {
+          const globalVoiceSettings = globalVoiceResult.rows[0];
+          console.log('🎵 TTS enabled but generation method not implemented yet');
+          // TODO: Implement TTS generation
+          // audioResponseUrl = await generateTTSResponse(result.response, globalVoiceSettings);
+        }
+      }
+    } catch (ttsError) {
+      console.error('❌ TTS generation failed:', ttsError);
+      // Continue without TTS - not critical
+    }
+
+    // Return response with Crew AI details
+    res.json({
+      success: true,
+      data: {
+        response: result.response || result.aiResponse, // Use 'response' field for frontend compatibility
+        message: result.response || result.aiResponse, // Keep 'message' for backward compatibility
+        sessionId: result.sessionId || sessionId,
+        crewUsed: result.crewUsed || false,
+        crewType: result.crewType || 'N/A',
+        intent: result.intent || 'UNKNOWN',
+        leadScore: result.leadScore || 0,
+        shouldHandoff: result.shouldHandoff || false,
+        audioResponseUrl,
+        timestamp: new Date().toISOString()
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Crew AI processing error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to process conversation with Crew AI',
+      details: error.message
+    });
+  }
+});
+
+// POST /api/daive/crew-ai-settings - Save Crew AI settings
+router.post('/crew-ai-settings', async (req, res) => {
+  try {
+    const { dealerId, ...settings } = req.body;
+    
+    console.log('⚙️ Saving Crew AI settings:', { dealerId, settings });
+
+    // Save to database (you'll need to create this table)
+    const query = `
+      INSERT INTO crew_ai_settings (
+        dealer_id, enabled, auto_routing, enable_sales_crew, 
+        enable_customer_service_crew, enable_inventory_crew, 
+        crew_collaboration, agent_memory, performance_tracking, 
+        fallback_to_traditional, crew_selection, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())
+      ON CONFLICT (dealer_id) DO UPDATE SET
+        enabled = EXCLUDED.enabled,
+        auto_routing = EXCLUDED.auto_routing,
+        enable_sales_crew = EXCLUDED.enable_sales_crew,
+        enable_customer_service_crew = EXCLUDED.enable_customer_service_crew,
+        enable_inventory_crew = EXCLUDED.enable_inventory_crew,
+        crew_collaboration = EXCLUDED.crew_collaboration,
+        agent_memory = EXCLUDED.agent_memory,
+        performance_tracking = EXCLUDED.performance_tracking,
+        fallback_to_traditional = EXCLUDED.fallback_to_traditional,
+        crew_selection = EXCLUDED.crew_selection,
+        updated_at = NOW()
+    `;
+
+    await pool.query(query, [
+      dealerId || null,
+      settings.enabled || false,
+      settings.autoRouting || false,
+      settings.enableSalesCrew || false,
+      settings.enableCustomerServiceCrew || false,
+      settings.enableInventoryCrew || false,
+      settings.crewCollaboration || false,
+      settings.agentMemory || false,
+      settings.performanceTracking || false,
+      settings.fallbackToTraditional || true,
+      settings.crewSelection || 'auto'
+    ]);
+
+    res.json({
+      success: true,
+      message: 'Crew AI settings saved successfully'
+    });
+
+  } catch (error) {
+    console.error('❌ Error saving Crew AI settings:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to save Crew AI settings',
+      details: error.message
+    });
+  }
+});
+
+// GET /api/daive/crew-ai-settings - Get Crew AI settings
+router.get('/crew-ai-settings', async (req, res) => {
+  try {
+    const { dealerId } = req.query;
+    
+    console.log('📋 Getting Crew AI settings for dealer:', dealerId);
+
+    const query = `
+      SELECT * FROM crew_ai_settings 
+      WHERE dealer_id = $1 OR (dealer_id IS NULL AND $1 IS NULL)
+      ORDER BY dealer_id NULLS LAST
+      LIMIT 1
+    `;
+
+    const result = await pool.query(query, [dealerId || null]);
+    
+    if (result.rows.length > 0) {
+      const settings = result.rows[0];
+      res.json({
+        success: true,
+        data: {
+          enabled: settings.enabled,
+          autoRouting: settings.auto_routing,
+          enableSalesCrew: settings.enable_sales_crew,
+          enableCustomerServiceCrew: settings.enable_customer_service_crew,
+          enableInventoryCrew: settings.enable_inventory_crew,
+          crewCollaboration: settings.crew_collaboration,
+          agentMemory: settings.agent_memory,
+          performanceTracking: settings.performance_tracking,
+          fallbackToTraditional: settings.fallback_to_traditional,
+          crewSelection: settings.crew_selection
+        }
+      });
+    } else {
+      // Return default settings if none found
+      res.json({
+        success: true,
+        data: {
+          enabled: false,
+          autoRouting: true,
+          enableSalesCrew: true,
+          enableCustomerServiceCrew: true,
+          enableInventoryCrew: false,
+          crewCollaboration: true,
+          agentMemory: true,
+          performanceTracking: true,
+          fallbackToTraditional: true,
+          crewSelection: 'auto'
+        }
+      });
+    }
+
+  } catch (error) {
+    console.error('❌ Error getting Crew AI settings:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get Crew AI settings',
+      details: error.message
+    });
+  }
+});
+
 // POST /api/daive/chat - Process text conversation
 router.post('/chat', async (req, res) => {
   try {
-    const { vehicleId, sessionId, message, customerInfo } = req.body;
+    const { vehicleId, sessionId, message, customerInfo, useCrewAI = false } = req.body;
 
     console.log('💬 Chat endpoint called with:', {
       vehicleId,
       sessionId,
       messageLength: message?.length || 0,
-      customerInfo: customerInfo ? 'Provided' : 'Not provided'
+      customerInfo: customerInfo ? 'Provided' : 'Not provided',
+      useCrewAI
     });
 
     // Input validation - vehicleId is optional for general dealership conversations
@@ -79,8 +328,11 @@ router.post('/chat', async (req, res) => {
     }
 
     console.log('🤖 Processing text conversation with AI...');
-    const result = await daiveService.processConversation(
-      sessionId || daiveService.generateSessionId(),
+    
+    // Always use Unified AI for consistent responses
+    console.log('🚀 Using Unified AI for enhanced processing...');
+    const result = await unifiedAIService.processConversation(
+      sessionId || unifiedAIService.generateSessionId(),
       vehicleId,
       message,
       customerInfo || {}
@@ -368,13 +620,33 @@ router.post('/chat', async (req, res) => {
     }
 
     console.log('✅ Chat processing completed successfully');
-    res.json({
-      success: true,
-      data: {
-        ...result,
-        audioResponseUrl
-      }
+    
+                    // Structure the response to match frontend expectations
+                const responseData = {
+                  success: true,
+                  data: {
+                    response: result.response || result.data?.response || result.message, // The AI response content
+                    crewUsed: result.crewUsed || false, // Use actual CrewAI status
+                    crewType: result.crewType || 'AI Assistant',
+                    intent: result.intent || 'UNKNOWN',
+                    leadScore: result.leadScore || 0,
+                    shouldHandoff: result.shouldHandoff || false,
+                    audioResponseUrl: audioResponseUrl,
+                    message: message, // Use the original user message
+                    sessionId: result.sessionId || sessionId,
+                    timestamp: new Date().toISOString()
+                  }
+                };
+    
+    console.log('📤 Sending response:', {
+      success: responseData.success,
+      hasResponse: !!responseData.data.response,
+      responseLength: responseData.data.response?.length || 0,
+      leadScore: responseData.data.leadScore,
+      shouldHandoff: responseData.data.shouldHandoff
     });
+    
+    res.json(responseData);
 
   } catch (error) {
     console.error('❌ Error in chat endpoint:', error);
@@ -617,8 +889,8 @@ router.post('/voice', upload.single('audio'), async (req, res) => {
     
     // Process with AI
     console.log('🤖 Processing conversation with AI...');
-    const result = await daiveService.processConversation(
-      sessionId || daiveService.generateSessionId(),
+    const result = await unifiedAIService.processConversation(
+      sessionId || unifiedAIService.generateSessionId(),
       vehicleId,
       transcription,
       customerInfo ? JSON.parse(customerInfo) : {}
@@ -907,7 +1179,7 @@ router.post('/voice', upload.single('audio'), async (req, res) => {
     // Save voice session
     if (result.conversationId) {
       console.log('💾 Saving voice session...');
-      await daiveService.saveVoiceSession(
+      await unifiedAIService.saveVoiceSession(
         result.conversationId,
         audioFileUrl,
         transcription,
@@ -1063,7 +1335,7 @@ router.post('/gpt4o-voice', upload.single('audio'), async (req, res) => {
 router.get('/conversation/:sessionId', async (req, res) => {
   try {
     const { sessionId } = req.params;
-    const conversation = await daiveService.getConversationHistory(sessionId);
+    const conversation = await unifiedAIService.getConversationHistory(sessionId);
 
     if (!conversation) {
       return res.status(404).json({ error: 'Conversation not found' });
@@ -1092,7 +1364,7 @@ router.get('/analytics', authenticateToken, async (req, res) => {
       return res.status(403).json({ error: 'Dealer access required' });
     }
 
-    const analytics = await daiveService.getAnalytics(
+    const analytics = await unifiedAIService.getAnalytics(
       dealerId,
       startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       endDate || new Date().toISOString().split('T')[0]

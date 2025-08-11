@@ -54,6 +54,64 @@ router.get('/vin/:vin', async (req, res) => {
   }
 });
 
+// Public endpoint to get dealer inventory (for AI bot use)
+router.get('/dealer/:dealerId', async (req, res) => {
+  try {
+    const dealerId = req.params.dealerId;
+    
+    const sqlQuery = `
+      SELECT 
+        v.id,
+        v.vin,
+        v.make,
+        v.model,
+        v.year,
+        v.trim,
+        v.mileage,
+        v.price,
+        v.status,
+        v.features,
+        v.description,
+        v.exterior_color,
+        v.interior_color,
+        v.fuel_type,
+        v.transmission,
+        v.engine,
+        v.doors,
+        v.seats,
+        v.created_at,
+        d.business_name as dealer_name,
+        d.address as dealer_address,
+        d.city as dealer_city,
+        d.state as dealer_state,
+        d.phone as dealer_phone
+      FROM vehicles v 
+      LEFT JOIN dealers d ON v.dealer_id = d.id 
+      WHERE v.dealer_id = $1 AND v.status = 'available'
+      ORDER BY v.created_at DESC
+    `;
+    
+    const result = await query(sqlQuery, [dealerId]);
+    
+    res.json({
+      success: true,
+      data: result.rows,
+      count: result.rows.length,
+      dealer: {
+        id: dealerId,
+        business_name: result.rows[0]?.dealer_name || 'Unknown',
+        address: result.rows[0]?.dealer_address || 'Unknown',
+        city: result.rows[0]?.dealer_city || 'Unknown',
+        state: result.rows[0]?.dealer_state || 'Unknown',
+        phone: result.rows[0]?.dealer_phone || 'Unknown'
+      }
+    });
+  } catch (error) {
+    console.error('Get dealer inventory error:', error);
+    res.status(500).json({ error: 'Failed to fetch dealer inventory' });
+  }
+});
+
 // Public endpoint to get vehicle details by encrypted QR code hash
 router.get('/qr/:hash', async (req, res) => {
   try {

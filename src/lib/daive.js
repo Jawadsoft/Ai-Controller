@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { pool } from '../database/connection.js';
+import CrewAIService from './crewAI.js';
 // import { sendNotification } from './websocket.js';
 
 // Initialize OpenAI client
@@ -17,6 +18,9 @@ class DAIVEService {
   constructor() {
     this.model = process.env.OPENAI_MODEL || 'gpt-4o-mini'; // fast + very capable
     this.maxTokens = parseInt(process.env.OPENAI_MAX_TOKENS) || 700; // Increased for better responses
+    
+    // Initialize Crew AI service
+    this.crewAI = new CrewAIService();
     
     // Initialize database tables
     this.initializeUserInterestTable();
@@ -733,12 +737,16 @@ Guidelines:
         await this.requestHandoff(conversation.id, conversation.dealer_id);
       }
 
+      // Detect intent for better response structure
+      const intent = this.detectIntent(userMessage);
+
       return {
         conversationId: conversation.id,
         response: aiResponse,
         leadScore,
         shouldHandoff,
-        sessionId
+        sessionId,
+        intent: intent
       };
 
     } catch (error) {
@@ -1007,6 +1015,83 @@ Guidelines:
       console.log('✅ User interest tracking table initialized');
     } catch (error) {
       console.error('Error initializing user interest table:', error);
+    }
+  }
+
+  // Enhanced conversation processing with Crew AI integration
+  async processConversationWithCrew(sessionId, vehicleId, userMessage, customerInfo = {}) {
+    try {
+      // First, detect intent to determine routing
+      const intent = this.detectIntent(userMessage);
+      
+      // Create context for Crew AI
+      const context = {
+        intent,
+        dealerId: customerInfo.dealerId,
+        vehicleId,
+        sessionId,
+        customerInfo
+      };
+
+      // Try Crew AI first
+      const crewResult = await this.crewAI.processWithCrewAI(userMessage, context);
+      
+      if (crewResult.success) {
+        // Crew AI successfully processed the request
+        console.log('✅ Crew AI processed request successfully');
+        
+        // Save the conversation with Crew AI result
+        const conversation = await this.getOrCreateConversation(vehicleId, sessionId, customerInfo);
+        await this.saveConversationMessage(conversation.id, 'user', userMessage);
+        await this.saveConversationMessage(conversation.id, 'assistant', crewResult.data.response);
+        
+        return {
+          success: true,
+          response: crewResult.data.response,
+          crewUsed: crewResult.data.crewUsed,
+          crewType: crewResult.data.crewType,
+          intent: crewResult.data.intent,
+          leadScore: crewResult.data.leadScore,
+          shouldHandoff: crewResult.data.shouldHandoff
+        };
+      } else {
+        // Crew AI failed, return error response
+        console.log('❌ Crew AI failed to process request');
+        return {
+          success: false,
+          response: 'I apologize, but I\'m having trouble processing your request right now. Please try again in a moment.',
+          crewUsed: false,
+          crewType: 'Error',
+          intent: intent,
+          leadScore: 0,
+          shouldHandoff: false
+        };
+      }
+    } catch (error) {
+      console.error('Error in Crew AI conversation processing:', error);
+      // Return error response instead of falling back
+      return {
+        success: false,
+        response: 'I apologize, but I\'m experiencing technical difficulties. Please try again later.',
+        crewUsed: false,
+        crewType: 'Error',
+        intent: 'ERROR',
+        leadScore: 0,
+        shouldHandoff: false
+      };
+    }
+  }
+
+  // Save conversation message to database
+  async saveConversationMessage(conversationId, role, content) {
+    try {
+      const query = `
+        INSERT INTO conversation_messages (conversation_id, role, content, created_at)
+        VALUES ($1, $2, $3, NOW())
+      `;
+      await pool.query(query, [conversationId, role, content]);
+    } catch (error) {
+      console.error('Error saving conversation message:', error);
     }
   }
 }
