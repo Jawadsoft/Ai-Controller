@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
-import { Mic, MicOff, Loader2, Send, Volume2, VolumeX, Play, Square, Users } from 'lucide-react';
+import { Mic, MicOff, Loader2, Send, Volume2, VolumeX, Play, Square, Users, Database } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Message {
@@ -62,6 +62,8 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
   const [crewAIEnabled, setCrewAIEnabled] = useState(false);
   const [crewType, setCrewType] = useState<string>('N/A');
   const [backendStatus, setBackendStatus] = useState<string>('Unknown');
+  const [isInventoryQuerying, setIsInventoryQuerying] = useState(false);
+  const [lastQueryTime, setLastQueryTime] = useState<number | null>(null);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -90,8 +92,107 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
   ];
 
   const handleQuickAction = (action: QuickAction) => {
-    sendTextMessage(action.message);
+    // Check if this is an inventory-related quick action
+    const isInventoryAction = action.label.toLowerCase().includes('inventory') || 
+                             action.label.toLowerCase().includes('show') ||
+                             action.message.toLowerCase().includes('inventory') ||
+                             action.message.toLowerCase().includes('vehicles') ||
+                             action.message.toLowerCase().includes('available');
+    
+    if (isInventoryAction && crewAIEnabled) {
+      // For inventory actions, use Crew AI directly to avoid authentication issues
+      console.log('🚀 Using Crew AI for inventory quick action:', action.label);
+      handleInventoryQuickAction(action);
+    } else {
+      // For other actions, use the regular text message flow
+      sendTextMessage(action.message);
+    }
     setShowQuickActions(false); // Hide quick actions after first use
+  };
+
+  // Handle inventory-related quick actions with Crew AI
+  const handleInventoryQuickAction = async (action: QuickAction) => {
+    try {
+      setIsProcessing(true);
+      
+      // Add user message to chat
+      const userMessage: Message = {
+        role: 'user',
+        content: action.message,
+        timestamp: new Date().toISOString()
+      };
+      setMessages(prev => [...prev, userMessage]);
+
+      console.log('🔍 Processing inventory quick action with Crew AI...');
+      console.log('📍 Dealer ID:', dealerId);
+      console.log('📍 Vehicle ID:', vehicleId);
+      
+      const authToken = localStorage.getItem('auth_token');
+      if (!authToken) {
+        console.warn('⚠️ No authentication token found for inventory quick action');
+        toast.warning('Authentication required for inventory access');
+        return;
+      }
+
+      // Use Crew AI endpoint directly
+      const response = await fetch('http://localhost:3000/api/daive/crew-ai', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify({
+          vehicleId: vehicleId || null,
+          sessionId: sessionId || 'quick-action-session',
+          message: action.message,
+          customerInfo: {
+            name: 'Quick Action User',
+            email: 'quickaction@dealership.com',
+            dealerId: dealerId
+          }
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Crew AI quick action response:', data);
+        
+        if (data.success && data.data?.response) {
+          // Add assistant response to chat
+          const assistantMessage: Message = {
+            role: 'assistant',
+            content: data.data.response,
+            timestamp: new Date().toISOString()
+          };
+          setMessages(prev => [...prev, assistantMessage]);
+          
+          console.log('🤖 Quick action processed successfully');
+          console.log('🚀 Crew AI Used:', data.data.crewUsed);
+          console.log('🎯 Intent:', data.data.intent);
+          console.log('📊 Lead Score:', data.data.leadScore);
+        } else {
+          throw new Error('No response from Crew AI');
+        }
+      } else {
+        const errorText = await response.text();
+        console.error('❌ Crew AI quick action failed:', response.status, errorText);
+        throw new Error(`Crew AI failed: ${response.status}`);
+      }
+    } catch (error) {
+      console.error('❌ Error processing inventory quick action:', error);
+      
+      // Add error message to chat
+      const errorMessage: Message = {
+        role: 'assistant',
+        content: 'I apologize, but I\'m having trouble accessing the inventory right now. Please try again in a moment or contact our sales team directly.',
+        timestamp: new Date().toISOString()
+      };
+      setMessages(prev => [...prev, errorMessage]);
+      
+      toast.error('Failed to process inventory request');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   // Generate session ID on component mount
@@ -128,29 +229,36 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
     } else {
       // Fetch dealer inventory to provide more specific greeting
       try {
-        const inventoryResponse = await fetch(`http://localhost:3000/api/vehicles?dealerId=${dealerId}&limit=5`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('auth_token') || 'public'}`
-          }
-        });
-        
-        if (inventoryResponse.ok) {
-          const inventoryData = await inventoryResponse.json();
-          const vehicles = inventoryData.data || [];
+        const authToken = localStorage.getItem('auth_token');
+        if (authToken) {
+          const inventoryResponse = await fetch(`http://localhost:3000/api/vehicles?dealerId=${dealerId}&limit=5`, {
+            headers: {
+              'Authorization': `Bearer ${authToken}`
+            }
+          });
           
-          if (vehicles.length > 0) {
-            const vehicleTypes = [...new Set(vehicles.map(v => v.make))];
-            const vehicleCount = vehicles.length;
+          if (inventoryResponse.ok) {
+            const inventoryData = await inventoryResponse.json();
+            const vehicles = inventoryData.data || [];
             
-            if (vehicleTypes.length === 1) {
-              greeting = `Hi, I'm D.A.I.V.E.! I can help you find the perfect ${vehicleTypes[0]} from our inventory of ${vehicleCount} vehicles. What are you looking for today?`;
+            if (vehicles.length > 0) {
+              const vehicleTypes = [...new Set(vehicles.map(v => v.make))];
+              const vehicleCount = vehicles.length;
+              
+              if (vehicleTypes.length === 1) {
+                greeting = `Hi, I'm D.A.I.V.E.! I can help you find the perfect ${vehicleTypes[0]} from our inventory of ${vehicleCount} vehicles. What are you looking for today?`;
+              } else {
+                greeting = `Hi, I'm D.A.I.V.E.! I can help you find the perfect vehicle from our inventory of ${vehicleCount} vehicles including ${vehicleTypes.slice(0, 3).join(', ')}. What are you looking for today?`;
+              }
             } else {
-              greeting = `Hi, I'm D.A.I.V.E.! I can help you find the perfect vehicle from our inventory of ${vehicleCount} vehicles including ${vehicleTypes.slice(0, 3).join(', ')}. What are you looking for today?`;
+              greeting = `Hi, I'm D.A.I.V.E.! I can help you find the perfect vehicle from our inventory. What are you looking for today?`;
             }
           } else {
+            console.log('⚠️ Inventory API returned error:', inventoryResponse.status);
             greeting = `Hi, I'm D.A.I.V.E.! I can help you find the perfect vehicle from our inventory. What are you looking for today?`;
           }
         } else {
+          console.log('⚠️ No auth token for inventory greeting');
           greeting = `Hi, I'm D.A.I.V.E.! I can help you find the perfect vehicle from our inventory. What are you looking for today?`;
         }
       } catch (error) {
@@ -567,11 +675,27 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
         console.log(`   Will use: ${(crewAIEnabled && useCrewAI) ? 'Crew AI (with inventory logging)' : 'Regular Chat'}`);
       }
       
+      // Get authentication token for the request
+      const authToken = localStorage.getItem('auth_token');
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      
+      // Add authorization header if token exists
+      if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+        console.log('🔐 Adding authentication header to request');
+        console.log('🔐 Token preview:', authToken.substring(0, 20) + '...');
+      } else {
+        console.warn('⚠️ No authentication token found - request may fail');
+        console.warn('⚠️ This will cause 401 Unauthorized errors on protected endpoints');
+      }
+      
+      console.log('📤 Request headers:', headers);
+      
       const response = await fetch(`http://localhost:3000${endpoint}`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify(payload),
       });
 
@@ -702,6 +826,12 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!isProcessing && inputMessage.trim()) {
+      // Check authentication before sending message
+      const authToken = localStorage.getItem('auth_token');
+      if (!authToken) {
+        toast.error('Please log in to send messages. Authentication is required.');
+        return;
+      }
       sendTextMessage(inputMessage);
     }
   };
@@ -772,6 +902,13 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
       const vehicleName = vehicleItem.querySelector('.vehicle-compact-name')?.textContent?.replace('🚗 ', '') || 'this vehicle';
       
       if (vehicleId) {
+        // Check authentication before sending message
+        const authToken = localStorage.getItem('auth_token');
+        if (!authToken) {
+          toast.error('Please log in to get vehicle details. Authentication is required.');
+          return;
+        }
+        
         // Send a more specific message to focus on the selected vehicle
         const message = `I want to know more about this specific ${vehicleName}. What are its features, pricing, and availability?`;
         sendTextMessage(message);
@@ -843,10 +980,177 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
     }
   };
 
+  // Check user authentication and role
+  const checkUserAuthStatus = async () => {
+    try {
+      const authToken = localStorage.getItem('auth_token');
+      if (!authToken) {
+        console.log('🔐 No authentication token found');
+        return { authenticated: false, role: null, userId: null };
+      }
+
+      // Decode JWT token to get user info (without verification)
+      try {
+        const tokenParts = authToken.split('.');
+        if (tokenParts.length === 3) {
+          const payload = JSON.parse(atob(tokenParts[1]));
+          console.log('🔐 JWT Payload:', payload);
+          return { 
+            authenticated: true, 
+            role: payload.role || 'unknown', 
+            userId: payload.userId || payload.sub || 'unknown' 
+          };
+        }
+      } catch (decodeError) {
+        console.log('❌ Could not decode JWT token:', decodeError);
+      }
+
+      // Try to verify token with backend
+      try {
+        const response = await fetch('http://localhost:3000/api/daive/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+          },
+          body: JSON.stringify({
+            vehicleId: null,
+            sessionId: 'auth-test-session',
+            message: 'Test authentication',
+            customerInfo: {
+              name: 'Test User',
+              email: 'test@example.com',
+              dealerId: dealerId
+            }
+          }),
+        });
+        
+        if (response.ok) {
+          console.log('✅ Authentication token is valid');
+          return { authenticated: true, role: 'verified', userId: 'verified' };
+        } else {
+          console.log('❌ Authentication token validation failed:', response.status);
+          return { authenticated: false, role: 'invalid', userId: null };
+        }
+      } catch (error) {
+        console.log('❌ Could not validate token with backend:', error);
+        return { authenticated: false, role: 'error', userId: null };
+      }
+    } catch (error) {
+      console.error('❌ Error checking authentication status:', error);
+      return { authenticated: false, role: 'error', userId: null };
+    }
+  };
+
+  // Query database for inventory details - ULTRA-FAST VERSION
+  const queryInventoryDatabase = async () => {
+    if (isInventoryQuerying) return; // Prevent multiple simultaneous queries
+    
+    try {
+      setIsInventoryQuerying(true);
+      console.log('🚀 ULTRA-FAST inventory query starting...');
+      console.log('📍 Dealer ID:', dealerId);
+      
+      // Check authentication status
+      const authToken = localStorage.getItem('auth_token');
+      console.log('🔐 Auth Token:', authToken ? 'Present' : 'Missing');
+      
+      if (!dealerId) {
+        console.error('❌ No dealer ID available for inventory query');
+        toast.error('No dealer ID available');
+        return;
+      }
+
+      if (!authToken) {
+        console.warn('⚠️ User not authenticated - some queries may fail');
+        toast.warning('User not authenticated - some queries may fail');
+      }
+
+      // ULTRA-FAST DIRECT QUERY: Bypass AI processing completely
+      console.log('\n🚀 ULTRA-FAST QUERY: Direct Database Access');
+      try {
+        const startTime = Date.now();
+        
+        // Use the new fast inventory endpoint
+        const fastInventoryResponse = await fetch(`http://localhost:3000/api/daive/fast-inventory?dealerId=${dealerId}&limit=20`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${authToken || 'public'}`
+          }
+        });
+        
+        const endTime = Date.now();
+        const responseTime = endTime - startTime;
+        
+        if (fastInventoryResponse.ok) {
+          const inventoryData = await fastInventoryResponse.json();
+          console.log(`✅ ULTRA-FAST Inventory Response (${responseTime}ms):`, inventoryData);
+          
+          if (inventoryData.success && inventoryData.data?.vehicles) {
+            const vehicles = inventoryData.data.vehicles;
+            console.log(`🚗 Found ${vehicles.length} vehicles in ${responseTime}ms`);
+            
+            // Display inventory in chat
+            const inventoryMessage = `🚗 **INVENTORY QUERY COMPLETED IN ${responseTime}ms**\n\nHere's what we have available:\n\n${vehicles.map(vehicle => {
+              const price = vehicle.price ? `$${parseFloat(vehicle.price).toLocaleString()}` : 'Price available upon request';
+              const mileage = vehicle.mileage ? ` • ${vehicle.mileage.toLocaleString()} miles` : '';
+              const features = vehicle.features ? `\nFeatures: ${Array.isArray(vehicle.features) ? vehicle.features.join(', ') : vehicle.features}` : '';
+              
+              return `**${vehicle.year} ${vehicle.make} ${vehicle.model}**\n` +
+                     `• Price: ${price}\n` +
+                     `• Status: ${vehicle.status}\n` +
+                     `• Mileage: ${mileage || 'N/A'}${features}\n`;
+            }).join('\n---\n')}\n\n*Query completed in ${responseTime}ms - ${vehicles.length} vehicles found*`;
+            
+            // Add inventory response to chat
+            const inventoryResponseMessage: Message = {
+              role: 'assistant',
+              content: inventoryMessage,
+              timestamp: new Date().toISOString()
+            };
+            
+            setMessages(prev => [...prev, inventoryResponseMessage]);
+            
+            toast.success(`Inventory query completed in ${responseTime}ms! Found ${vehicles.length} vehicles.`);
+            console.log('✅ Inventory displayed in chat successfully');
+            
+            // Store performance metrics for comparison
+            setLastQueryTime(responseTime);
+            
+            // Show performance improvement message
+            if (lastQueryTime && responseTime < lastQueryTime) {
+              const improvement = Math.round(((lastQueryTime - responseTime) / lastQueryTime) * 100);
+              toast.success(`🚀 Performance improved by ${improvement}%!`);
+            }
+          } else {
+            console.log('❌ No vehicles found in fast inventory response');
+            toast.warning('No vehicles found in inventory');
+          }
+        } else {
+          console.log('❌ Fast inventory query failed:', fastInventoryResponse.status);
+          const errorText = await fastInventoryResponse.text();
+          console.log('❌ Error details:', errorText);
+          toast.error(`Fast inventory query failed: ${fastInventoryResponse.status}`);
+        }
+      } catch (error) {
+        console.log('❌ Fast inventory query error:', error);
+        toast.error('Fast inventory query error: ' + error);
+      }
+
+      console.log('\n✅ ULTRA-FAST inventory query completed!');
+      
+    } catch (error) {
+      console.error('❌ Inventory query failed:', error);
+      toast.error('Inventory query failed: ' + error);
+    } finally {
+      setIsInventoryQuerying(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <div className="max-w-4xl mx-auto">
-        <Card className="w-full h-[80vh] flex flex-col">
+        <Card className="w-full flex flex-col">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2">
               <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
@@ -865,9 +1169,56 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
                 >
                   Test Backend
                 </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={queryInventoryDatabase}
+                  className="h-6 px-2 text-xs bg-green-50 border-green-200 hover:bg-green-100"
+                  title="Query database for inventory details"
+                  disabled={isInventoryQuerying}
+                >
+                  {isInventoryQuerying ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Database className="h-3 w-3" />
+                  )}
+                  <span className="ml-1 text-xs">
+                    {isInventoryQuerying ? 'Querying...' : 'Query Inventory'}
+                  </span>
+                </Button>
+                {isInventoryQuerying && (
+                  <div className="text-xs text-green-600 animate-pulse">
+                    Fetching inventory data...
+                  </div>
+                )}
+                {lastQueryTime && (
+                  <div className="text-xs text-blue-600">
+                    Last query: {lastQueryTime}ms
+                  </div>
+                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={checkUserAuthStatus}
+                  className="h-6 px-2 text-xs bg-yellow-50 border-yellow-200 hover:bg-yellow-100"
+                  title="Check user authentication status"
+                >
+                  Check Auth
+                </Button>
                 <span className="text-xs text-gray-500">
                   {backendStatus}
                 </span>
+                <div className="flex items-center gap-2">
+                  {localStorage.getItem('auth_token') ? (
+                    <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                      🔐 Authenticated
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-xs bg-red-50 text-red-700 border-red-200">
+                      ⚠️ Not Authenticated
+                    </Badge>
+                  )}
+                </div>
               </div>
             </CardTitle>
           </CardHeader>

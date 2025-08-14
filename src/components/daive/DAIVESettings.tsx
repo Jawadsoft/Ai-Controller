@@ -117,6 +117,7 @@ interface CrewAISettings {
   performanceTracking: boolean;
   fallbackToTraditional: boolean;
   crewSelection: 'auto' | 'manual' | 'hybrid';
+  maxTokens: number; // Control response length
 }
 
 const DAIVESettings: React.FC = () => {
@@ -208,7 +209,8 @@ const DAIVESettings: React.FC = () => {
     agentMemory: true,
     performanceTracking: true,
     fallbackToTraditional: true,
-    crewSelection: 'auto'
+    crewSelection: 'auto',
+    maxTokens: 100 // Default maxTokens
   });
 
   const [showApiKeys, setShowApiKeys] = useState(false);
@@ -512,8 +514,9 @@ const DAIVESettings: React.FC = () => {
       }
       
       console.log('💾 Saving Crew AI settings for dealer:', dealerId);
+      console.log('💾 Crew AI settings data:', crewAISettings);
       
-      // Save Crew AI settings with dealer ID
+      // Save Crew AI settings - send data directly in request body, not nested
       const response = await fetch('http://localhost:3000/api/daive/crew-ai-settings', {
         method: 'POST',
         headers: {
@@ -522,7 +525,7 @@ const DAIVESettings: React.FC = () => {
         },
         body: JSON.stringify({
           dealerId,
-          settings: crewAISettings
+          ...crewAISettings // Spread the settings directly, not nested
         })
       });
       
@@ -532,6 +535,7 @@ const DAIVESettings: React.FC = () => {
         await fetchSettings();
       } else {
         const errorData = await response.json();
+        console.error('❌ Backend error response:', errorData);
         toast.error(`Failed to save Crew AI settings: ${errorData.error || 'Unknown error'}`);
       }
     } catch (error) {
@@ -1617,6 +1621,59 @@ Output format:
                         }
                       />
                     </div>
+
+                    {/* Max Tokens Setting */}
+                    <div className="space-y-2">
+                      <Label>Max Response Length (Tokens)</Label>
+                      <div className="flex items-center gap-4">
+                        <Input
+                          type="number"
+                          min="50"
+                          max="2000"
+                          step="50"
+                          value={crewAISettings.maxTokens}
+                          onChange={(e) => setCrewAISettings(prev => ({ 
+                            ...prev, 
+                            maxTokens: parseInt(e.target.value) || 100 
+                          }))}
+                          className="w-32"
+                          placeholder="100"
+                        />
+                        <div className="flex-1">
+                          <p className="text-sm text-gray-500">
+                            Control the maximum length of Crew AI responses. 
+                            Lower values (50-200) for concise responses, 
+                            higher values (500-1000) for detailed explanations.
+                          </p>
+                          <div className="flex gap-2 mt-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setCrewAISettings(prev => ({ ...prev, maxTokens: 100 }))}
+                            >
+                              Short (100)
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setCrewAISettings(prev => ({ ...prev, maxTokens: 300 }))}
+                            >
+                              Medium (300)
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setCrewAISettings(prev => ({ ...prev, maxTokens: 600 }))}
+                            >
+                              Long (600)
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Crew Selection Strategy */}
@@ -2123,6 +2180,7 @@ Output format:
                         className="w-full p-2 border rounded-md"
                       >
                         <option value="jessica">Jessica (Recommended)</option>
+                        <option value="liam">Liam (Multilingual)</option>
                         <option value="rachel">Rachel</option>
                         <option value="domi">Domi</option>
                         <option value="bella">Bella</option>
@@ -2134,7 +2192,7 @@ Output format:
                         <option value="sam">Sam</option>
                       </select>
                       <p className="text-sm text-gray-500">
-                        Select the ElevenLabs voice for TTS. Jessica is recommended for professional customer service.
+                        Select the ElevenLabs voice for TTS. Jessica is recommended for professional customer service. Liam supports multiple languages for international customers.
                       </p>
                     </div>
                   )}

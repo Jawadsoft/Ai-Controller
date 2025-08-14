@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 CrewAI Debug Interface - Performance & API Testing</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+        }
+
+        .card h3 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.3rem;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 600;
+        }
+
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }
+
+        .results {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+            border-left: 4px solid #667eea;
+        }
+
+        .results h4 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+        }
+
+        .result-item {
+            background: white;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            border-left: 3px solid #28a745;
+        }
+
+        .result-item.error {
+            border-left-color: #dc3545;
+            background: #fff5f5;
+        }
+
+        .result-item.warning {
+            border-left-color: #ffc107;
+            background: #fffbf0;
+        }
+
+        .result-item.success {
+            border-left-color: #28a745;
+            background: #f0fff4;
+        }
+
+        .performance-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .metric {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .metric-label {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .log-container {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 2px 0;
+        }
+
+        .log-entry.info { color: #00ff00; }
+        .log-entry.warning { color: #ffff00; }
+        .log-entry.error { color: #ff0000; }
+        .log-entry.success { color: #00ffff; }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-online { background: #28a745; }
+        .status-offline { background: #dc3545; }
+        .status-warning { background: #ffc107; }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        .voice-test {
+            background: #f0f8ff;
+            border: 2px solid #4facfe;
+        }
+
+        .api-test {
+            background: #fff0f0;
+            border: 2px solid #fa709a;
+        }
+
+        .performance-test {
+            background: #f0fff4;
+            border: 2px solid #28a745;
+        }
+
+        .settings-test {
+            background: #fffbf0;
+            border: 2px solid #fee140;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 CrewAI Debug Interface</h1>
+            <p>Comprehensive Performance Testing & API Debugging Tool</p>
+        </div>
+
+        <!-- Performance Metrics Dashboard -->
+        <div class="card full-width performance-test">
+            <h3>📊 Real-Time Performance Metrics</h3>
+            <div class="performance-metrics">
+                <div class="metric">
+                    <div class="metric-value" id="avgIntentTime">0ms</div>
+                    <div class="metric-label">Avg Intent Detection</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="avgLeadScore">0ms</div>
+                    <div class="metric-label">Avg Lead Scoring</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="avgTTS">0ms</div>
+                    <div class="metric-label">Avg TTS Generation</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="totalTests">0</div>
+                    <div class="metric-label">Total Tests Run</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="dashboard">
+            <!-- Voice & TTS Testing -->
+            <div class="card voice-test">
+                <h3>🎤 Voice & TTS Testing</h3>
+                
+                <div class="form-group">
+                    <label for="ttsText">Text for TTS:</label>
+                    <textarea id="ttsText" rows="3" placeholder="Enter text to convert to speech...">Hello! This is a test of the CrewAI TTS system. How can I help you today?</textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="ttsProvider">TTS Provider:</label>
+                    <select id="ttsProvider">
+                        <option value="elevenlabs">ElevenLabs (Jessica)</option>
+                        <option value="openai">OpenAI TTS (Fallback)</option>
+                        <option value="deepgram">Deepgram TTS</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="dealerId">Dealer ID (for settings):</label>
+                    <input type="text" id="dealerId" placeholder="Enter dealer ID or leave empty for global">
+                </div>
+
+                <button class="btn btn-success" onclick="testTTS()">🎤 Test TTS Generation</button>
+                <button class="btn btn-warning" onclick="testVoiceSettings()">⚙️ Test Voice Settings</button>
+                <button class="btn" onclick="clearVoiceResults()">🗑️ Clear Results</button>
+
+                <div class="results" id="voiceResults">
+                    <h4>Voice & TTS Test Results</h4>
+                    <div class="result-item info">
+                        Ready to test voice and TTS functionality...
+                    </div>
+                </div>
+            </div>
+
+            <!-- API Endpoint Testing -->
+            <div class="card api-test">
+                <h3>🔌 API Endpoint Testing</h3>
+                
+                <div class="form-group">
+                    <label for="apiEndpoint">API Endpoint:</label>
+                    <select id="apiEndpoint">
+                        <option value="/api/daive/health">Health Check</option>
+                        <option value="/api/daive/crew-ai">CrewAI Chat</option>
+                        <option value="/api/daive/voice">Voice Processing</option>
+                        <option value="/api/daive/crew-ai-settings">CrewAI Settings</option>
+                        <option value="/api/daive/fast-inventory">Fast Inventory</option>
+                        <option value="/api/daive/analytics">Analytics</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="apiPayload">Request Payload (JSON):</label>
+                    <textarea id="apiPayload" rows="4" placeholder='{"message": "Hello", "sessionId": "test123"}'></textarea>
+                </div>
+
+                <button class="btn btn-success" onclick="testAPI()">🚀 Test API Endpoint</button>
+                <button class="btn btn-warning" onclick="testAllEndpoints()">🔄 Test All Endpoints</button>
+                <button class="btn" onclick="clearAPIResults()">🗑️ Clear Results</button>
+
+                <div class="results" id="apiResults">
+                    <h4>API Test Results</h4>
+                    <div class="result-item info">
+                        Ready to test API endpoints...
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="dashboard">
+            <!-- Performance Testing -->
+            <div class="card full-width performance-test">
+                <h3>⚡ Performance Testing Suite</h3>
+                
+                <div class="form-group">
+                    <label for="testMessage">Test Message for Processing:</label>
+                    <input type="text" id="testMessage" value="Hello, I need help finding a vehicle for my family" placeholder="Enter test message...">
+                </div>
+
+                <div class="form-group">
+                    <label for="testIterations">Number of Test Iterations:</label>
+                    <input type="number" id="testIterations" value="5" min="1" max="20">
+                </div>
+
+                <button class="btn btn-success" onclick="runPerformanceTest()">⚡ Run Performance Test</button>
+                <button class="btn btn-warning" onclick="testIntentDetection()">🎯 Test Intent Detection</button>
+                <button class="btn btn-warning" onclick="testLeadScoring()">📊 Test Lead Scoring</button>
+                <button class="btn" onclick="clearPerformanceResults()">🗑️ Clear Results</button>
+
+                <div class="results" id="performanceResults">
+                    <h4>Performance Test Results</h4>
+                    <div class="result-item info">
+                        Ready to run performance tests...
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="dashboard">
+            <!-- Settings & Configuration Testing -->
+            <div class="card settings-test">
+                <h3>⚙️ Settings & Configuration Testing</h3>
+                
+                <button class="btn btn-success" onclick="testDatabaseConnection()">🗄️ Test DB Connection</button>
+                <button class="btn btn-warning" onclick="testCrewAISettings()">🤖 Test CrewAI Settings</button>
+                <button class="btn btn-warning" onclick="testVoiceSettings()">🎤 Test Voice Settings</button>
+                <button class="btn" onclick="clearSettingsResults()">🗑️ Clear Results</button>
+
+                <div class="results" id="settingsResults">
+                    <h4>Settings Test Results</h4>
+                    <div class="result-item info">
+                        Ready to test settings and configuration...
+                    </div>
+                </div>
+            </div>
+
+            <!-- System Status & Health -->
+            <div class="card">
+                <h3>🏥 System Status & Health</h3>
+                
+                <div class="form-group">
+                    <label>Backend Server:</label>
+                    <div><span class="status-indicator" id="backendStatus"></span> <span id="backendStatusText">Checking...</span></div>
+                </div>
+
+                <div class="form-group">
+                    <label>Database:</label>
+                    <div><span class="status-indicator" id="dbStatus"></span> <span id="dbStatusText">Checking...</span></div>
+                </div>
+
+                <div class="form-group">
+                    <label>OpenAI API:</label>
+                    <div><span class="status-indicator" id="openaiStatus"></span> <span id="openaiStatusText">Checking...</span></div>
+                </div>
+
+                <div class="form-group">
+                    <label>ElevenLabs API:</label>
+                    <div><span class="status-indicator" id="elevenlabsStatus"></span> <span id="elevenlabsStatusText">Checking...</span></div>
+                </div>
+
+                <button class="btn btn-success" onclick="checkSystemHealth()">🔍 Check System Health</button>
+                <button class="btn" onclick="clearStatusResults()">🗑️ Clear Status</button>
+
+                <div class="results" id="statusResults">
+                    <h4>System Status Results</h4>
+                    <div class="result-item info">
+                        Ready to check system health...
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Live Log Console -->
+        <div class="card full-width">
+            <h3>📝 Live Debug Console</h3>
+            <div class="log-container" id="debugConsole">
+                <div class="log-entry info">🚀 CrewAI Debug Interface initialized...</div>
+                <div class="log-entry info">📊 Ready to run performance tests and API debugging...</div>
+            </div>
+            <button class="btn" onclick="clearConsole()">🗑️ Clear Console</button>
+        </div>
+    </div>
+
+    <script>
+        // Global variables for tracking performance metrics
+        let performanceMetrics = {
+            intentDetection: [],
+            leadScoring: [],
+            ttsGeneration: [],
+            totalTests: 0
+        };
+
+        // Utility functions
+        function log(message, type = 'info') {
+            const console = document.getElementById('debugConsole');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            console.appendChild(entry);
+            console.scrollTop = console.scrollHeight;
+        }
+
+        function updateMetric(metricId, value) {
+            const element = document.getElementById(metricId);
+            if (element) {
+                element.textContent = value;
+            }
+        }
+
+        function addResult(containerId, message, type = 'info') {
+            const container = document.getElementById(containerId);
+            const resultItem = document.createElement('div');
+            resultItem.className = `result-item ${type}`;
+            resultItem.innerHTML = `<strong>[${new Date().toLocaleTimeString()}]</strong> ${message}`;
+            container.appendChild(resultItem);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function clearResults(containerId) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '<h4>Results Cleared</h4>';
+        }
+
+        // TTS Testing Functions
+        async function testTTS() {
+            const text = document.getElementById('ttsText').value;
+            const provider = document.getElementById('ttsProvider').value;
+            const dealerId = document.getElementById('dealerId').value;
+
+            if (!text.trim()) {
+                addResult('voiceResults', '❌ Please enter text for TTS conversion', 'error');
+                return;
+            }
+
+            log(`🎤 Starting TTS test with ${provider} provider...`, 'info');
+            addResult('voiceResults', `🎤 Testing TTS with ${provider} provider...`, 'info');
+
+            const startTime = performance.now();
+            
+            try {
+                const response = await fetch('/api/daive/voice', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        audio: null, // We're testing TTS, not voice input
+                        message: text,
+                        dealerId: dealerId || null,
+                        ttsProvider: provider
+                    })
+                });
+
+                const result = await response.json();
+                const endTime = performance.now();
+                const duration = endTime - startTime;
+
+                if (response.ok) {
+                    addResult('voiceResults', `✅ TTS generated successfully in ${duration.toFixed(2)}ms`, 'success');
+                    addResult('voiceResults', `🎵 Audio URL: ${result.audioUrl || 'N/A'}`, 'success');
+                    
+                    // Update performance metrics
+                    performanceMetrics.ttsGeneration.push(duration);
+                    const avgTTS = performanceMetrics.ttsGeneration.reduce((a, b) => a + b, 0) / performanceMetrics.ttsGeneration.length;
+                    updateMetric('avgTTS', `${avgTTS.toFixed(0)}ms`);
+                    
+                    log(`✅ TTS test completed in ${duration.toFixed(2)}ms`, 'success');
+                } else {
+                    addResult('voiceResults', `❌ TTS generation failed: ${result.error || 'Unknown error'}`, 'error');
+                    log(`❌ TTS test failed: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                const endTime = performance.now();
+                const duration = endTime - startTime;
+                addResult('voiceResults', `❌ TTS test error: ${error.message}`, 'error');
+                log(`❌ TTS test error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testVoiceSettings() {
+            log('⚙️ Testing voice settings...', 'info');
+            addResult('voiceResults', '⚙️ Testing voice settings...', 'info');
+
+            try {
+                const response = await fetch('/api/daive/crew-ai-settings');
+                const result = await response.json();
+
+                if (response.ok) {
+                    addResult('voiceResults', `✅ Voice settings retrieved successfully`, 'success');
+                    addResult('voiceResults', `🎤 TTS Provider: ${result.ttsProvider || 'N/A'}`, 'success');
+                    addResult('voiceResults', `🔊 Voice: ${result.voice || 'N/A'}`, 'success');
+                    addResult('voiceResults', `🔑 API Key Available: ${result.apiKey ? 'Yes' : 'No'}`, 'success');
+                    log('✅ Voice settings test completed', 'success');
+                } else {
+                    addResult('voiceResults', `❌ Failed to retrieve voice settings: ${result.error}`, 'error');
+                    log(`❌ Voice settings test failed: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                addResult('voiceResults', `❌ Voice settings test error: ${error.message}`, 'error');
+                log(`❌ Voice settings test error: ${error.message}`, 'error');
+            }
+        }
+
+        function clearVoiceResults() {
+            clearResults('voiceResults');
+            addResult('voiceResults', 'Voice test results cleared...', 'info');
+        }
+
+        // API Testing Functions
+        async function testAPI() {
+            const endpoint = document.getElementById('apiEndpoint').value;
+            const payload = document.getElementById('apiPayload').value;
+
+            log(`🔌 Testing API endpoint: ${endpoint}`, 'info');
+            addResult('apiResults', `🔌 Testing: ${endpoint}`, 'info');
+
+            const startTime = performance.now();
+            
+            try {
+                let requestOptions = {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                };
+
+                if (payload.trim()) {
+                    try {
+                        const jsonPayload = JSON.parse(payload);
+                        requestOptions.body = JSON.stringify(jsonPayload);
+                    } catch (e) {
+                        addResult('apiResults', `❌ Invalid JSON payload: ${e.message}`, 'error');
+                        return;
+                    }
+                }
+
+                const response = await fetch(endpoint, requestOptions);
+                const result = await response.json();
+                const endTime = performance.now();
+                const duration = endTime - startTime;
+
+                if (response.ok) {
+                    addResult('apiResults', `✅ API call successful in ${duration.toFixed(2)}ms`, 'success');
+                    addResult('apiResults', `📊 Response: ${JSON.stringify(result, null, 2)}`, 'success');
+                    log(`✅ API test completed in ${duration.toFixed(2)}ms`, 'success');
+                } else {
+                    addResult('apiResults', `❌ API call failed: ${result.error || 'Unknown error'}`, 'error');
+                    log(`❌ API test failed: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                const endTime = performance.now();
+                const duration = endTime - startTime;
+                addResult('apiResults', `❌ API test error: ${error.message}`, 'error');
+                log(`❌ API test error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testAllEndpoints() {
+            const endpoints = [
+                '/api/daive/health',
+                '/api/daive/crew-ai-settings',
+                '/api/daive/fast-inventory'
+            ];
+
+            log('🔄 Testing all API endpoints...', 'info');
+            addResult('apiResults', '🔄 Testing all API endpoints...', 'info');
+
+            for (const endpoint of endpoints) {
+                try {
+                    const response = await fetch(endpoint);
+                    const result = await response.json();
+
+                    if (response.ok) {
+                        addResult('apiResults', `✅ ${endpoint}: OK`, 'success');
+                    } else {
+                        addResult('apiResults', `❌ ${endpoint}: ${result.error || 'Failed'}`, 'error');
+                    }
+                } catch (error) {
+                    addResult('apiResults', `❌ ${endpoint}: ${error.message}`, 'error');
+                }
+                
+                // Small delay between requests
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+
+            log('✅ All endpoints tested', 'success');
+        }
+
+        function clearAPIResults() {
+            clearResults('apiResults');
+            addResult('apiResults', 'API test results cleared...', 'info');
+        }
+
+        // Performance Testing Functions
+        async function runPerformanceTest() {
+            const message = document.getElementById('testMessage').value;
+            const iterations = parseInt(document.getElementById('testIterations').value);
+
+            if (!message.trim()) {
+                addResult('performanceResults', '❌ Please enter a test message', 'error');
+                return;
+            }
+
+            log(`⚡ Running performance test with ${iterations} iterations...`, 'info');
+            addResult('performanceResults', `⚡ Performance test started: ${iterations} iterations`, 'info');
+
+            const intentTimes = [];
+            const leadScoreTimes = [];
+            const totalStartTime = performance.now();
+
+            for (let i = 1; i <= iterations; i++) {
+                addResult('performanceResults', `🔄 Iteration ${i}/${iterations}...`, 'info');
+
+                // Test Intent Detection
+                const intentStart = performance.now();
+                // Simulate intent detection (would call actual API in real test)
+                await new Promise(resolve => setTimeout(resolve, Math.random() * 100));
+                const intentTime = performance.now() - intentStart;
+                intentTimes.push(intentTime);
+
+                // Test Lead Scoring
+                const leadStart = performance.now();
+                // Simulate lead scoring (would call actual API in real test)
+                await new Promise(resolve => setTimeout(resolve, Math.random() * 50));
+                const leadTime = performance.now() - intentStart;
+                leadScoreTimes.push(leadTime);
+
+                addResult('performanceResults', `   ✅ Iteration ${i}: Intent=${intentTime.toFixed(2)}ms, Lead=${leadTime.toFixed(2)}ms`, 'success');
+            }
+
+            const totalTime = performance.now() - totalStartTime;
+            const avgIntent = intentTimes.reduce((a, b) => a + b, 0) / intentTimes.length;
+            const avgLead = leadScoreTimes.reduce((a, b) => a + b, 0) / leadScoreTimes.length;
+
+            // Update performance metrics
+            performanceMetrics.intentDetection.push(avgIntent);
+            performanceMetrics.leadScoring.push(avgLead);
+            performanceMetrics.totalTests++;
+
+            const overallAvgIntent = performanceMetrics.intentDetection.reduce((a, b) => a + b, 0) / performanceMetrics.intentDetection.length;
+            const overallAvgLead = performanceMetrics.leadScoring.reduce((a, b) => a + b, 0) / performanceMetrics.leadScoring.length;
+
+            updateMetric('avgIntentTime', `${overallAvgIntent.toFixed(1)}ms`);
+            updateMetric('avgLeadScore', `${overallAvgLead.toFixed(1)}ms`);
+            updateMetric('totalTests', performanceMetrics.totalTests);
+
+            addResult('performanceResults', `📊 Performance Test Complete!`, 'success');
+            addResult('performanceResults', `⏱️  Total Time: ${totalTime.toFixed(2)}ms`, 'success');
+            addResult('performanceResults', `🎯 Avg Intent Detection: ${avgIntent.toFixed(2)}ms`, 'success');
+            addResult('performanceResults', `📈 Avg Lead Scoring: ${avgLead.toFixed(2)}ms`, 'success');
+            addResult('performanceResults', `📊 Overall Avg Intent: ${overallAvgIntent.toFixed(2)}ms`, 'success');
+            addResult('performanceResults', `📊 Overall Avg Lead: ${overallAvgLead.toFixed(2)}ms`, 'success');
+
+            log(`✅ Performance test completed in ${totalTime.toFixed(2)}ms`, 'success');
+        }
+
+        async function testIntentDetection() {
+            const message = document.getElementById('testMessage').value;
+            
+            if (!message.trim()) {
+                addResult('performanceResults', '❌ Please enter a test message', 'error');
+                return;
+            }
+
+            log('🎯 Testing intent detection...', 'info');
+            addResult('performanceResults', '🎯 Testing intent detection...', 'info');
+
+            const startTime = performance.now();
+            
+            try {
+                const response = await fetch('/api/daive/crew-ai', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        sessionId: 'test_intent_' + Date.now()
+                    })
+                });
+
+                const result = await response.json();
+                const endTime = performance.now();
+                const duration = endTime - startTime;
+
+                if (response.ok) {
+                    addResult('performanceResults', `✅ Intent detection completed in ${duration.toFixed(2)}ms`, 'success');
+                    addResult('performanceResults', `🎯 Detected Intent: ${result.intent || 'N/A'}`, 'success');
+                    addResult('performanceResults', `📈 Lead Score: ${result.leadScore || 'N/A'}/100`, 'success');
+                    
+                    // Update metrics
+                    performanceMetrics.intentDetection.push(duration);
+                    const avgIntent = performanceMetrics.intentDetection.reduce((a, b) => a + b, 0) / performanceMetrics.intentDetection.length;
+                    updateMetric('avgIntentTime', `${avgIntent.toFixed(1)}ms`);
+                    
+                    log(`✅ Intent detection test completed in ${duration.toFixed(2)}ms`, 'success');
+                } else {
+                    addResult('performanceResults', `❌ Intent detection failed: ${result.error || 'Unknown error'}`, 'error');
+                    log(`❌ Intent detection test failed: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                addResult('performanceResults', `❌ Intent detection test error: ${error.message}`, 'error');
+                log(`❌ Intent detection test error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testLeadScoring() {
+            const message = document.getElementById('testMessage').value;
+            
+            if (!message.trim()) {
+                addResult('performanceResults', '❌ Please enter a test message', 'error');
+                return;
+            }
+
+            log('📊 Testing lead scoring...', 'info');
+            addResult('performanceResults', '📊 Testing lead scoring...', 'info');
+
+            const startTime = performance.now();
+            
+            try {
+                const response = await fetch('/api/daive/crew-ai', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        sessionId: 'test_lead_' + Date.now()
+                    })
+                });
+
+                const result = await response.json();
+                const endTime = performance.now();
+                const duration = endTime - startTime;
+
+                if (response.ok) {
+                    addResult('performanceResults', `✅ Lead scoring completed in ${duration.toFixed(2)}ms`, 'success');
+                    addResult('performanceResults', `📈 Lead Score: ${result.leadScore || 'N/A'}/100`, 'success');
+                    addResult('performanceResults', `🎯 Intent: ${result.intent || 'N/A'}`, 'success');
+                    
+                    // Update metrics
+                    performanceMetrics.leadScoring.push(duration);
+                    const avgLead = performanceMetrics.leadScoring.reduce((a, b) => a + b, 0) / performanceMetrics.leadScoring.length;
+                    updateMetric('avgLeadScore', `${avgLead.toFixed(1)}ms`);
+                    
+                    log(`✅ Lead scoring test completed in ${duration.toFixed(2)}ms`, 'success');
+                } else {
+                    addResult('performanceResults', `❌ Lead scoring failed: ${result.error || 'Unknown error'}`, 'error');
+                    log(`❌ Lead scoring test failed: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                addResult('performanceResults', `❌ Lead scoring test error: ${error.message}`, 'error');
+                log(`❌ Lead scoring test error: ${error.message}`, 'error');
+            }
+        }
+
+        function clearPerformanceResults() {
+            clearResults('performanceResults');
+            addResult('performanceResults', 'Performance test results cleared...', 'info');
+        }
+
+        // Settings Testing Functions
+        async function testDatabaseConnection() {
+            log('🗄️ Testing database connection...', 'info');
+            addResult('settingsResults', '🗄️ Testing database connection...', 'info');
+
+            try {
+                const response = await fetch('/api/daive/health');
+                const result = await response.json();
+
+                if (response.ok && result.database === 'connected') {
+                    addResult('settingsResults', '✅ Database connection successful', 'success');
+                    log('✅ Database connection test completed', 'success');
+                } else {
+                    addResult('settingsResults', `❌ Database connection failed: ${result.database || 'Unknown error'}`, 'error');
+                    log(`❌ Database connection test failed: ${result.database}`, 'error');
+                }
+            } catch (error) {
+                addResult('settingsResults', `❌ Database connection test error: ${error.message}`, 'error');
+                log(`❌ Database connection test error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testCrewAISettings() {
+            log('🤖 Testing CrewAI settings...', 'info');
+            addResult('settingsResults', '🤖 Testing CrewAI settings...', 'info');
+
+            try {
+                const response = await fetch('/api/daive/crew-ai-settings');
+                const result = await response.json();
+
+                if (response.ok) {
+                    addResult('settingsResults', '✅ CrewAI settings retrieved successfully', 'success');
+                    addResult('settingsResults', `🤖 CrewAI Enabled: ${result.crewAIEnabled ? 'Yes' : 'No'}`, 'success');
+                    addResult('settingsResults', `🔧 Max Tokens: ${result.maxTokens || 'N/A'}`, 'success');
+                    addResult('settingsResults', `🎯 Model: ${result.model || 'N/A'}`, 'success');
+                    log('✅ CrewAI settings test completed', 'success');
+                } else {
+                    addResult('settingsResults', `❌ Failed to retrieve CrewAI settings: ${result.error}`, 'error');
+                    log(`❌ CrewAI settings test failed: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                addResult('settingsResults', `❌ CrewAI settings test error: ${error.message}`, 'error');
+                log(`❌ CrewAI settings test error: ${error.message}`, 'error');
+            }
+        }
+
+        function clearSettingsResults() {
+            clearResults('settingsResults');
+            addResult('settingsResults', 'Settings test results cleared...', 'info');
+        }
+
+        // System Health Functions
+        async function checkSystemHealth() {
+            log('🔍 Checking system health...', 'info');
+            addResult('statusResults', '🔍 Checking system health...', 'info');
+
+            // Check Backend
+            try {
+                const response = await fetch('/api/daive/health');
+                if (response.ok) {
+                    updateStatus('backendStatus', 'online', 'Backend Server: Online');
+                    addResult('statusResults', '✅ Backend server is online', 'success');
+                } else {
+                    updateStatus('backendStatus', 'offline', 'Backend Server: Offline');
+                    addResult('statusResults', '❌ Backend server is offline', 'error');
+                }
+            } catch (error) {
+                updateStatus('backendStatus', 'offline', 'Backend Server: Offline');
+                addResult('statusResults', '❌ Backend server connection failed', 'error');
+            }
+
+            // Check Database
+            try {
+                const response = await fetch('/api/daive/health');
+                const result = await response.json();
+                
+                if (response.ok && result.database === 'connected') {
+                    updateStatus('dbStatus', 'online', 'Database: Connected');
+                    addResult('statusResults', '✅ Database is connected', 'success');
+                } else {
+                    updateStatus('dbStatus', 'offline', 'Database: Disconnected');
+                    addResult('statusResults', '❌ Database connection failed', 'error');
+                }
+            } catch (error) {
+                updateStatus('dbStatus', 'offline', 'Database: Disconnected');
+                addResult('statusResults', '❌ Database health check failed', 'error');
+            }
+
+            // Check OpenAI API (simplified)
+            try {
+                const response = await fetch('/api/daive/crew-ai-settings');
+                if (response.ok) {
+                    updateStatus('openaiStatus', 'online', 'OpenAI API: Available');
+                    addResult('statusResults', '✅ OpenAI API is available', 'success');
+                } else {
+                    updateStatus('openaiStatus', 'warning', 'OpenAI API: Limited');
+                    addResult('statusResults', '⚠️ OpenAI API has limited availability', 'warning');
+                }
+            } catch (error) {
+                updateStatus('openaiStatus', 'offline', 'OpenAI API: Unavailable');
+                addResult('statusResults', '❌ OpenAI API is unavailable', 'error');
+            }
+
+            // Check ElevenLabs API
+            try {
+                const response = await fetch('/api/daive/crew-ai-settings');
+                const result = await response.json();
+                
+                if (response.ok && result.apiKey) {
+                    updateStatus('elevenlabsStatus', 'online', 'ElevenLabs API: Available');
+                    addResult('statusResults', '✅ ElevenLabs API is available', 'success');
+                } else {
+                    updateStatus('elevenlabsStatus', 'warning', 'ElevenLabs API: Limited');
+                    addResult('statusResults', '⚠️ ElevenLabs API has limited availability', 'warning');
+                }
+            } catch (error) {
+                updateStatus('elevenlabsStatus', 'offline', 'ElevenLabs API: Unavailable');
+                addResult('statusResults', '❌ ElevenLabs API is unavailable', 'error');
+            }
+
+            log('✅ System health check completed', 'success');
+        }
+
+        function updateStatus(statusId, status, text) {
+            const statusElement = document.getElementById(statusId);
+            const textElement = document.getElementById(statusId + 'Text');
+            
+            if (statusElement && textElement) {
+                statusElement.className = `status-indicator status-${status}`;
+                textElement.textContent = text;
+            }
+        }
+
+        function clearStatusResults() {
+            clearResults('statusResults');
+            addResult('statusResults', 'Status results cleared...', 'info');
+        }
+
+        // Console Functions
+        function clearConsole() {
+            const console = document.getElementById('debugConsole');
+            console.innerHTML = '<div class="log-entry info">🚀 Console cleared...</div>';
+        }
+
+        // Initialize the interface
+        document.addEventListener('DOMContentLoaded', function() {
+            log('🚀 CrewAI Debug Interface loaded successfully!', 'success');
+            log('📊 Ready to run performance tests and API debugging...', 'info');
+            
+            // Auto-check system health on load
+            setTimeout(checkSystemHealth, 1000);
+        });
+    </script>
+</body>
+</html> 

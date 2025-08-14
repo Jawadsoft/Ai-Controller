@@ -94,7 +94,7 @@ class GPT4oVoiceService {
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userMessage }
         ],
-        max_tokens: 500,
+        max_tokens: 200,
         temperature: 0.7,
         stream: false
       });

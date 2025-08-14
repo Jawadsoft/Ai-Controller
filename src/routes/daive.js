@@ -4,24 +4,60 @@ import path from 'path';
 import fs from 'fs';
 import jwt from 'jsonwebtoken';
 import { fileURLToPath } from 'url';
-import UnifiedAIService from '../lib/unifiedAI.js';
-import DAIVEService from '../lib/daive.js';
-const unifiedAIService = new UnifiedAIService();
-const daiveService = DAIVEService;
-
-// Debug: Check what we imported
-console.log('🔍 Imported unifiedAIService:', typeof unifiedAIService);
-console.log('🔍 Imported daiveService:', typeof daiveService);
-console.log('🔍 unifiedAIService methods:', Object.getOwnPropertyNames(unifiedAIService));
-if (unifiedAIService && typeof unifiedAIService === 'object') {
-  console.log('🔍 unifiedAIService.processConversation:', typeof unifiedAIService.processConversation);
-}
+import DAIVEService from '../lib/daivecrewai.js';
 import WhisperService from '../lib/whisper.js';
 import DeepgramService from '../lib/deepgram-v3.js';
 import DeepgramTTSService from '../lib/deepgram-tts.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { pool } from '../database/connection.js';
 import { getElevenLabsVoiceId } from '../../elevenlabs-voices.js';
+
+
+
+// Function to initialize DAIVE service with max tokens from database
+let daiveService = null;
+
+async function initializeDAIVEService(dealerId = null) {
+  try {
+    if (daiveService) {
+      return daiveService;
+    }
+    
+    let maxTokens = 100; // Default to 100 tokens
+    
+    // Try to load max tokens from database if dealer ID is provided
+    if (dealerId) {
+      try {
+        const query = `
+          SELECT max_tokens 
+          FROM crew_ai_settings 
+          WHERE dealer_id = $1
+        `;
+        const result = await pool.query(query, [dealerId]);
+        
+        if (result.rows.length > 0 && result.rows[0].max_tokens) {
+          maxTokens = result.rows[0].max_tokens;
+          console.log(`📋 Loaded max tokens from database: ${maxTokens} for dealer: ${dealerId}`);
+        } else {
+          console.log(`📋 No max tokens found in database for dealer: ${dealerId}, using default: ${maxTokens}`);
+        }
+      } catch (dbError) {
+        console.log(`⚠️ Could not load max tokens from database for dealer: ${dealerId}, using default: ${maxTokens}`, dbError.message);
+      }
+    }
+    
+    // Create DAIVE service instance with loaded max tokens
+    daiveService = new DAIVEService(maxTokens);
+    console.log(`✅ DAIVE service initialized with max tokens: ${maxTokens}`);
+    
+    return daiveService;
+  } catch (error) {
+    console.error('❌ Error initializing DAIVE service:', error);
+    // Fallback to default
+    daiveService = new DAIVEService(100);
+    return daiveService;
+  }
+}
 
 const router = express.Router();
 const __filename = fileURLToPath(import.meta.url);
@@ -53,6 +89,37 @@ const upload = multer({
   }
 });
 
+// Function to get or initialize DAIVE service for a specific dealer
+async function getDAIVEServiceForDealer(dealerId) {
+  try {
+    // If we already have a service instance and it's for the same dealer, return it
+    if (daiveService && daiveService.currentDealerId === dealerId) {
+      return daiveService;
+    }
+    
+    // Initialize new service for this dealer
+    const service = await initializeDAIVEService(dealerId);
+    service.currentDealerId = dealerId; // Track which dealer this service is for
+    return service;
+  } catch (error) {
+    console.error('❌ Error getting DAIVE service for dealer:', error);
+    // Fallback to default service
+    return daiveService || new DAIVEService(100);
+  }
+}
+
+// Initialize DAIVE service after all imports are loaded
+setTimeout(() => {
+  initializeDAIVEService('0aa94346-ed1d-420e-8823-bcd97bf6456f');
+}, 100);
+
+// Debug: Check what we imported
+console.log('🔍 Imported DAIVEService:', typeof DAIVEService);
+console.log('🔍 DAIVEService methods:', Object.getOwnPropertyNames(DAIVEService));
+if (DAIVEService && typeof DAIVEService === 'function') {
+  console.log('🔍 DAIVEService constructor available');
+}
+
 // Public routes (no authentication required for customer interactions)
 
 // GET /api/daive/health - Health check
@@ -64,8 +131,143 @@ router.get('/health', (req, res) => {
   });
 });
 
+// GET /api/daive/fast-inventory - Fast inventory endpoint (no AI processing)
+router.get('/fast-inventory', async (req, res) => {
+  try {
+    const { dealerId, limit = 10, useCache = 'true' } = req.query;
+    
+    if (!dealerId) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Dealer ID is required' 
+      });
+    }
+
+    console.log('🚀 Fast inventory query for dealer:', dealerId);
+    const startTime = Date.now();
+
+    // Simple in-memory cache for inventory data
+    const cacheKey = `inventory_${dealerId}_${limit}`;
+    const cacheExpiry = 5 * 60 * 1000; // 5 minutes
+    
+    // Check cache first if enabled
+    if (useCache === 'true' && global.inventoryCache && global.inventoryCache[cacheKey]) {
+      const cached = global.inventoryCache[cacheKey];
+      if (Date.now() - cached.timestamp < cacheExpiry) {
+        console.log(`✅ Serving inventory from cache (${Date.now() - cached.timestamp}ms old)`);
+        return res.json({
+          success: true,
+          data: {
+            ...cached.data,
+            responseTime: '0ms (cached)',
+            cached: true,
+            timestamp: new Date().toISOString()
+          }
+        });
+      }
+    }
+
+    // Direct database query - no AI processing
+    const query = `
+      SELECT 
+        id, year, make, model, price, mileage, status, 
+        features, dealer_id
+      FROM vehicles 
+      WHERE dealer_id = $1 
+        AND status = 'available'
+      ORDER BY year DESC, price DESC
+      LIMIT $2
+    `;
+
+    // Use a dedicated connection for faster query execution
+    const result = await pool.query(query, [dealerId, limit]);
+    const vehicles = result.rows;
+    
+    const endTime = Date.now();
+    const responseTime = endTime - startTime;
+
+    console.log(`✅ Fast inventory query completed in ${responseTime}ms - Found ${vehicles.length} vehicles`);
+
+    // Format response for frontend
+    const formattedVehicles = vehicles.map(vehicle => ({
+      id: vehicle.id,
+      year: vehicle.year,
+      make: vehicle.make,
+      model: vehicle.model,
+      price: vehicle.price,
+      mileage: vehicle.mileage,
+      status: vehicle.status,
+      imageUrl: 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=300&h=200&fit=crop&crop=center', // Default image
+      features: vehicle.features
+    }));
+
+    const responseData = {
+      vehicles: formattedVehicles,
+      total: vehicles.length,
+      responseTime: `${responseTime}ms`,
+      timestamp: new Date().toISOString()
+    };
+
+    // Cache the result
+    if (useCache === 'true') {
+      if (!global.inventoryCache) global.inventoryCache = {};
+      global.inventoryCache[cacheKey] = {
+        data: responseData,
+        timestamp: Date.now()
+      };
+      console.log('💾 Inventory data cached for future requests');
+    }
+
+    res.json({
+      success: true,
+      data: responseData
+    });
+
+  } catch (error) {
+    console.error('❌ Fast inventory query error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch inventory',
+      details: error.message
+    });
+  }
+});
+
+// POST /api/daive/clear-inventory-cache - Clear inventory cache
+router.post('/clear-inventory-cache', async (req, res) => {
+  try {
+    const { dealerId } = req.body;
+    
+    if (dealerId && global.inventoryCache) {
+      // Clear specific dealer cache
+      Object.keys(global.inventoryCache).forEach(key => {
+        if (key.includes(`inventory_${dealerId}`)) {
+          delete global.inventoryCache[key];
+          console.log(`🗑️ Cleared cache for dealer: ${dealerId}`);
+        }
+      });
+    } else if (global.inventoryCache) {
+      // Clear all cache
+      global.inventoryCache = {};
+      console.log('🗑️ Cleared all inventory cache');
+    }
+
+    res.json({
+      success: true,
+      message: 'Inventory cache cleared successfully'
+    });
+
+  } catch (error) {
+    console.error('❌ Error clearing inventory cache:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to clear inventory cache'
+    });
+  }
+});
+
 // POST /api/daive/crew-ai - Process conversation with Crew AI
-router.post('/crew-ai', async (req, res) => {
+router.post('/crew-ai', authenticateToken, async (req, res) => {
   try {
     const { vehicleId, sessionId, message, customerInfo } = req.body;
 
@@ -85,75 +287,62 @@ router.post('/crew-ai', async (req, res) => {
     }
 
     console.log('🚀 Processing conversation with Crew AI...');
-    const result = await daiveService.processConversationWithCrew(
-      sessionId || daiveService.generateSessionId(),
+    console.log('🔐 Authenticated user:', req.user.id, 'Role:', req.user.role);
+    
+    // Enhance customerInfo with authenticated user context
+    const enhancedCustomerInfo = {
+      ...customerInfo,
+      userId: req.user.id,
+      userRole: req.user.role,
+      dealerId: customerInfo.dealerId || req.user.dealer_id
+    };
+    
+    // Get dealer ID for this request
+    let dealerId = enhancedCustomerInfo.dealerId;
+    if (vehicleId && !dealerId) {
+      const vehicleQuery = 'SELECT dealer_id FROM vehicles WHERE id = $1';
+      const vehicleResult = await pool.query(vehicleQuery, [vehicleId]);
+      if (vehicleResult.rows.length > 0) {
+        dealerId = vehicleResult.rows[0].dealer_id;
+      }
+    }
+    
+    // Get DAIVE service with current dealer's max tokens
+    const currentDAIVEService = await getDAIVEServiceForDealer(dealerId);
+    
+    const result = await currentDAIVEService.processConversationWithCrew(
+      sessionId || currentDAIVEService.generateSessionId(),
       vehicleId,
       message,
-      customerInfo || {}
+      enhancedCustomerInfo
     );
 
     // Generate speech response if voice is enabled
     let audioResponseUrl = null;
     try {
-      let dealerId = null;
-      if (vehicleId) {
-        const vehicleQuery = 'SELECT dealer_id FROM vehicles WHERE id = $1';
-        const vehicleResult = await pool.query(vehicleQuery, [vehicleId]);
-        if (vehicleResult.rows.length > 0) {
-          dealerId = vehicleResult.rows[0].dealer_id;
-        }
-      }
-
-      if (dealerId) {
-        // Get dealer-specific voice settings
-        const voiceQuery = `
-          SELECT 
-            vs.enabled,
-            vs.tts_provider,
-            vs.openai_voice,
-            vs.elevenlabs_voice,
-            vs.voice_quality
-          FROM voice_settings vs
-          WHERE vs.dealer_id = $1
-        `;
-        const voiceResult = await pool.query(voiceQuery, [dealerId]);
+      // Get dealer-specific voice settings
+      const voiceQuery = `
+        SELECT 
+          vs.enabled,
+          vs.tts_provider,
+          vs.openai_voice,
+          vs.elevenlabs_voice,
+          vs.voice_quality
+        FROM voice_settings vs
+        WHERE vs.dealer_id = $1
+      `;
+      const voiceResult = await pool.query(voiceQuery, [dealerId]);
+      
+      if (voiceResult.rows.length > 0 && voiceResult.rows[0].enabled) {
+        const voiceSettings = voiceResult.rows[0];
+        console.log('🎵 Voice enabled for dealer, TTS handled by Crew AI service');
         
-        if (voiceResult.rows.length > 0 && voiceResult.rows[0].enabled) {
-          const voiceSettings = voiceResult.rows[0];
-          console.log('🎵 Generating TTS response with dealer settings:', voiceSettings);
-          
-          audioResponseUrl = await this.generateTTSResponse(
-            result.response || result.aiResponse,
-            voiceSettings,
-            dealerId
-          );
-        }
-      }
-
-      // Fallback to global voice settings if dealer-specific not available
-      if (!audioResponseUrl) {
-        const globalVoiceQuery = `
-          SELECT 
-            vs.enabled,
-            vs.tts_provider,
-            vs.openai_voice,
-            vs.elevenlabs_voice,
-            vs.voice_quality
-          FROM voice_settings vs
-          WHERE vs.dealer_id IS NULL
-          LIMIT 1
-        `;
-        const globalVoiceResult = await pool.query(globalVoiceQuery);
-        
-        if (globalVoiceResult.rows.length > 0 && globalVoiceResult.rows[0].enabled) {
-          const globalVoiceSettings = globalVoiceResult.rows[0];
-          console.log('🎵 TTS enabled but generation method not implemented yet');
-          // TODO: Implement TTS generation
-          // audioResponseUrl = await generateTTSResponse(result.response, globalVoiceSettings);
-        }
+        // TTS generation is already handled by the Crew AI service
+        // The audioResponseUrl will come from the Crew AI result
+        audioResponseUrl = result.audioResponseUrl || null;
       }
     } catch (ttsError) {
-      console.error('❌ TTS generation failed:', ttsError);
+      console.error('❌ Voice settings query failed:', ttsError);
       // Continue without TTS - not critical
     }
 
@@ -197,8 +386,8 @@ router.post('/crew-ai-settings', async (req, res) => {
         dealer_id, enabled, auto_routing, enable_sales_crew, 
         enable_customer_service_crew, enable_inventory_crew, 
         crew_collaboration, agent_memory, performance_tracking, 
-        fallback_to_traditional, crew_selection, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())
+        fallback_to_traditional, crew_selection, max_tokens, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW())
       ON CONFLICT (dealer_id) DO UPDATE SET
         enabled = EXCLUDED.enabled,
         auto_routing = EXCLUDED.auto_routing,
@@ -210,6 +399,7 @@ router.post('/crew-ai-settings', async (req, res) => {
         performance_tracking = EXCLUDED.performance_tracking,
         fallback_to_traditional = EXCLUDED.fallback_to_traditional,
         crew_selection = EXCLUDED.crew_selection,
+        max_tokens = EXCLUDED.max_tokens,
         updated_at = NOW()
     `;
 
@@ -224,8 +414,22 @@ router.post('/crew-ai-settings', async (req, res) => {
       settings.agentMemory || false,
       settings.performanceTracking || false,
       settings.fallbackToTraditional || true,
-      settings.crewSelection || 'auto'
+      settings.crewSelection || 'auto',
+      settings.maxTokens || 100
     ]);
+
+    // Reinitialize DAIVE service with new max tokens if they changed
+    if (settings.maxTokens && daiveService) {
+      try {
+        // Update the existing DAIVE service instance
+        daiveService.updateCrewAISettings({ maxTokens: settings.maxTokens });
+        console.log(`🔄 DAIVE service updated with new max tokens: ${settings.maxTokens}`);
+      } catch (updateError) {
+        console.log('⚠️ Could not update existing DAIVE service, will reinitialize on next request:', updateError.message);
+        // Reset the service instance so it gets reinitialized
+        daiveService = null;
+      }
+    }
 
     res.json({
       success: true,
@@ -272,7 +476,8 @@ router.get('/crew-ai-settings', async (req, res) => {
           agentMemory: settings.agent_memory,
           performanceTracking: settings.performance_tracking,
           fallbackToTraditional: settings.fallback_to_traditional,
-          crewSelection: settings.crew_selection
+          crewSelection: settings.crew_selection,
+          maxTokens: settings.max_tokens || 300
         }
       });
     } else {
@@ -289,7 +494,8 @@ router.get('/crew-ai-settings', async (req, res) => {
           agentMemory: true,
           performanceTracking: true,
           fallbackToTraditional: true,
-          crewSelection: 'auto'
+          crewSelection: 'auto',
+          maxTokens: 100
         }
       });
     }
@@ -334,12 +540,12 @@ router.post('/chat', async (req, res) => {
     
     // Always use Unified AI for consistent responses
     console.log('🚀 Using Unified AI for enhanced processing...');
-    const result = await unifiedAIService.processConversation(
-      sessionId || unifiedAIService.generateSessionId(),
-      vehicleId,
-      message,
-      customerInfo || {}
-    );
+            const result = await daiveService.processConversation(
+          sessionId || daiveService.generateSessionId(),
+          vehicleId,
+          message,
+          customerInfo || {}
+        );
 
     // Generate speech response if voice is enabled (dealer-specific with global fallback)
     let audioResponseUrl = null;
@@ -376,12 +582,21 @@ router.post('/chat', async (req, res) => {
       if (voiceEnabled) {
         console.log('🔊 Voice response enabled, generating speech...');
         
-        // Get TTS provider setting (global for all dealers)
+        // Get TTS provider setting (dealer-specific with global fallback)
         let ttsProvider = 'elevenlabs'; // Default to ElevenLabs
         const ttsProviderQuery = `
-          SELECT setting_value
-          FROM daive_api_settings
-          WHERE dealer_id IS NULL AND setting_type = 'voice_tts_provider'
+          WITH dealer_setting AS (
+            SELECT setting_value FROM daive_api_settings 
+            WHERE dealer_id = $1 AND setting_type = 'voice_tts_provider'
+          ),
+          global_setting AS (
+            SELECT setting_value FROM daive_api_settings 
+            WHERE dealer_id IS NULL AND setting_type = 'voice_tts_provider'
+          )
+          SELECT setting_value FROM dealer_setting
+          UNION ALL
+          SELECT setting_value FROM global_setting
+          WHERE NOT EXISTS (SELECT 1 FROM dealer_setting)
           LIMIT 1
         `;
         const ttsProviderResult = await pool.query(ttsProviderQuery, [dealerId]);
@@ -393,9 +608,18 @@ router.post('/chat', async (req, res) => {
         // Get voice provider setting (global for all dealers)
         let voiceProvider = 'elevenlabs'; // Default to ElevenLabs
         const voiceProviderQuery = `
-          SELECT setting_value
-          FROM daive_api_settings
-          WHERE dealer_id IS NULL AND setting_type = 'voice_provider'
+          WITH dealer_setting AS (
+            SELECT setting_value FROM daive_api_settings 
+            WHERE dealer_id = $1 AND setting_type = 'voice_provider'
+          ),
+          global_setting AS (
+            SELECT setting_value FROM daive_api_settings 
+            WHERE dealer_id IS NULL AND setting_type = 'voice_provider'
+          )
+          SELECT setting_value FROM dealer_setting
+          UNION ALL
+          SELECT setting_value FROM global_setting
+          WHERE NOT EXISTS (SELECT 1 FROM dealer_setting)
           LIMIT 1
         `;
         const voiceProviderResult = await pool.query(voiceProviderQuery, [dealerId]);
@@ -484,7 +708,7 @@ router.post('/chat', async (req, res) => {
             const openaiKey = openaiResult.rows[0].setting_value;
             
             // Get OpenAI voice setting
-            let openaiVoice = 'alloy'; // Default voice
+            let openaiVoice = 'liam'; // Default voice (changed from alloy to liam)
             const voiceQuery = `
               WITH dealer_setting AS (
                 SELECT setting_value FROM daive_api_settings 
@@ -579,7 +803,7 @@ router.post('/chat', async (req, res) => {
               LIMIT 1
             `;
             const voiceResult = await pool.query(voiceQuery, [dealerId]);
-            const selectedVoice = voiceResult.rows.length > 0 ? voiceResult.rows[0].setting_value : 'jessica';
+            const selectedVoice = voiceResult.rows.length > 0 ? voiceResult.rows[0].setting_value : 'Liam';
             
             // Generate speech using ElevenLabs with selected voice
             const voiceId = getElevenLabsVoiceId(selectedVoice);
@@ -890,14 +1114,34 @@ router.post('/voice', upload.single('audio'), async (req, res) => {
       transcription = "Sorry, I couldn't process your voice. Please try typing your question.";
     }
     
-    // Process with AI
-    console.log('🤖 Processing conversation with AI...');
-    const result = await unifiedAIService.processConversation(
-      sessionId || unifiedAIService.generateSessionId(),
-      vehicleId,
-      transcription,
-      customerInfo ? JSON.parse(customerInfo) : {}
-    );
+    // Process with AI - Use Crew AI for enhanced inventory access
+    console.log('🤖 Processing conversation with Crew AI for enhanced inventory access...');
+    
+    // Check if Crew AI is available and enabled
+    let result;
+    try {
+      // Try Crew AI first for enhanced inventory features
+      console.log('🚀 Using Crew AI for voice conversation with enhanced inventory access...');
+      result = await daiveService.processConversationWithCrew(
+        sessionId || daiveService.generateSessionId(),
+        vehicleId,
+        transcription,
+        customerInfo ? JSON.parse(customerInfo) : {}
+      );
+      console.log('✅ Crew AI processing successful');
+      console.log('🚀 Crew AI response includes enhanced inventory features');
+      
+      // Crew AI processing completed successfully
+    } catch (crewError) {
+      console.log('⚠️ Crew AI failed, falling back to unified AI:', crewError.message);
+      // Fallback to unified AI if Crew AI fails
+      result = await daiveService.processConversation(
+        sessionId || daiveService.generateSessionId(),
+        vehicleId,
+        transcription,
+        customerInfo ? JSON.parse(customerInfo) : {}
+      );
+    }
 
     // Generate speech response if voice is enabled (global for all dealers)
     let audioResponseUrl = null;
@@ -923,7 +1167,7 @@ router.post('/voice', upload.single('audio'), async (req, res) => {
       if (voiceEnabled) {
         console.log('🔊 Voice response enabled, generating speech...');
         
-        // Get TTS provider setting (global for all dealers)
+        // Get TTS provider setting (dealer-specific with global fallback)
         let ttsProvider = 'elevenlabs'; // Default to ElevenLabs
         const ttsProviderQuery = `
           WITH dealer_setting AS (
@@ -1061,7 +1305,7 @@ router.post('/voice', upload.single('audio'), async (req, res) => {
             const openaiKey = openaiResult.rows[0].setting_value;
             
             // Get OpenAI voice setting
-            let openaiVoice = 'alloy'; // Default voice
+            let openaiVoice = 'liam'; // Default voice (changed from alloy to liam)
             const voiceQuery = `
               WITH dealer_setting AS (
                 SELECT setting_value FROM daive_api_settings 
@@ -1182,7 +1426,7 @@ router.post('/voice', upload.single('audio'), async (req, res) => {
     // Save voice session
     if (result.conversationId) {
       console.log('💾 Saving voice session...');
-      await unifiedAIService.saveVoiceSession(
+      await daiveService.saveVoiceSession(
         result.conversationId,
         audioFileUrl,
         transcription,
@@ -1338,7 +1582,7 @@ router.post('/gpt4o-voice', upload.single('audio'), async (req, res) => {
 router.get('/conversation/:sessionId', async (req, res) => {
   try {
     const { sessionId } = req.params;
-    const conversation = await unifiedAIService.getConversationHistory(sessionId);
+    const conversation = await daiveService.getConversationHistory(sessionId);
 
     if (!conversation) {
       return res.status(404).json({ error: 'Conversation not found' });
@@ -1367,7 +1611,7 @@ router.get('/analytics', authenticateToken, async (req, res) => {
       return res.status(403).json({ error: 'Dealer access required' });
     }
 
-    const analytics = await unifiedAIService.getAnalytics(
+    const analytics = await daiveService.getAnalytics(
       dealerId,
       startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       endDate || new Date().toISOString().split('T')[0]
@@ -1580,7 +1824,7 @@ router.get('/prompts', authenticateToken, async (req, res) => {
       SELECT prompt_type, prompt_text, is_active
       FROM daive_prompts
       WHERE dealer_id = $1 OR dealer_id IS NULL
-      ORDER BY dealer_id DESC NULLS LAST
+      ORDER BY CASE WHEN dealer_id = $1 THEN 0 ELSE 1 END, dealer_id DESC
     `;
 
     const result = await pool.query(query, [dealerId]);
@@ -1792,7 +2036,7 @@ router.post('/test-api', authenticateToken, async (req, res) => {
             body: JSON.stringify({
               model: 'tts-1-hd',
               input: 'Hello, this is a test of OpenAI TTS.',
-              voice: 'alloy',
+              voice: 'liam', // Changed from alloy to liam
               response_format: 'mp3',
               speed: 1.0
             })
@@ -1917,8 +2161,8 @@ router.post('/voice-settings', authenticateToken, async (req, res) => {
       voiceProvider: voiceProvider || 'elevenlabs',
       speechProvider: speechProvider || 'whisper',
       ttsProvider: ttsProvider || 'elevenlabs',
-      openaiVoice: openaiVoice || 'alloy',
-      elevenLabsVoice: elevenLabsVoice || 'jessica'
+      openaiVoice: openaiVoice || 'liam', // Changed from alloy to liam
+      elevenLabsVoice: elevenLabsVoice || 'Liam'
     };
 
     // Store voice settings as dealer-specific in the api_settings table
@@ -1993,8 +2237,8 @@ router.get('/voice-settings', authenticateToken, async (req, res) => {
       voiceProvider: 'elevenlabs',
       speechProvider: 'whisper',
       ttsProvider: 'elevenlabs',
-      openaiVoice: 'alloy',
-      elevenLabsVoice: 'jessica'
+      openaiVoice: 'liam', // Changed from alloy to liam
+      elevenLabsVoice: 'Liam'
     };
 
     result.rows.forEach(row => {

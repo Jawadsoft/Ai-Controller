@@ -49,19 +49,24 @@ export const ELEVENLABS_VOICES = {
     id: 'yoZ06aMxZJJ28mfd3POQ',
     name: 'Sam',
     description: 'Male, friendly, conversational'
+  },
+  liam: {
+    id: 'wUwsnXivqGrDWuz1Fc89',
+    name: 'Liam',
+    description: 'Male, friendly, conversational'
   }
 };
 
 // Get voice ID by name
 export function getElevenLabsVoiceId(voiceName) {
   const voice = ELEVENLABS_VOICES[voiceName?.toLowerCase()];
-  return voice ? voice.id : ELEVENLABS_VOICES.jessica.id; // Default to Jessica
+  return voice ? voice.id : ELEVENLABS_VOICES.liam.id; // Default to Jessica
 }
 
 // Get voice info by name
 export function getElevenLabsVoiceInfo(voiceName) {
   const voice = ELEVENLABS_VOICES[voiceName?.toLowerCase()];
-  return voice || ELEVENLABS_VOICES.jessica; // Default to Jessica
+  return voice || ELEVENLABS_VOICES.liam; // Default to Jessica
 }
 
 console.log('📝 ElevenLabs voices mapping loaded');
