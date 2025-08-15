@@ -22,6 +22,7 @@ interface Vehicle {
   description?: string;
   features?: string[];
   photo_url_list?: string[]; // Now properly TEXT[] type in database
+  vehicle_type?: string; // Vehicle body type (SUV, Sedan, Truck, etc.)
   status: string;
   dealer_id?: string;
   dealer_name?: string;
@@ -939,6 +940,11 @@ const VehicleDetail = () => {
               </h1>
               <p className="text-sm text-muted-foreground">
                 VIN: {vehicle.vin}
+                {vehicle.vehicle_type && (
+                  <span className="ml-4 text-blue-600 font-medium">
+                    • {vehicle.vehicle_type}
+                  </span>
+                )}
               </p>
               
               {/* QR Code Info */}
@@ -987,6 +993,13 @@ const VehicleDetail = () => {
                     <span className="text-sm">{formatMileage(vehicle.mileage)}</span>
                   </div>
                 </div>
+                
+                {vehicle.vehicle_type && (
+                  <div className="flex items-center space-x-2">
+                    <Car className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm">{vehicle.vehicle_type}</span>
+                  </div>
+                )}
                 
                 {vehicle.color && (
                   <div className="flex items-center space-x-2">

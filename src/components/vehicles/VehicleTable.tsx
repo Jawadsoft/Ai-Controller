@@ -141,6 +141,7 @@ export const VehicleTable = ({ vehicles, selectedVehicles, onSelectionChange, on
               <SortButton field="mileage">Mileage</SortButton>
             </TableHead>
             <TableHead>Color</TableHead>
+            <TableHead>Type</TableHead>
             <TableHead>Features</TableHead>
             <TableHead>
               <SortButton field="created_at">Added</SortButton>
@@ -196,6 +197,7 @@ export const VehicleTable = ({ vehicles, selectedVehicles, onSelectionChange, on
               </TableCell>
               <TableCell>{formatMileage(vehicle.mileage)}</TableCell>
               <TableCell>{vehicle.color || "Not specified"}</TableCell>
+              <TableCell>{vehicle.vehicle_type || "Not specified"}</TableCell>
               <TableCell>
                 {vehicle.features && vehicle.features.length > 0 ? (
                   <div className="flex flex-wrap gap-1">

@@ -32,6 +32,7 @@ interface Filters {
   search: string;
   status: string;
   make: string;
+  vehicleType: string;
   yearFrom: string;
   yearTo: string;
   priceFrom: string;
@@ -53,6 +54,7 @@ export const VehicleFilters = ({ vehicles, onFiltersChange }: VehicleFiltersProp
     search: "",
     status: "all",
     make: "all",
+    vehicleType: "all",
     yearFrom: "",
     yearTo: "",
     priceFrom: "",
@@ -65,6 +67,7 @@ export const VehicleFilters = ({ vehicles, onFiltersChange }: VehicleFiltersProp
 
   // Extract unique values for filter options
   const uniqueMakes = [...new Set(vehicles.map(v => v.make))].sort();
+  const uniqueVehicleTypes = [...new Set(vehicles.map(v => v.vehicle_type).filter(Boolean))].sort();
   const uniqueColors = [...new Set(vehicles.map(v => v.color).filter(Boolean))].sort();
   const allFeatures = [...new Set(vehicles.flatMap(v => v.features || []))].sort();
   const currentYear = new Date().getFullYear();
@@ -80,7 +83,8 @@ export const VehicleFilters = ({ vehicles, onFiltersChange }: VehicleFiltersProp
           vehicle.make.toLowerCase().includes(searchLower) ||
           vehicle.model.toLowerCase().includes(searchLower) ||
           vehicle.vin.toLowerCase().includes(searchLower) ||
-          (vehicle.trim && vehicle.trim.toLowerCase().includes(searchLower))
+          (vehicle.trim && vehicle.trim.toLowerCase().includes(searchLower)) ||
+          (vehicle.vehicle_type && vehicle.vehicle_type.toLowerCase().includes(searchLower))
       );
     }
 
@@ -92,6 +96,11 @@ export const VehicleFilters = ({ vehicles, onFiltersChange }: VehicleFiltersProp
     // Make filter
     if (filters.make !== "all") {
       filtered = filtered.filter(vehicle => vehicle.make === filters.make);
+    }
+
+    // Vehicle type filter
+    if (filters.vehicleType !== "all") {
+      filtered = filtered.filter(vehicle => vehicle.vehicle_type === filters.vehicleType);
     }
 
     // Year range filter
@@ -212,7 +221,7 @@ export const VehicleFilters = ({ vehicles, onFiltersChange }: VehicleFiltersProp
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 id="search"
-                placeholder="Search by make, model, VIN, or trim..."
+                placeholder="Search by make, model, VIN, trim, or type..."
                 value={filters.search}
                 onChange={(e) => updateFilter('search', e.target.value)}
                 className="pl-10"
@@ -245,6 +254,21 @@ export const VehicleFilters = ({ vehicles, onFiltersChange }: VehicleFiltersProp
                 <SelectItem value="all">All Makes</SelectItem>
                 {uniqueMakes.map(make => (
                   <SelectItem key={make} value={make}>{make}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="vehicleType">Vehicle Type</Label>
+            <Select value={filters.vehicleType} onValueChange={(value) => updateFilter('vehicleType', value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="All Types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                {uniqueVehicleTypes.map(type => (
+                  <SelectItem key={type} value={type}>{type}</SelectItem>
                 ))}
               </SelectContent>
             </Select>

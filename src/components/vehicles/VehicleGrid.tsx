@@ -134,6 +134,10 @@ export const VehicleGrid = ({
                 <p className="font-mono text-xs">{vehicle.vin}</p>
               </div>
               <div>
+                <span className="text-muted-foreground">Type:</span>
+                <p>{vehicle.vehicle_type || "Not specified"}</p>
+              </div>
+              <div>
                 <span className="text-muted-foreground">Color:</span>
                 <p>{vehicle.color || "Not specified"}</p>
               </div>

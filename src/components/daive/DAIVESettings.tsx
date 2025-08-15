@@ -27,6 +27,7 @@ import {
   Brain
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { extractDealerIdFromToken } from '../../utils/authUtils';
 
 interface PromptSettings {
   greeting: string;
@@ -232,9 +233,13 @@ const DAIVESettings: React.FC = () => {
       });
 
       const promptsData = await promptsResponse.json();
+      console.log('🔍 Prompts Response:', promptsData);
+      
       if (promptsData.success) {
         const promptData = promptsData.data;
-        setPrompts({
+        console.log('🔍 Prompt Data from DB:', promptData);
+        
+        const updatedPrompts = {
           greeting: promptData.greeting?.text || '',
           vehicle_info: promptData.vehicle_info?.text || '',
           financing: promptData.financing?.text || '',
@@ -255,7 +260,12 @@ const DAIVESettings: React.FC = () => {
           sedan_selection_prompt: promptData.sedan_selection_prompt?.text || '',
           budget_inquiry_prompt: promptData.budget_inquiry_prompt?.text || '',
           financing_calculation_prompt: promptData.financing_calculation_prompt?.text || ''
-        });
+        };
+        
+        console.log('🔍 Setting prompts state:', updatedPrompts);
+        setPrompts(updatedPrompts);
+      } else {
+        console.log('❌ Failed to load prompts:', promptsData);
       }
 
       // Fetch API settings
@@ -322,7 +332,12 @@ const DAIVESettings: React.FC = () => {
       // Fetch Crew AI settings
       let dealerId = apiSettings.dealer_id;
       if (!dealerId) {
-        dealerId = '0aa94346-ed1d-420e-8823-bcd97bf6456f'; // Fallback dealer ID
+        dealerId = extractDealerIdFromToken();
+      }
+      
+      if (!dealerId) {
+        console.warn('⚠️ No dealer ID available for Crew AI settings');
+        return; // Skip Crew AI settings if no dealer ID
       }
       
       const crewAIResponse = await fetch(`http://localhost:3000/api/daive/crew-ai-settings?dealerId=${dealerId}`, {
@@ -349,6 +364,7 @@ const DAIVESettings: React.FC = () => {
   const savePrompts = async () => {
     setSaving(true);
     try {
+      console.log('💾 Starting to save prompts...');
       const promptTypes = [
         'greeting', 'vehicle_info', 'financing', 'test_drive', 'handoff', 
         'master_prompt', 'style_guidelines', 'sales_methodology', 'facts_integrity', 
@@ -359,26 +375,62 @@ const DAIVESettings: React.FC = () => {
         'budget_inquiry_prompt', 'financing_calculation_prompt'
       ];
       
+      let savedCount = 0;
+      console.log('🔍 Current prompts state:', prompts);
+      console.log('🔍 Prompt types to save:', promptTypes);
+      
       for (const promptType of promptTypes) {
-        if (prompts[promptType as keyof PromptSettings]) {
-          await fetch('http://localhost:3000/api/daive/prompts', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-            },
-            body: JSON.stringify({
-              promptType,
-              promptText: prompts[promptType as keyof PromptSettings]
-            })
-          });
+        // Save all prompts, even empty ones, to ensure they get updated
+        const promptText = prompts[promptType as keyof PromptSettings];
+        console.log(`💾 Processing ${promptType}:`, {
+          promptType,
+          promptText,
+          exists: promptText !== undefined,
+          type: typeof promptText
+        });
+        
+        // Ensure we have a valid promptType and promptText
+        if (!promptType) {
+          console.error(`❌ Invalid promptType: ${promptType}`);
+          continue;
+        }
+        
+        const response = await fetch('http://localhost:3000/api/daive/prompts', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+          },
+          body: JSON.stringify({
+            promptType,
+            promptText: promptText || ''
+          })
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error(`❌ Failed to save ${promptType}:`, errorData);
+          throw new Error(`Failed to save ${promptType}: ${errorData.error || response.statusText}`);
+        }
+        
+        const result = await response.json();
+        if (result.success) {
+          savedCount++;
+          console.log(`✅ Saved ${promptType} successfully`);
+        } else {
+          console.error(`❌ Failed to save ${promptType}:`, result);
         }
       }
       
-      toast.success('Prompts saved successfully');
+      console.log(`🎉 Successfully saved ${savedCount} prompts`);
+      toast.success(`Prompts saved successfully (${savedCount} updated)`);
+      
+      // Refresh the prompts to show the updated values
+      await fetchSettings();
+      
     } catch (error) {
       console.error('Error saving prompts:', error);
-      toast.error('Failed to save prompts');
+      toast.error(`Failed to save prompts: ${error.message}`);
     } finally {
       setSaving(false);
     }
@@ -496,21 +548,15 @@ const DAIVESettings: React.FC = () => {
       
       // If no dealer ID in API settings, try to get it from the current user's token
       if (!dealerId) {
-        try {
-          const token = localStorage.getItem('auth_token');
-          if (token) {
-            // Decode JWT token to get user info (this is a simple approach)
-            const payload = JSON.parse(atob(token.split('.')[1]));
-            dealerId = payload.dealer_id || payload.dealerId;
-          }
-        } catch (e) {
-          console.log('Could not extract dealer ID from token');
-        }
+        dealerId = extractDealerIdFromToken();
       }
       
-      // If still no dealer ID, use the one we know works
+      // If still no dealer ID, we can't proceed
       if (!dealerId) {
-        dealerId = '0aa94346-ed1d-420e-8823-bcd97bf6456f';
+        console.error('❌ No dealer ID available for saving Crew AI settings');
+        toast.error('Cannot save Crew AI settings: No dealer ID available');
+        toast.error('Please ensure you are logged in with a dealer account');
+        return;
       }
       
       console.log('💾 Saving Crew AI settings for dealer:', dealerId);

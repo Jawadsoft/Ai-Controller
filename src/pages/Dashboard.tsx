@@ -471,6 +471,11 @@ const Dashboard = () => {
                           </p>
                           <p className="text-xs text-gray-600">
                             {formatPrice(vehicle.price)}
+                            {vehicle.vehicle_type && (
+                              <span className="ml-2 text-blue-600">
+                                • {vehicle.vehicle_type}
+                              </span>
+                            )}
                           </p>
                           <div className="flex gap-1 mt-1">
                             <Badge variant="outline" className="text-xs">

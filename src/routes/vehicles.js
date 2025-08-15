@@ -108,7 +108,7 @@ router.post('/', [
     
     const {
       vin, make, model, year, status = 'available', new_used = 'used',
-      stock_number, series, trim, body_style, color, interior_color,
+      stock_number, series, trim, body_style, vehicle_type, color, interior_color,
       mileage, odometer, price, msrp, engine_type, displacement,
       transmission, certified = false, dealer_discount, consumer_rebate,
       dealer_accessories, total_customer_savings, total_dealer_rebate,
@@ -118,15 +118,15 @@ router.post('/', [
     const result = await query(
       `INSERT INTO vehicles 
        (dealer_id, vin, make, model, year, status, new_used, stock_number, series, trim, 
-        body_style, color, interior_color, mileage, odometer, price, msrp, 
+        body_style, vehicle_type, color, interior_color, mileage, odometer, price, msrp, 
         engine_type, displacement, transmission, certified, dealer_discount, 
         consumer_rebate, dealer_accessories, total_customer_savings, 
         total_dealer_rebate, other_price, description, features) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 
-               $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, 
+               $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30) 
        RETURNING *`,
       [dealerId, vin, make, model, year, status, new_used, stock_number, series, trim,
-       body_style, color, interior_color, mileage, odometer, price, msrp,
+       body_style, vehicle_type, color, interior_color, mileage, odometer, price, msrp,
        engine_type, displacement, transmission, certified, dealer_discount,
        consumer_rebate, dealer_accessories, total_customer_savings,
        total_dealer_rebate, other_price, description, features]
@@ -171,7 +171,7 @@ router.put('/:id', [
     }
     
     const {
-      vin, make, model, year, status, new_used, stock_number, series, trim, body_style,
+      vin, make, model, year, status, new_used, stock_number, series, trim, body_style, vehicle_type,
       color, interior_color, mileage, odometer, price, msrp, engine_type,
       displacement, transmission, certified, dealer_discount, consumer_rebate,
       dealer_accessories, total_customer_savings, total_dealer_rebate,
@@ -190,28 +190,29 @@ router.put('/:id', [
        series = COALESCE($8, series),
        trim = COALESCE($9, trim),
        body_style = COALESCE($10, body_style),
-       color = COALESCE($11, color),
-       interior_color = COALESCE($12, interior_color),
-       mileage = COALESCE($13, mileage),
-       odometer = COALESCE($14, odometer),
-       price = COALESCE($15, price),
-       msrp = COALESCE($16, msrp),
-       engine_type = COALESCE($17, engine_type),
-       displacement = COALESCE($18, displacement),
-       transmission = COALESCE($19, transmission),
-       certified = COALESCE($20, certified),
-       dealer_discount = COALESCE($21, dealer_discount),
-       consumer_rebate = COALESCE($22, consumer_rebate),
-       dealer_accessories = COALESCE($23, dealer_accessories),
-       total_customer_savings = COALESCE($24, total_customer_savings),
-       total_dealer_rebate = COALESCE($25, total_dealer_rebate),
-       other_price = COALESCE($26, other_price),
-       description = COALESCE($27, description),
-       features = COALESCE($28, features),
+       vehicle_type = COALESCE($11, vehicle_type),
+       color = COALESCE($12, color),
+       interior_color = COALESCE($13, interior_color),
+       mileage = COALESCE($14, mileage),
+       odometer = COALESCE($15, odometer),
+       price = COALESCE($16, price),
+       msrp = COALESCE($17, msrp),
+       engine_type = COALESCE($18, engine_type),
+       displacement = COALESCE($19, displacement),
+       transmission = COALESCE($20, transmission),
+       certified = COALESCE($21, certified),
+       dealer_discount = COALESCE($22, dealer_discount),
+       consumer_rebate = COALESCE($23, consumer_rebate),
+       dealer_accessories = COALESCE($24, dealer_accessories),
+       total_customer_savings = COALESCE($25, total_customer_savings),
+       total_dealer_rebate = COALESCE($26, total_dealer_rebate),
+       other_price = COALESCE($27, other_price),
+       description = COALESCE($28, description),
+       features = COALESCE($29, features),
        updated_at = NOW()
-       WHERE id = $29
+       WHERE id = $30
        RETURNING *`,
-      [vin, make, model, year, status, new_used, stock_number, series, trim, body_style,
+      [vin, make, model, year, status, new_used, stock_number, series, trim, body_style, vehicle_type,
        color, interior_color, mileage, odometer, price, msrp, engine_type,
        displacement, transmission, certified, dealer_discount, consumer_rebate,
        dealer_accessories, total_customer_savings, total_dealer_rebate,

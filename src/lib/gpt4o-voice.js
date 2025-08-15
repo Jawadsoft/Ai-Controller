@@ -86,7 +86,7 @@ class GPT4oVoiceService {
   // Process with GPT-4o
   async processWithGPT4o(userMessage, context = {}) {
     try {
-      const systemPrompt = this.buildSystemPrompt(context);
+      const systemPrompt = await this.buildSystemPrompt(context);
       
       const completion = await this.openai.chat.completions.create({
         model: 'gpt-4o',
@@ -125,13 +125,42 @@ class GPT4oVoiceService {
   }
 
   // Build system prompt for car dealership context
-  buildSystemPrompt(context = {}) {
+  async buildSystemPrompt(context = {}) {
     const { vehicleInfo, dealerInfo } = context;
     
-    let prompt = `You are D.A.I.V.E., an AI sales assistant for a car dealership. 
+    let prompt = '';
+    
+    // Try to get database prompts first
+    try {
+      if (dealerInfo && dealerInfo.id) {
+        const dealerPrompts = await this.getDealerPrompts(dealerInfo.id);
+        
+        if (dealerPrompts.master_prompt) {
+          // Use database master prompt
+          prompt = dealerPrompts.master_prompt;
+          console.log('✅ Using database master prompt for GPT-4o voice');
+        } else {
+          // Fallback to hardcoded prompt when no database prompt found
+          prompt = `You are D.A.I.V.E., an AI sales assistant for a car dealership. 
     You help customers with vehicle information, pricing, test drives, and sales inquiries.
     Be friendly, professional, and knowledgeable about cars.`;
+          console.log('⚠️ No database master prompt found, using fallback hardcoded prompt');
+        }
+      } else {
+        // No dealer info, use fallback
+        prompt = `You are D.A.I.V.E., an AI sales assistant for a car dealership. 
+    You help customers with vehicle information, pricing, test drives, and sales inquiries.
+    Be friendly, professional, and knowledgeable about cars.`;
+        console.log('⚠️ No dealer info available, using fallback hardcoded prompt');
+      }
+    } catch (error) {
+      console.log('⚠️ Error getting database prompts, using fallback hardcoded prompt:', error.message);
+      prompt = `You are D.A.I.V.E., an AI sales assistant for a car dealership. 
+    You help customers with vehicle information, pricing, test drives, and sales inquiries.
+    Be friendly, professional, and knowledgeable about cars.`;
+    }
 
+    // Add vehicle and dealer context regardless of prompt source
     if (vehicleInfo) {
       prompt += `\n\nCurrent vehicle: ${vehicleInfo.year} ${vehicleInfo.make} ${vehicleInfo.model}`;
       if (vehicleInfo.price) {
@@ -146,6 +175,7 @@ class GPT4oVoiceService {
       }
     }
 
+    // Add closing guidance
     prompt += `\n\nKeep responses conversational and helpful. If a customer seems interested, 
     offer to schedule a test drive or connect them with a sales representative.`;
 
@@ -162,6 +192,44 @@ class GPT4oVoiceService {
     } catch (error) {
       console.error('❌ Streaming error:', error);
       throw error;
+    }
+  }
+
+  // Get dealer prompts from database
+  async getDealerPrompts(dealerId) {
+    try {
+      let query, params;
+      
+      if (dealerId) {
+        // Query with specific dealer_id first, then fallback to global
+        query = `
+          SELECT prompt_type, prompt_text, dealer_id
+          FROM daive_prompts
+          WHERE (dealer_id = $1 OR dealer_id IS NULL) AND is_active = true
+          ORDER BY CASE WHEN dealer_id = $1 THEN 0 ELSE 1 END, dealer_id DESC
+        `;
+        params = [dealerId];
+      } else {
+        // Query for global prompts only
+        query = `
+          SELECT prompt_type, prompt_text, dealer_id
+          FROM daive_prompts
+          WHERE dealer_id IS NULL AND is_active = true
+        `;
+        params = [];
+      }
+      
+      const result = await pool.query(query, params);
+      
+      const prompts = {};
+      result.rows.forEach(row => {
+        prompts[row.prompt_type] = row.prompt_text;
+      });
+      
+      return prompts;
+    } catch (error) {
+      console.error('Error getting dealer prompts:', error);
+      return {};
     }
   }
 

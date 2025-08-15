@@ -33,7 +33,7 @@ interface AIBotPageProps {
 
 const AIBotPage: React.FC<AIBotPageProps> = ({ 
   vehicleId = '0fcaedd8-042e-4094-80ca-85cb71cd5584',
-  dealerId = '0aa94346-ed1d-420e-8823-bcd97bf6456f',
+  dealerId,
   vehicleInfo,
   onLeadGenerated
 }) => {

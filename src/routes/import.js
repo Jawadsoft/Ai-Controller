@@ -537,6 +537,8 @@ router.post('/preview-csv', authenticateToken, async (req, res) => {
                         'Series': 'series',
                         'Body Style': 'body_style',
                         'Body': 'body_style',
+                        'Vehicle Type': 'vehicle_type',
+                        'Type': 'vehicle_type',
                         'Color': 'color',
                         'Interior Color': 'interior_color',
                         'Mileage': 'mileage',

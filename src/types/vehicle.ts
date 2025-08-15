@@ -12,6 +12,7 @@ export interface Vehicle {
   description?: string;
   features?: string[];
   photo_url_list?: string[]; // Now properly TEXT[] type in database
+  vehicle_type?: string; // New field for vehicle body type (SUV, Sedan, Truck, etc.)
   status: string;
   qr_code_url?: string;
   dealer_name?: string;

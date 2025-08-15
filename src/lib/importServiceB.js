@@ -877,6 +877,7 @@ class ImportService {
       record.stock_number || null,                 // p_stock_number
       record.new_used || 'used',                   // p_new_used - MISSING PARAMETER ADDED
       record.body_style || null,                   // p_body_style
+      record.vehicle_type || null,                 // p_vehicle_type
       certified,                                   // p_certified (transformed boolean)
       record.color || null,                        // p_color
       record.interior_color || null,               // p_interior_color
@@ -902,7 +903,7 @@ class ImportService {
     console.log(queryParams);
     console.log('Insert query parameters with types:');
     const paramNames = [
-      'p_dealer_id', 'p_vin', 'p_make', 'p_model', 'p_series', 'p_stock_number', 'p_new_used', 'p_body_style', 'p_certified',
+      'p_dealer_id', 'p_vin', 'p_make', 'p_model', 'p_series', 'p_stock_number', 'p_new_used', 'p_body_style', 'p_vehicle_type', 'p_certified',
       'p_color', 'p_interior_color', 'p_engine_type', 'p_displacement', 'p_features', 'p_odometer', 'p_price',
       'p_other_price', 'p_transmission', 'p_msrp', 'p_dealer_discount', 'p_consumer_rebate', 'p_dealer_accessories',
       'p_total_customer_savings', 'p_total_dealer_rebate', 'p_photo_url_list', 'p_year', 'p_reference_dealer_id'
@@ -918,7 +919,7 @@ class ImportService {
     // Log the exact SQL query for debugging
     const sqlQuery = `
       SELECT import_vehicle_from_csv(
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28
       ) as vehicle_id
     `;
     console.log('SQL Query:jawad ', sqlQuery);
@@ -955,6 +956,7 @@ class ImportService {
       'series',
       'stock_number',
       'body_style',
+      'vehicle_type',
       'certified',
       'color',
       'interior_color',

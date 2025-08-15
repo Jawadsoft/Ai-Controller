@@ -89,7 +89,7 @@ async function loadApiKeysFromDatabase() {
     
     // Set default AI model settings
     process.env.OPENAI_MODEL = 'gpt-4o-mini';
-    process.env.OPENAI_MAX_TOKENS = '1000';
+    process.env.OPENAI_MAX_TOKENS = '300';
     
     return finalSettings;
     

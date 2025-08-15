@@ -31,6 +31,7 @@ const vehicleSchema = z.object({
   series: z.string().optional(),
   trim: z.string().optional(),
   body_style: z.string().optional(),
+  vehicle_type: z.string().optional(),
   color: z.string().optional(),
   interior_color: z.string().optional(),
   mileage: z.number().min(0, "Mileage must be positive").optional(),
@@ -86,6 +87,7 @@ export const VehicleForm = ({ vehicle, onSuccess, onCancel }: VehicleFormProps) 
       series: vehicle?.series || "",
       trim: vehicle?.trim || "",
       body_style: vehicle?.body_style || "",
+      vehicle_type: vehicle?.vehicle_type || "",
       color: vehicle?.color || "",
       interior_color: vehicle?.interior_color || "",
       mileage: vehicle?.mileage ? parseFloat(vehicle.mileage.toString()) : undefined,
@@ -160,6 +162,7 @@ export const VehicleForm = ({ vehicle, onSuccess, onCancel }: VehicleFormProps) 
         series: data.series || null,
         trim: data.trim || null,
         body_style: data.body_style || null,
+        vehicle_type: data.vehicle_type || null,
         color: data.color || null,
         interior_color: data.interior_color || null,
         mileage: data.mileage || null,
@@ -431,6 +434,41 @@ export const VehicleForm = ({ vehicle, onSuccess, onCancel }: VehicleFormProps) 
                       <FormControl>
                         <Input placeholder="e.g., 2D Convertible" {...field} />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="vehicle_type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Vehicle Type</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select vehicle type" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="SUV">SUV</SelectItem>
+                          <SelectItem value="Sedan">Sedan</SelectItem>
+                          <SelectItem value="Truck">Truck</SelectItem>
+                          <SelectItem value="Hatchback">Hatchback</SelectItem>
+                          <SelectItem value="Coupe">Coupe</SelectItem>
+                          <SelectItem value="Convertible">Convertible</SelectItem>
+                          <SelectItem value="Wagon">Wagon</SelectItem>
+                          <SelectItem value="Van">Van</SelectItem>
+                          <SelectItem value="Minivan">Minivan</SelectItem>
+                          <SelectItem value="Crossover">Crossover</SelectItem>
+                          <SelectItem value="Sports Car">Sports Car</SelectItem>
+                          <SelectItem value="Luxury">Luxury</SelectItem>
+                          <SelectItem value="Hybrid">Hybrid</SelectItem>
+                          <SelectItem value="Electric">Electric</SelectItem>
+                          <SelectItem value="Other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}

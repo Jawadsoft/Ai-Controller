@@ -4,15 +4,29 @@ import { Input } from '../ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { ScrollArea } from '../ui/scroll-area';
 import { Badge } from '../ui/badge';
-import { Send, Volume2, VolumeX } from 'lucide-react';
+import { Send, Volume2, VolumeX, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import VoiceRecorder from './VoiceRecorder';
 import { validateAudioBlob, formatFileSize } from '../../lib/voiceUtils';
+import { extractDealerIdFromToken } from '../../utils/authUtils';
 
 interface Message {
   role: 'user' | 'assistant';
-  content: string;
+  content: string | StructuredResponse;
   timestamp: string;
+}
+
+interface StructuredResponse {
+  title: string;
+  message: string;
+  type: string;
+  options: Array<{
+    number: string;
+    title: string;
+    description: string;
+    details: string;
+  }>;
+  footer: string;
 }
 
 interface DAIVEChatProps {
@@ -24,6 +38,12 @@ interface DAIVEChatProps {
     price?: number;
   };
   onLeadGenerated?: (leadData: any) => void;
+}
+
+interface DealerInfo {
+  id: string;
+  name: string;
+  business_name?: string;
 }
 
 interface QuickAction {
@@ -43,6 +63,8 @@ const DAIVEChat: React.FC<DAIVEChatProps> = ({
   const [sessionId, setSessionId] = useState<string>('');
   const [isVoiceEnabled, setIsVoiceEnabled] = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(true);
+  const [dealerInfo, setDealerInfo] = useState<DealerInfo | null>(null);
+  const [greetingPrompt, setGreetingPrompt] = useState<string>('');
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -62,13 +84,86 @@ const DAIVEChat: React.FC<DAIVEChatProps> = ({
     setShowQuickActions(false); // Hide quick actions after first use
   };
 
-  // Generate session ID on component mount
+  const refreshGreeting = () => {
+    console.log('🔄 Refreshing greeting...');
+    sendInitialGreeting();
+  };
+
+  // Handle structured response option selection
+  const handleOptionSelect = (optionNumber: string, messageIndex: number) => {
+    const message = messages[messageIndex];
+    if (message.role === 'assistant' && typeof message.content !== 'string') {
+      const structuredResponse = message.content as StructuredResponse;
+      const selectedOption = structuredResponse.options.find(opt => opt.number === optionNumber);
+      
+      if (selectedOption) {
+        // Add user's selection as a message
+        const userSelectionMessage: Message = {
+          role: 'user',
+          content: `I choose option ${optionNumber}: ${selectedOption.title}`,
+          timestamp: new Date().toISOString()
+        };
+        
+        setMessages(prev => [...prev, userSelectionMessage]);
+        
+        // Send the selection to the AI for follow-up
+        sendMessage(`I choose option ${optionNumber}: ${selectedOption.title}`);
+      }
+    }
+  };
+
+  // Render structured response
+  const renderStructuredResponse = (response: StructuredResponse, messageIndex: number) => {
+    return (
+      <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+        <div className="mb-3">
+          <h4 className="font-semibold text-gray-900 mb-1">{response.title}</h4>
+          <p className="text-sm text-gray-600">{response.message}</p>
+        </div>
+        
+        <div className="space-y-2 mb-3">
+          {response.options.map((option) => (
+            <div
+              key={option.number}
+              className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors"
+              onClick={() => handleOptionSelect(option.number, messageIndex)}
+            >
+              <Badge variant="outline" className="w-8 h-8 rounded-full p-0 flex items-center justify-center">
+                {option.number}
+              </Badge>
+              <div className="flex-1">
+                <h5 className="font-medium text-sm text-gray-900">{option.title}</h5>
+                <p className="text-xs text-gray-600">{option.description}</p>
+                <p className="text-xs text-gray-500 mt-1">{option.details}</p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-gray-400" />
+            </div>
+          ))}
+        </div>
+        
+        <p className="text-sm font-medium text-blue-600 text-center">{response.footer}</p>
+      </div>
+    );
+  };
+
+  // Render message content
+  const renderMessageContent = (message: Message, index: number) => {
+    if (typeof message.content === 'string') {
+      return (
+        <p className="text-sm">{message.content}</p>
+      );
+    } else {
+      return renderStructuredResponse(message.content, index);
+    }
+  };
+
+  // Generate session ID and fetch dealer info on component mount
   useEffect(() => {
     const newSessionId = `daive_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     setSessionId(newSessionId);
     
-    // Send initial greeting
-    sendInitialGreeting();
+    // Fetch dealer info and prompts
+    fetchDealerInfoAndPrompts();
   }, []);
 
   // Auto-scroll to bottom when new messages arrive
@@ -78,8 +173,88 @@ const DAIVEChat: React.FC<DAIVEChatProps> = ({
 
 
 
+  const fetchDealerInfoAndPrompts = async () => {
+    try {
+      const dealerId = extractDealerIdFromToken();
+      if (!dealerId) {
+        console.log('No dealer ID available, using fallback greeting');
+        sendInitialGreeting();
+        return;
+      }
+
+      // Fetch dealer info (use profile endpoint for current user)
+      const dealerResponse = await fetch('http://localhost:3000/api/dealers/profile', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        }
+      });
+
+      if (dealerResponse.ok) {
+        const dealerData = await dealerResponse.json();
+        setDealerInfo(dealerData);
+        console.log('✅ Dealer info loaded:', dealerData);
+      }
+
+      // Fetch greeting prompt
+      const promptsResponse = await fetch('http://localhost:3000/api/daive/prompts', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        }
+      });
+
+      if (promptsResponse.ok) {
+        const promptsData = await promptsResponse.json();
+        if (promptsData.success && promptsData.data.greeting?.text) {
+          setGreetingPrompt(promptsData.data.greeting.text);
+          console.log('✅ Greeting prompt loaded:', promptsData.data.greeting.text);
+        }
+      }
+
+      // Send initial greeting after loading data
+      console.log('🎯 Sending initial greeting with:', {
+        dealerInfo,
+        greetingPrompt,
+        vehicleInfo
+      });
+      sendInitialGreeting();
+    } catch (error) {
+      console.error('Error fetching dealer info and prompts:', error);
+      // Fallback to default greeting
+      sendInitialGreeting();
+    }
+  };
+
   const sendInitialGreeting = async () => {
-    const greeting = `Hi, I'm D.A.I.V.E., your AI sales assistant! I'm here to help you find the perfect vehicle for your needs. This ${vehicleInfo?.year} ${vehicleInfo?.make} ${vehicleInfo?.model} is a great choice with excellent features for families, safety, and reliability. What would you like to know about it?`;
+    let greeting = '';
+    
+    console.log('🔍 Building greeting with:', {
+      greetingPrompt,
+      dealerInfo,
+      vehicleInfo
+    });
+    
+    // Use database greeting prompt if available, otherwise use fallback
+    if (greetingPrompt) {
+      const dealershipName = dealerInfo?.business_name || dealerInfo?.name || 'our dealership';
+      greeting = greetingPrompt
+        .replace('{dealership_name}', dealershipName)
+        .replace('{vehicle_year}', vehicleInfo?.year?.toString() || '')
+        .replace('{vehicle_make}', vehicleInfo?.make || '')
+        .replace('{vehicle_model}', vehicleInfo?.model || '');
+      
+      console.log('✅ Using database greeting prompt:', {
+        original: greetingPrompt,
+        processed: greeting,
+        dealershipName
+      });
+    } else {
+      // Fallback greeting
+      greeting = `Hi, I'm D.A.I.V.E., your AI sales assistant! I'm here to help you find the perfect vehicle for your needs. This ${vehicleInfo?.year} ${vehicleInfo?.make} ${vehicleInfo?.model} is a great choice with excellent features for families, safety, and reliability. What would you like to know about it?`;
+      
+      console.log('⚠️ Using fallback greeting (no database prompt found)');
+    }
+    
+    console.log('🎯 Final greeting:', greeting);
     
     setMessages([{
       role: 'assistant',
@@ -102,10 +277,17 @@ const DAIVEChat: React.FC<DAIVEChatProps> = ({
     setIsLoading(true);
 
     try {
+      // Extract dealer ID from auth token
+      const dealerId = extractDealerIdFromToken();
+      if (!dealerId) {
+        throw new Error('No dealer ID available. Please ensure you are logged in with a dealer account.');
+      }
+
       const response = await fetch('http://localhost:3000/api/daive/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
         },
         body: JSON.stringify({
           vehicleId,
@@ -114,7 +296,7 @@ const DAIVEChat: React.FC<DAIVEChatProps> = ({
           customerInfo: {
             name: 'D.A.I.V.E. Chat User',
             email: 'chat@example.com',
-            dealerId: '0aa94346-ed1d-420e-8823-bcd97bf6456f' // Add dealerId for proper API key lookup
+            dealerId: dealerId
           }
         }),
       });
@@ -171,17 +353,23 @@ const DAIVEChat: React.FC<DAIVEChatProps> = ({
       formData.append('audio', audioBlob, 'voice-test.wav');
       formData.append('vehicleId', vehicleId);
       formData.append('sessionId', sessionId);
+      // Extract dealer ID from auth token
+      const dealerId = extractDealerIdFromToken();
+      if (!dealerId) {
+        throw new Error('No dealer ID available. Please ensure you are logged in with a dealer account.');
+      }
+
       formData.append('customerInfo', JSON.stringify({
         name: 'D.A.I.V.E. Chat User',
         email: 'chat@example.com',
-        dealerId: '0aa94346-ed1d-420e-8823-bcd97bf6456f'
+        dealerId: dealerId
       }));
 
       console.log('📤 Sending voice data to backend:', {
         size: formatFileSize(audioBlob.size),
         vehicleId,
         sessionId,
-        dealerId: '0aa94346-ed1d-420e-8823-bcd97bf6456f',
+        dealerId: dealerId,
         url: 'http://localhost:3000/api/daive/voice'
       });
 
@@ -310,7 +498,7 @@ const DAIVEChat: React.FC<DAIVEChatProps> = ({
                       : 'bg-gray-100 text-gray-900'
                   }`}
                 >
-                  <p className="text-sm">{message.content}</p>
+                  {renderMessageContent(message, index)}
                   <p className="text-xs opacity-70 mt-1">
                     {new Date(message.timestamp).toLocaleTimeString()}
                   </p>

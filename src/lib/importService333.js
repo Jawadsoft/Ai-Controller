@@ -1046,32 +1046,33 @@ class ImportService {
       record.stock_number || null, // 6
       record.new_used || 'used', // 7 - MISSING PARAMETER ADDED
       record.body_style || null, // 8
-      certified, // 9
-      record.color || null, // 10
-      record.interior_color || null, // 11
-      record.engine_type || null, // 12
-      record.displacement || null, // 13
-      record.features || null, // 14
-      this.convertToNumberOrNull(record.mileage || record.odometer), // 15
-      this.convertToNumberOrNull(record.price), // 16
-      this.convertToNumberOrNull(record.other_price), // 17
-      record.transmission || null, // 18
-      this.convertToNumberOrNull(record.msrp), // 19
-      this.convertToNumberOrNull(record.dealer_discount), // 20
-      this.convertToNumberOrNull(record.consumer_rebate), // 21
-      this.convertToNumberOrNull(record.dealer_accessories), // 22
-      this.convertToNumberOrNull(record.total_customer_savings), // 23
-      this.convertToNumberOrNull(record.total_dealer_rebate), // 24
-      record.images || record.photo_url_list || null, // 25
-      this.convertToNumberOrNull(record.year), // 26
-      referenceDealerId // 27
+      record.vehicle_type || null, // 9
+      certified, // 10
+      record.color || null, // 11
+      record.interior_color || null, // 12
+      record.engine_type || null, // 13
+      record.displacement || null, // 14
+      record.features || null, // 15
+      this.convertToNumberOrNull(record.mileage || record.odometer), // 16
+      this.convertToNumberOrNull(record.price), // 17
+      this.convertToNumberOrNull(record.other_price), // 18
+      record.transmission || null, // 19
+      this.convertToNumberOrNull(record.msrp), // 20
+      this.convertToNumberOrNull(record.dealer_discount), // 21
+      this.convertToNumberOrNull(record.consumer_rebate), // 22
+      this.convertToNumberOrNull(record.dealer_accessories), // 23
+      this.convertToNumberOrNull(record.total_customer_savings), // 24
+      this.convertToNumberOrNull(record.total_dealer_rebate), // 25
+      record.images || record.photo_url_list || null, // 26
+      this.convertToNumberOrNull(record.year), // 27
+      referenceDealerId // 28
     ];
   
     const sqlQuery = `
       SELECT import_vehicle_from_csv(
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
         $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
-        $21, $22, $23, $24, $25, $26, $27
+        $21, $22, $23, $24, $25, $26, $27, $28
       ) as vehicle_id
     `;
   
@@ -1079,7 +1080,7 @@ class ImportService {
     console.log('Insert query parameters:');
     const paramNames = [
       'p_dealer_id', 'p_vin', 'p_make', 'p_model', 'p_series', 'p_stock_number', 'p_new_used', 'p_body_style',
-      'p_certified', 'p_color', 'p_interior_color', 'p_engine_type', 'p_displacement', 'p_features',
+      'p_vehicle_type', 'p_certified', 'p_color', 'p_interior_color', 'p_engine_type', 'p_displacement', 'p_features',
       'p_odometer', 'p_price', 'p_other_price', 'p_transmission', 'p_msrp', 'p_dealer_discount',
       'p_consumer_rebate', 'p_dealer_accessories', 'p_total_customer_savings', 'p_total_dealer_rebate',
       'p_photo_url_list', 'p_year', 'p_reference_dealer_id'

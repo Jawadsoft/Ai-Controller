@@ -155,7 +155,8 @@ CREATE TABLE IF NOT EXISTS daive_prompts (
     prompt_text TEXT NOT NULL,
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(dealer_id, prompt_type)
 );
 
 -- D.A.I.V.E. API Settings table (for API keys and integrations)

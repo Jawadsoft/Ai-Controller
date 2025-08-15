@@ -73,127 +73,105 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
   const audioChunksRef = useRef<Blob[]>([]);
 
   // Quick action buttons for common questions
+  // ENHANCED: These messages are now more conversational and detailed to trigger CrewAI responses
+  // instead of simple inventory queries. CrewAI can provide comprehensive, helpful answers.
   const quickActions: QuickAction[] = vehicleId ? [
-    { label: 'Family Features', message: 'I want an ideal car for my family' },
-    { label: 'Safety Info', message: 'What safety features does this vehicle have?' },
-    { label: 'Pricing', message: 'What is the price and financing options?' },
-    { label: 'Test Drive', message: 'Can I schedule a test drive?' },
-    { label: 'Fuel Economy', message: 'What are the fuel efficiency ratings?' },
-    { label: 'Cargo Space', message: 'How much cargo space does it have?' },
-    { label: 'Similar Options', message: 'Show me similar vehicles' }
+    { label: 'Family Features', message: 'I\'m considering this vehicle for my family. Can you tell me about the safety features, seating capacity, cargo space, and any family-friendly features that make this a good choice for families with children?' },
+    { label: 'Safety Info', message: 'Safety is my top priority. What safety features, ratings, and technologies does this vehicle have? I\'d like to know about airbags, collision prevention, backup cameras, and any advanced safety systems.' },
+    { label: 'Pricing', message: 'I\'d like to understand the complete pricing picture for this vehicle. What\'s the base price, what options are available, what financing terms do you offer, and are there any current promotions or incentives I should know about?' },
+    { label: 'Test Drive', message: 'I\'m very interested in this vehicle and would like to schedule a test drive. What\'s the process, what documents do I need to bring, how long does it take, and what should I focus on during the test drive to make the best decision?' },
+    { label: 'Fuel Economy', message: 'Fuel efficiency is important to me. What are the EPA ratings for city and highway driving, what\'s the real-world fuel economy like, and are there any eco-friendly features or driving modes that can help improve efficiency?' },
+    { label: 'Cargo Space', message: 'I need to know about the cargo and storage capacity. How much space is there behind the rear seats, what\'s the total cargo volume, are the seats foldable, and how does this compare to other vehicles in the same class?' },
+    { label: 'Similar Options', message: 'I\'d like to see what other similar vehicles you have available. Can you show me alternatives that might be a better fit, what makes each one different, and help me compare features and pricing across your inventory?' }
   ] : [
-    { label: 'Show Inventory', message: 'What vehicles do you have available?' },
-    { label: 'Family Cars', message: 'I need a family-friendly vehicle' },
-    { label: 'Financing', message: 'What financing options do you offer?' },
-    { label: 'Test Drive', message: 'Can I schedule a test drive?' },
-    { label: 'SUV Options', message: 'Show me your SUV selection' },
-    { label: 'Sedan Options', message: 'Show me your sedan selection' },
-    { label: 'New Arrivals', message: 'What new vehicles just arrived?' }
+    { label: 'Show Inventory', message: 'I\'m interested in seeing what vehicles you have available. Can you tell me about your current inventory and help me find something that fits my needs?' },
+    { label: 'Family Cars', message: 'I\'m looking for a family-friendly vehicle that\'s safe, spacious, and reliable. What would you recommend from your inventory for a family with children?' },
+    { label: 'Financing', message: 'I\'d like to learn more about your financing options. What kind of payment plans, interest rates, and down payment requirements do you offer for vehicle purchases?' },
+    { label: 'Test Drive', message: 'I\'m interested in scheduling a test drive. What\'s the process like, what documents do I need, and what times are typically available for test drives?' },
+    { label: 'SUV Options', message: 'I\'m considering an SUV for better visibility and cargo space. Can you tell me about the different SUV models you carry, their features, and what makes each one special?' },
+    { label: 'Sedan Options', message: 'I\'m looking for a sedan that\'s comfortable for daily commuting and has good fuel efficiency. What sedan models do you recommend and what are their key features?' },
+    { label: 'New Arrivals', message: 'I\'d love to hear about any new vehicles that just arrived at your dealership. What\'s new, what makes them special, and are there any special offers on these new arrivals?' }
   ];
 
   const handleQuickAction = (action: QuickAction) => {
-    // Check if this is an inventory-related quick action
-    const isInventoryAction = action.label.toLowerCase().includes('inventory') || 
-                             action.label.toLowerCase().includes('show') ||
-                             action.message.toLowerCase().includes('inventory') ||
-                             action.message.toLowerCase().includes('vehicles') ||
-                             action.message.toLowerCase().includes('available');
-    
-    if (isInventoryAction && crewAIEnabled) {
-      // For inventory actions, use Crew AI directly to avoid authentication issues
-      console.log('🚀 Using Crew AI for inventory quick action:', action.label);
-      handleInventoryQuickAction(action);
-    } else {
-      // For other actions, use the regular text message flow
-      sendTextMessage(action.message);
-    }
+    // Always use the regular text message flow to let the backend decide
+    // whether to use inventory-aware responses or CrewAI
+    console.log('🚀 Using regular message flow for quick action:', action.label);
+    sendTextMessage(action.message);
     setShowQuickActions(false); // Hide quick actions after first use
   };
 
-  // Handle inventory-related quick actions with Crew AI
-  const handleInventoryQuickAction = async (action: QuickAction) => {
+  const refreshGreeting = () => {
+    console.log('🔄 Refreshing greeting...');
+    sendInitialGreeting();
+  };
+
+  const clearCacheAndRefresh = async () => {
+    console.log('🧹 Clearing cache and refreshing...');
+    
     try {
-      setIsProcessing(true);
-      
-      // Add user message to chat
-      const userMessage: Message = {
-        role: 'user',
-        content: action.message,
-        timestamp: new Date().toISOString()
-      };
-      setMessages(prev => [...prev, userMessage]);
-
-      console.log('🔍 Processing inventory quick action with Crew AI...');
-      console.log('📍 Dealer ID:', dealerId);
-      console.log('📍 Vehicle ID:', vehicleId);
-      
+      // Call backend cache clearing endpoint
       const authToken = localStorage.getItem('auth_token');
-      if (!authToken) {
-        console.warn('⚠️ No authentication token found for inventory quick action');
-        toast.warning('Authentication required for inventory access');
-        return;
-      }
-
-      // Use Crew AI endpoint directly
-      const response = await fetch('http://localhost:3000/api/daive/crew-ai', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`
-        },
-        body: JSON.stringify({
-          vehicleId: vehicleId || null,
-          sessionId: sessionId || 'quick-action-session',
-          message: action.message,
-          customerInfo: {
-            name: 'Quick Action User',
-            email: 'quickaction@dealership.com',
-            dealerId: dealerId
+      if (authToken) {
+        const response = await fetch('http://localhost:3000/api/daive/clear-cache', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+            'Content-Type': 'application/json'
           }
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log('✅ Crew AI quick action response:', data);
+        });
         
-        if (data.success && data.data?.response) {
-          // Add assistant response to chat
-          const assistantMessage: Message = {
-            role: 'assistant',
-            content: data.data.response,
-            timestamp: new Date().toISOString()
-          };
-          setMessages(prev => [...prev, assistantMessage]);
-          
-          console.log('🤖 Quick action processed successfully');
-          console.log('🚀 Crew AI Used:', data.data.crewUsed);
-          console.log('🎯 Intent:', data.data.intent);
-          console.log('📊 Lead Score:', data.data.leadScore);
+        if (response.ok) {
+          const result = await response.json();
+          console.log('✅ Backend cache cleared:', result);
         } else {
-          throw new Error('No response from Crew AI');
+          console.log('⚠️ Could not clear backend cache');
         }
-      } else {
-        const errorText = await response.text();
-        console.error('❌ Crew AI quick action failed:', response.status, errorText);
-        throw new Error(`Crew AI failed: ${response.status}`);
       }
+      
+      // Clear any stored session data
+      setSessionId(`daive_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+      
+      // Clear messages and restart
+      setMessages([]);
+      
+      // Force refresh by calling sendInitialGreeting
+      setTimeout(() => {
+        sendInitialGreeting();
+      }, 100);
+      
+      toast.success('Cache cleared and refreshed!');
     } catch (error) {
-      console.error('❌ Error processing inventory quick action:', error);
-      
-      // Add error message to chat
-      const errorMessage: Message = {
-        role: 'assistant',
-        content: 'I apologize, but I\'m having trouble accessing the inventory right now. Please try again in a moment or contact our sales team directly.',
-        timestamp: new Date().toISOString()
-      };
-      setMessages(prev => [...prev, errorMessage]);
-      
-      toast.error('Failed to process inventory request');
-    } finally {
-      setIsProcessing(false);
+      console.error('Error clearing cache:', error);
+      toast.error('Failed to clear cache');
     }
   };
+
+  const checkCurrentDealerContext = () => {
+    console.log('🔍 Current Dealer Context Check:');
+    console.log('  - dealerId prop:', dealerId);
+    console.log('  - dealerId type:', typeof dealerId);
+    console.log('  - dealerId length:', dealerId?.length);
+    console.log('  - sessionId:', sessionId);
+    console.log('  - messages count:', messages.length);
+    
+    // Check localStorage for any cached dealer info
+    const authToken = localStorage.getItem('auth_token');
+    if (authToken) {
+      try {
+        const payload = JSON.parse(atob(authToken.split('.')[1]));
+        console.log('  - JWT payload:', payload);
+        console.log('  - JWT dealer_id:', payload.dealer_id);
+        console.log('  - JWT dealerId:', payload.dealerId);
+      } catch (error) {
+        console.log('  - Could not parse JWT token');
+      }
+    }
+    
+    toast.info('Dealer context logged to console');
+  };
+
+
 
   // Generate session ID on component mount
   useEffect(() => {
@@ -224,46 +202,157 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
 
   const sendInitialGreeting = async () => {
     let greeting;
-    if (vehicleInfo && vehicleId) {
-      greeting = `Hi, I'm D.A.I.V.E.! This ${vehicleInfo.year} ${vehicleInfo.make} ${vehicleInfo.model} is a great choice. What would you like to know?`;
-    } else {
-      // Fetch dealer inventory to provide more specific greeting
-      try {
-        const authToken = localStorage.getItem('auth_token');
-        if (authToken) {
-          const inventoryResponse = await fetch(`http://localhost:3000/api/vehicles?dealerId=${dealerId}&limit=5`, {
+    let dealerInfo = null;
+    
+    try {
+      // First, get dealer info to replace placeholders
+      const authToken = localStorage.getItem('auth_token');
+      if (authToken) {
+        try {
+          const dealerResponse = await fetch('http://localhost:3000/api/dealers/profile', {
             headers: {
               'Authorization': `Bearer ${authToken}`
             }
           });
           
-          if (inventoryResponse.ok) {
-            const inventoryData = await inventoryResponse.json();
-            const vehicles = inventoryData.data || [];
+          if (dealerResponse.ok) {
+            dealerInfo = await dealerResponse.json();
+            console.log('✅ Dealer info loaded for greeting:', dealerInfo);
+          }
+        } catch (error) {
+          console.log('⚠️ Could not fetch dealer info:', error);
+        }
+      }
+      
+      // Then, try to get centralized database prompts
+      let prompts: Record<string, string> = {};
+      
+      // Try public prompts first
+      try {
+        const promptsResponse = await fetch(`http://localhost:3000/api/daive/prompts/public?dealerId=${dealerId}`);
+        
+        if (promptsResponse.ok) {
+          const promptsData = await promptsResponse.json();
+          prompts = promptsData.data || {};
+          
+          console.log('🔍 Public prompts response:', promptsData);
+          console.log('🔍 Available prompts:', Object.keys(prompts));
+          console.log('🔍 Greeting prompt:', prompts.greeting);
+        }
+      } catch (error) {
+        console.log('⚠️ Could not fetch public prompts:', error);
+      }
+      
+      // If no greeting from public prompts, try authenticated prompts
+      if (!prompts.greeting && authToken) {
+        try {
+          console.log('🔄 Trying authenticated prompts endpoint...');
+          const authPromptsResponse = await fetch('http://localhost:3000/api/daive/prompts', {
+            headers: {
+              'Authorization': `Bearer ${authToken}`
+            }
+          });
+          
+          if (authPromptsResponse.ok) {
+            const authPromptsData = await authPromptsResponse.json();
+            if (authPromptsData.success && authPromptsData.data.greeting?.text) {
+              prompts.greeting = authPromptsData.data.greeting.text;
+              console.log('✅ Got greeting from authenticated endpoint:', prompts.greeting);
+            }
+          }
+        } catch (error) {
+          console.log('⚠️ Could not fetch authenticated prompts:', error);
+        }
+      }
+      
+      // Use database greeting prompt if available
+      if (prompts.greeting) {
+        console.log('✅ Using database greeting prompt');
+        greeting = prompts.greeting;
+        
+        // Replace placeholders in the greeting
+        if (dealerInfo) {
+          const dealershipName = dealerInfo.business_name || dealerInfo.name || 'our dealership';
+          greeting = greeting
+            .replace('{dealership_name}', dealershipName)
+            .replace('{vehicle_year}', vehicleInfo?.year?.toString() || '')
+            .replace('{vehicle_make}', vehicleInfo?.make || '')
+            .replace('{vehicle_model}', vehicleInfo?.model || '');
+          
+          console.log('✅ Greeting with placeholders replaced:', {
+            original: prompts.greeting,
+            processed: greeting,
+            dealershipName
+          });
+        }
+      } else if (prompts.master_prompt) {
+        // Extract greeting from master prompt if specific greeting not available
+        console.log('✅ Using greeting from master prompt');
+        const masterPrompt = prompts.master_prompt;
+        if (masterPrompt.includes('GREETING:')) {
+          const greetingMatch = masterPrompt.match(/GREETING:\s*"([^"]+)"/);
+          if (greetingMatch) {
+            greeting = greetingMatch[1];
             
-            if (vehicles.length > 0) {
-              const vehicleTypes = [...new Set(vehicles.map(v => v.make))];
-              const vehicleCount = vehicles.length;
+            // Replace placeholders in the master prompt greeting too
+            if (dealerInfo) {
+              const dealershipName = dealerInfo.business_name || dealerInfo.name || 'our dealership';
+              greeting = greeting
+                .replace('{dealership_name}', dealershipName)
+                .replace('{vehicle_year}', vehicleInfo?.year?.toString() || '')
+                .replace('{vehicle_make}', vehicleInfo?.make || '')
+                .replace('{vehicle_model}', vehicleInfo?.model || '');
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.log('⚠️ Could not fetch centralized prompts:', error);
+    }
+    
+    // If no database prompt found, use fallback logic
+    if (!greeting) {
+      if (vehicleInfo && vehicleId) {
+        greeting = `Hi, I'm D.A.I.V.E.! This ${vehicleInfo.year} ${vehicleInfo.make} ${vehicleInfo.model} is a great choice. What would you like to know?`;
+      } else {
+        // Fetch dealer inventory to provide more specific greeting
+        try {
+          const authToken = localStorage.getItem('auth_token');
+          if (authToken) {
+            const inventoryResponse = await fetch(`http://localhost:3000/api/vehicles?dealerId=${dealerId}&limit=5`, {
+              headers: {
+                'Authorization': `Bearer ${authToken}`
+              }
+            });
+            
+            if (inventoryResponse.ok) {
+              const inventoryData = await inventoryResponse.json();
+              const vehicles = inventoryData.data || [];
               
-              if (vehicleTypes.length === 1) {
-                greeting = `Hi, I'm D.A.I.V.E.! I can help you find the perfect ${vehicleTypes[0]} from our inventory of ${vehicleCount} vehicles. What are you looking for today?`;
+              if (vehicles.length > 0) {
+                const vehicleTypes = [...new Set(vehicles.map(v => v.make))];
+                const vehicleCount = vehicles.length;
+                
+                if (vehicleTypes.length === 1) {
+                  greeting = `Hi, I'm D.A.I.V.E.! I can help you find the perfect ${vehicleTypes[0]} from our inventory of ${vehicleCount} vehicles. What are you looking for today?`;
+                } else {
+                  greeting = `Hi, I'm D.A.I.V.E.! I can help you find the perfect vehicle from our inventory of ${vehicleCount} vehicles including ${vehicleTypes.slice(0, 3).join(', ')}. What are you looking for today?`;
+                }
               } else {
-                greeting = `Hi, I'm D.A.I.V.E.! I can help you find the perfect vehicle from our inventory of ${vehicleCount} vehicles including ${vehicleTypes.slice(0, 3).join(', ')}. What are you looking for today?`;
+                greeting = `Hi, I'm D.A.I.V.E.! I can help you find the perfect vehicle from our inventory. What are you looking for today?`;
               }
             } else {
+              console.log('⚠️ Inventory API returned error:', inventoryResponse.status);
               greeting = `Hi, I'm D.A.I.V.E.! I can help you find the perfect vehicle from our inventory. What are you looking for today?`;
             }
           } else {
-            console.log('⚠️ Inventory API returned error:', inventoryResponse.status);
+            console.log('⚠️ No auth token for inventory greeting');
             greeting = `Hi, I'm D.A.I.V.E.! I can help you find the perfect vehicle from our inventory. What are you looking for today?`;
           }
-        } else {
-          console.log('⚠️ No auth token for inventory greeting');
+        } catch (error) {
+          console.log('Could not fetch inventory for greeting:', error);
           greeting = `Hi, I'm D.A.I.V.E.! I can help you find the perfect vehicle from our inventory. What are you looking for today?`;
         }
-      } catch (error) {
-        console.log('Could not fetch inventory for greeting:', error);
-        greeting = `Hi, I'm D.A.I.V.E.! I can help you find the perfect vehicle from our inventory. What are you looking for today?`;
       }
     }
     
@@ -651,29 +740,24 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
         message: message.substring(0, 50) + '...',
         dealerId: dealerId || 'NOT PROVIDED'
       });
+      
+      // Debug: Log the exact dealer ID being sent
+      console.log('🔍 DEBUG - Dealer ID details:', {
+        dealerId,
+        dealerIdType: typeof dealerId,
+        dealerIdLength: dealerId?.length,
+        isDealerIdValid: dealerId && dealerId.length > 0
+      });
 
-      // Use Crew AI if both backend is enabled AND user has toggled it on
-      const endpoint = (crewAIEnabled && useCrewAI) ? '/api/daive/crew-ai' : '/api/daive/chat';
-      console.log(`🚀 Using endpoint: ${endpoint}`);
-      console.log(`   Crew AI Backend: ${crewAIEnabled ? 'Enabled' : 'Disabled'}`);
-      console.log(`   User Toggle: ${useCrewAI ? 'On' : 'Off'}`);
-      console.log(`   Final decision: ${(crewAIEnabled && useCrewAI) ? 'Crew AI' : 'Regular Chat'}`);
+      // The backend is smart enough to route between inventory-aware and CrewAI responses
+      // Always use the main chat endpoint and let the backend handle the routing
+      const endpoint = '/api/daive/chat';
       
-      // Log inventory query detection
-      const inventoryKeywords = [
-        'inventory', 'available', 'stock', 'show me', 'what do you have', 
-        'options', 'similar', 'other', 'vehicles', 'cars', 'what\'s available',
-        'what vehicles', 'show inventory', 'list vehicles', 'available cars'
-      ];
-      const isInventoryQuery = inventoryKeywords.some(keyword => 
-        message.toLowerCase().includes(keyword)
-      );
-      
-      if (isInventoryQuery) {
-        console.log('🔍 FRONTEND: Inventory query detected!');
-        console.log(`   Message: "${message}"`);
-        console.log(`   Will use: ${(crewAIEnabled && useCrewAI) ? 'Crew AI (with inventory logging)' : 'Regular Chat'}`);
-      }
+      console.log('🚀 Using main chat endpoint for smart routing');
+      console.log(`   Message: "${message}"`);
+      console.log(`   Backend will automatically choose: Inventory-Aware AI or CrewAI`);
+      console.log(`   Crew AI Status: ${crewAIEnabled ? 'Available' : 'Not available'}`);
+      console.log(`   User Preference: ${useCrewAI ? 'Enabled' : 'Disabled'}`);
       
       // Get authentication token for the request
       const authToken = localStorage.getItem('auth_token');
@@ -1204,6 +1288,24 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
                   title="Check user authentication status"
                 >
                   Check Auth
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={checkCurrentDealerContext}
+                  className="h-6 px-2 text-xs bg-purple-50 border-purple-200 hover:bg-purple-100"
+                  title="Check current dealer context and cache"
+                >
+                  Check Dealer
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={clearCacheAndRefresh}
+                  className="h-6 px-2 text-xs bg-red-50 border-red-200 hover:bg-red-100"
+                  title="Clear cache and refresh dealer context"
+                >
+                  Clear Cache
                 </Button>
                 <span className="text-xs text-gray-500">
                   {backendStatus}

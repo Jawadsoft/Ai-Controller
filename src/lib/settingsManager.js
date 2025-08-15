@@ -151,35 +151,35 @@ class SettingsManager {
   async getVoiceSettings(dealerId = null) {
     const settings = await this.getAllSettings(dealerId);
     return {
-      // Core voice settings
-      enabled: settings.voice_enabled,
-      provider: settings.voice_provider,
-      ttsProvider: settings.voice_tts_provider,
-      speechProvider: settings.voice_speech_provider,
+      // Core voice settings - Extract value from the object structure
+      enabled: settings.voice_enabled?.value || settings.voice_enabled,
+      provider: settings.voice_provider?.value || settings.voice_provider,
+      ttsProvider: settings.voice_tts_provider?.value || settings.voice_tts_provider,
+      speechProvider: settings.voice_speech_provider?.value || settings.voice_speech_provider,
       
-      // Voice selection (specific voices like jessica, alloy, etc.)
-      elevenlabsVoice: settings.voice_elevenlabs_voice,
-      openaiVoice: settings.voice_openai_voice,
-      ttsVoice: settings.tts_voice,
+      // Voice selection (specific voices like jessica, alloy, etc.) - Extract value from the object structure
+      elevenlabsVoice: settings.voice_elevenlabs_voice?.value || settings.voice_elevenlabs_voice,
+      openaiVoice: settings.voice_openai_voice?.value || settings.voice_openai_voice,
+      ttsVoice: settings.tts_voice?.value || settings.tts_voice,
       
-      // Voice characteristics
-      language: settings.voice_language,
-      speed: settings.voice_speed,
-      pitch: settings.voice_pitch,
-      quality: settings.voice_quality,
-      emotion: settings.voice_emotion,
+      // Voice characteristics - Extract value from the object structure
+      language: settings.voice_language?.value || settings.voice_language,
+      speed: settings.voice_speed?.value || settings.voice_speed,
+      pitch: settings.voice_pitch?.value || settings.voice_pitch,
+      quality: settings.voice_quality?.value || settings.voice_quality,
+      emotion: settings.voice_emotion?.value || settings.voice_emotion,
       
-      // Voice behavior
-      autoResponse: settings.voice_auto_response,
-      recordingQuality: settings.voice_recording_quality,
-      realtimeEnabled: settings.voice_realtime_enabled,
-      streamingEnabled: settings.voice_streaming_enabled,
-      responseFormat: settings.voice_response_format,
+      // Voice behavior - Extract value from the object structure
+      autoResponse: settings.voice_auto_response?.value || settings.voice_auto_response,
+      recordingQuality: settings.voice_recording_quality?.value || settings.voice_recording_quality,
+      realtimeEnabled: settings.voice_realtime_enabled?.value || settings.voice_realtime_enabled,
+      streamingEnabled: settings.voice_streaming_enabled?.value || settings.voice_streaming_enabled,
+      responseFormat: settings.voice_response_format?.value || settings.voice_response_format,
       
-      // TTS specific settings
-      ttsModel: settings.tts_model,
-      ttsStability: settings.tts_stability,
-      ttsSimilarityBoost: settings.tts_similarity_boost
+      // TTS specific settings - Extract value from the object structure
+      ttsModel: settings.tts_model?.value || settings.tts_model,
+      ttsStability: settings.tts_stability?.value || settings.tts_stability,
+      ttsSimilarityBoost: settings.tts_similarity_boost?.value || settings.tts_similarity_boost
     };
   }
 
@@ -187,38 +187,38 @@ class SettingsManager {
   async getTTSSettings(dealerId = null) {
     const settings = await this.getAllSettings(dealerId);
     return {
-      // Provider settings
-      provider: settings.voice_provider,
-      ttsProvider: settings.voice_tts_provider,
-      speechProvider: settings.voice_speech_provider,
+      // Provider settings - Extract value from the object structure
+      provider: settings.voice_provider?.value || settings.voice_provider,
+      ttsProvider: settings.voice_tts_provider?.value || settings.voice_tts_provider,
+      speechProvider: settings.voice_speech_provider?.value || settings.voice_speech_provider,
       
-      // Voice selection settings - FIXED: Properly map voice_elevenlabs_voice to elevenlabsVoice
-      voice: settings.voice_elevenlabs_voice || settings.tts_voice,
-      openaiVoice: settings.voice_openai_voice,
-      elevenlabsVoice: settings.voice_elevenlabs_voice, // This should now work correctly
+      // Voice selection settings - Extract value from the object structure
+      voice: settings.voice_elevenlabs_voice?.value || settings.voice_elevenlabs_voice || settings.tts_voice,
+      openaiVoice: settings.voice_openai_voice?.value || settings.voice_openai_voice,
+      elevenlabsVoice: settings.voice_elevenlabs_voice?.value || settings.voice_elevenlabs_voice, // This should now work correctly
       
       // TTS model and quality settings
       model: settings.tts_model || 'eleven_multilingual_v2', // Updated to multilingual model
       stability: settings.tts_stability || 0.5,
       similarityBoost: settings.tts_similarity_boost || 0.5,
       
-      // Voice quality and performance settings
-      voiceQuality: settings.voice_quality,
-      voiceSpeed: settings.voice_speed,
-      voicePitch: settings.voice_pitch,
-      voiceEmotion: settings.voice_emotion,
+      // Voice quality and performance settings - Extract value from the object structure
+      voiceQuality: settings.voice_quality?.value || settings.voice_quality,
+      voiceSpeed: settings.voice_speed?.value || settings.voice_speed,
+      voicePitch: settings.voice_pitch?.value || settings.voice_pitch,
+      voiceEmotion: settings.voice_emotion?.value || settings.voice_emotion,
       
-      // API keys
-      apiKey: settings.elevenlabs_key, // For ElevenLabs TTS
-      openaiKey: settings.openai_key, // For OpenAI TTS
+      // API keys - Extract value from the object structure
+      apiKey: settings.elevenlabs_key?.value || settings.elevenlabs_key, // For ElevenLabs TTS
+      openaiKey: settings.openai_key?.value || settings.openai_key, // For OpenAI TTS
       
-      // Additional voice settings
-      language: settings.voice_language,
-      autoResponse: settings.voice_auto_response,
-      recordingQuality: settings.voice_recording_quality,
-      realtimeEnabled: settings.voice_realtime_enabled,
-      streamingEnabled: settings.voice_streaming_enabled,
-      responseFormat: settings.voice_response_format
+      // Additional voice settings - Extract value from the object structure
+      language: settings.voice_language?.value || settings.voice_language,
+      autoResponse: settings.voice_auto_response?.value || settings.voice_auto_response,
+      recordingQuality: settings.voice_recording_quality?.value || settings.voice_recording_quality,
+      realtimeEnabled: settings.voice_realtime_enabled?.value || settings.voice_realtime_enabled,
+      streamingEnabled: settings.voice_streaming_enabled?.value || settings.voice_streaming_enabled,
+      responseFormat: settings.voice_response_format?.value || settings.voice_response_format
     };
   }
 
