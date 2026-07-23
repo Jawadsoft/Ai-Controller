@@ -1,0 +1,20 @@
+{
+  "name": "database-migration",
+  "version": "1.0.0",
+  "description": "Database migration script for import system",
+  "type": "module",
+  "main": "run-migration.js",
+  "scripts": {
+    "migrate": "node run-migration.js",
+    "migrate:dev": "NODE_ENV=development node run-migration.js",
+    "migrate:prod": "NODE_ENV=production node run-migration.js"
+  },
+  "dependencies": {
+    "pg": "^8.11.3"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
+
+

@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Connection Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .connected { background: rgba(34, 197, 94, 0.3); border: 1px solid #22c55e; }
+        .connecting { background: rgba(251, 191, 36, 0.3); border: 1px solid #fbbf24; }
+        .disconnected { background: rgba(239, 68, 68, 0.3); border: 1px solid #ef4444; }
+        .error { background: rgba(239, 68, 68, 0.3); border: 1px solid #ef4444; }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        button:hover { background: #2563eb; }
+        button:disabled { background: #6b7280; cursor: not-allowed; }
+        .log {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-radius: 3px;
+        }
+        .log-info { background: rgba(59, 130, 246, 0.2); }
+        .log-success { background: rgba(34, 197, 94, 0.2); }
+        .log-warning { background: rgba(251, 191, 36, 0.2); }
+        .log-error { background: rgba(239, 68, 68, 0.2); }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+        }
+        input {
+            padding: 8px;
+            border: none;
+            border-radius: 4px;
+            margin: 5px;
+            width: 200px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔌 WebSocket Connection Test</h1>
+        <p>Testing WebSocket connection to the streaming voice server</p>
+        
+        <div class="test-section">
+            <h3>Connection Settings</h3>
+            <label>Backend Port: <input type="text" id="backendPort" value="3000" placeholder="3000"></label><br>
+            <label>Dealer ID: <input type="text" id="dealerId" value="test123" placeholder="test123"></label><br>
+            <label>Vehicle ID: <input type="text" id="vehicleId" value="" placeholder="optional"></label>
+        </div>
+
+        <div class="test-section">
+            <h3>Connection Status</h3>
+            <div id="connectionStatus" class="status disconnected">❌ Disconnected</div>
+            <div id="connectionDetails" style="font-size: 12px; opacity: 0.8;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>Connection Controls</h3>
+            <button id="connectPrimary" onclick="connectPrimary()">🔌 Connect to /streaming-voice</button>
+            <button id="connectFallback" onclick="connectFallback()">🔄 Connect to Root (Fallback)</button>
+            <button id="disconnect" onclick="disconnect()" disabled>❌ Disconnect</button>
+            <button id="testMessage" onclick="sendTestMessage()" disabled>📤 Send Test Message</button>
+        </div>
+
+        <div class="test-section">
+            <h3>Test Messages</h3>
+            <button onclick="sendMessage('initialize')" disabled id="btnInit">🚀 Initialize</button>
+            <button onclick="sendMessage('ping')" disabled id="btnPing">🏓 Ping</button>
+            <button onclick="sendMessage('process_text')" disabled id="btnText">📝 Process Text</button>
+            <button onclick="sendMessage('start_recording')" disabled id="btnStartRec">🎤 Start Recording</button>
+            <button onclick="sendMessage('stop_recording')" disabled id="btnStopRec">⏹️ Stop Recording</button>
+        </div>
+
+        <div class="test-section">
+            <h3>Connection Log</h3>
+            <div id="log" class="log"></div>
+            <button onclick="clearLog()" style="margin-top: 10px;">🗑️ Clear Log</button>
+        </div>
+    </div>
+
+    <script>
+        let websocket = null;
+        let connectionType = null;
+        let isConnected = false;
+
+        // Logging functions
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+
+        // Update connection status
+        function updateStatus(status, message) {
+            const statusDiv = document.getElementById('connectionStatus');
+            statusDiv.className = `status ${status}`;
+            statusDiv.textContent = message;
+            
+            // Update button states
+            const isConnected = status === 'connected';
+            document.getElementById('disconnect').disabled = !isConnected;
+            document.getElementById('testMessage').disabled = !isConnected;
+            document.getElementById('btnInit').disabled = !isConnected;
+            document.getElementById('btnPing').disabled = !isConnected;
+            document.getElementById('btnText').disabled = !isConnected;
+            document.getElementById('btnStartRec').disabled = !isConnected;
+            document.getElementById('btnStopRec').disabled = !isConnected;
+        }
+
+        // Update connection details
+        function updateConnectionDetails() {
+            const port = document.getElementById('backendPort').value;
+            const dealerId = document.getElementById('dealerId').value;
+            const vehicleId = document.getElementById('vehicleId').value;
+            
+            const details = `Port: ${port} | Dealer ID: ${dealerId}`;
+            if (vehicleId) details += ` | Vehicle ID: ${vehicleId}`;
+            if (connectionType) details += ` | Type: ${connectionType}`;
+            
+            document.getElementById('connectionDetails').textContent = details;
+        }
+
+        // Connect to primary streaming-voice endpoint
+        function connectPrimary() {
+            const port = document.getElementById('backendPort').value;
+            const dealerId = document.getElementById('dealerId').value;
+            const vehicleId = document.getElementById('vehicleId').value;
+            
+            const url = `ws://localhost:${port}/streaming-voice?dealerId=${dealerId}${vehicleId ? `&vehicleId=${vehicleId}` : ''}`;
+            
+            log(`🔌 Attempting primary connection to: ${url}`, 'info');
+            updateStatus('connecting', '⏳ Connecting to /streaming-voice...');
+            
+            connectWebSocket(url, 'primary');
+        }
+
+        // Connect to fallback root endpoint
+        function connectFallback() {
+            const port = document.getElementById('backendPort').value;
+            const dealerId = document.getElementById('dealerId').value;
+            const vehicleId = document.getElementById('vehicleId').value;
+            
+            const url = `ws://localhost:${port}?dealerId=${dealerId}${vehicleId ? `&vehicleId=${vehicleId}` : ''}`;
+            
+            log(`🔄 Attempting fallback connection to: ${url}`, 'info');
+            updateStatus('connecting', '⏳ Connecting to root...');
+            
+            connectWebSocket(url, 'fallback');
+        }
+
+        // Main WebSocket connection function
+        function connectWebSocket(url, type) {
+            if (websocket) {
+                websocket.close();
+            }
+
+            connectionType = type;
+            websocket = new WebSocket(url);
+
+            websocket.onopen = function(event) {
+                isConnected = true;
+                log(`✅ WebSocket connected successfully (${type})`, 'success');
+                updateStatus('connected', `🚀 Connected (${type})`);
+                updateConnectionDetails();
+                
+                // Send initialization message after a short delay
+                setTimeout(() => {
+                    if (websocket && websocket.readyState === WebSocket.OPEN) {
+                        sendMessage('initialize');
+                    }
+                }, 100);
+            };
+
+            websocket.onmessage = function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    log(`📥 Received: ${JSON.stringify(data, null, 2)}`, 'success');
+                } catch (error) {
+                    log(`📥 Received raw message: ${event.data}`, 'info');
+                }
+            };
+
+            websocket.onclose = function(event) {
+                isConnected = false;
+                log(`🔌 WebSocket disconnected: Code ${event.code} - ${event.reason || 'No reason'}`, 'warning');
+                updateStatus('disconnected', '❌ Disconnected');
+                updateConnectionDetails();
+                
+                if (event.code !== 1000) {
+                    log(`⚠️ Abnormal closure - Code: ${event.code}, Clean: ${event.wasClean}`, 'warning');
+                }
+            };
+
+            websocket.onerror = function(error) {
+                log(`❌ WebSocket error: ${error}`, 'error');
+                updateStatus('error', '❌ Connection Error');
+            };
+        }
+
+        // Disconnect WebSocket
+        function disconnect() {
+            if (websocket) {
+                log('🔌 Manually disconnecting...', 'info');
+                websocket.close(1000, 'Manual disconnect');
+                websocket = null;
+                connectionType = null;
+                isConnected = false;
+                updateStatus('disconnected', '❌ Disconnected');
+                updateConnectionDetails();
+            }
+        }
+
+        // Send test message
+        function sendTestMessage() {
+            sendMessage('ping');
+        }
+
+        // Send specific message types
+        function sendMessage(type) {
+            if (!websocket || websocket.readyState !== WebSocket.OPEN) {
+                log('❌ Cannot send message - WebSocket not connected', 'error');
+                return;
+            }
+
+            let message = { type, timestamp: Date.now() };
+            
+            switch (type) {
+                case 'initialize':
+                    message.dealerId = document.getElementById('dealerId').value;
+                    message.vehicleId = document.getElementById('vehicleId').value;
+                    message.performanceMode = true;
+                    break;
+                case 'process_text':
+                    message.text = 'Hello, this is a test message from the WebSocket test client!';
+                    break;
+                case 'ping':
+                    message = { type: 'ping', timestamp: Date.now() };
+                    break;
+            }
+
+            try {
+                websocket.send(JSON.stringify(message));
+                log(`📤 Sent ${type}: ${JSON.stringify(message)}`, 'info');
+            } catch (error) {
+                log(`❌ Error sending message: ${error}`, 'error');
+            }
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            log('🚀 WebSocket Test Client Loaded', 'success');
+            updateConnectionDetails();
+            
+            // Add input change listeners
+            document.getElementById('backendPort').addEventListener('input', updateConnectionDetails);
+            document.getElementById('dealerId').addEventListener('input', updateConnectionDetails);
+            document.getElementById('vehicleId').addEventListener('input', updateConnectionDetails);
+        });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function() {
+            if (websocket) {
+                websocket.close();
+            }
+        });
+    </script>
+</body>
+</html>

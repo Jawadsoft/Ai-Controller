@@ -1,0 +1,1161 @@
+{
+  "timestamp": "2025-08-30T13:29:25.792Z",
+  "sessionId": "optimization-test-1756560355310-xa6bb1lkl",
+  "testResults": {
+    "family_suv": {
+      "name": "👨‍👩‍👧‍👦 Family SUV Buyer",
+      "budget": 45000,
+      "vehicleType": "SUV",
+      "priorities": [
+        "safety",
+        "space",
+        "reliability"
+      ],
+      "responses": [
+        {
+          "step": 1,
+          "message": "Hi! I'm looking for a new family SUV",
+          "response": "Great! I see you're looking for a family SUV. Here are some options that would be perfect for your family:\n\n1. **Kia Sorento Base** - $13,125 - SUV - Stock #LG674474A\n2. **Subaru Forester Base** - $15,650 - SUV - Stock #KH440700A\n3. **Hyundai Tucson Base** - $16,796 - SUV - Stock #NH014773A\n\nAll of these vehicles are family-friendly and offer great features. Which one interests you?",
+          "processingTime": 5615,
+          "quality": {
+            "overallScore": 8.6,
+            "scores": {
+              "relevance": 8,
+              "accuracy": 10,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 8,
+              "contextAwareness": 8,
+              "inventoryUsage": 10,
+              "budgetCompliance": 10
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 2,
+          "message": "I want an SUV with 7 seats and good safety features",
+          "response": "Great! I see you're looking for an SUV with 7 seats and good safety features. Here are some options from our inventory:\n\n- **2023 Toyota Highlander**\n  - Price: $35,000\n  - Availability: In stock (Stock #12345)\n\n- **2022 Honda Pilot**\n  - Price: $38,000\n  - Availability: In stock (Stock #67890)\n\nWould you like more details on any of these models?",
+          "processingTime": 5659,
+          "quality": {
+            "overallScore": 7.5,
+            "scores": {
+              "relevance": 10,
+              "accuracy": 8,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 6,
+              "contextAwareness": 8,
+              "inventoryUsage": 6,
+              "budgetCompliance": 7
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 3,
+          "message": "My budget is around $45,000",
+          "response": "Great! I see you're looking for a vehicle with a budget of around $45,000. Here are some options available in our inventory:\n\n- **2023 Honda CR-V**\n  - Price: $43,000\n  - Availability: In stock (Stock #12345)\n\n- **2023 Toyota RAV4**\n  - Price: $44,500\n  - Availability: In stock (Stock #67890)\n\nWould you like more details on any of these options?",
+          "processingTime": 6551,
+          "quality": {
+            "overallScore": 7.3,
+            "scores": {
+              "relevance": 6,
+              "accuracy": 8,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 8,
+              "contextAwareness": 8,
+              "inventoryUsage": 6,
+              "budgetCompliance": 7
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 4,
+          "message": "I need advanced safety features, 7 seats, and good fuel economy",
+          "response": "Great! I see you're looking for a vehicle with advanced safety features, 7 seats, and good fuel economy. Here are some options that match your criteria:\n\n- **Make:** [Make]  \n  **Model:** [Model]  \n  **Year:** [Year]  \n  **Price:** [Price]  \n  **Availability:** [Stock #]\n\n- **Make:** [Make]  \n  **Model:** [Model]  \n  **Year:** [Year]  \n  **Price:** [Price]  \n  **Availability:** [Stock #]\n\nWould you like more details on any of these options?",
+          "processingTime": 5478,
+          "quality": {
+            "overallScore": 7.1,
+            "scores": {
+              "relevance": 7,
+              "accuracy": 8,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 8,
+              "contextAwareness": 6,
+              "inventoryUsage": 6,
+              "budgetCompliance": 7
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 5,
+          "message": "I prefer Hyundai or Toyota",
+          "response": "Great! I see you're interested in Hyundai or Toyota vehicles. Here are some options currently available:\n\n1. **Hyundai Tucson Base** - $16,796 - SUV - Stock #NH014773A\n2. **Hyundai Santa Fe Sport Base** - $16,991 - SUV - Stock #HG482158B\n3. **Hyundai Tucson Base** - $17,998 - SUV - Stock #KU032466B\n\nWhich vehicle interests you?",
+          "processingTime": 5193,
+          "quality": {
+            "overallScore": 8.5,
+            "scores": {
+              "relevance": 8,
+              "accuracy": 10,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 7,
+              "contextAwareness": 8,
+              "inventoryUsage": 10,
+              "budgetCompliance": 10
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 6,
+          "message": "Yes, show me the Hyundai Palisade",
+          "response": "Great! I see you're interested in the Hyundai Palisade. Here are the available options:\n\n1. **Hyundai Palisade Base** - $21,409 - 2020 SUV - Stock #LU034869C\n2. **Hyundai Palisade Base** - $22,178 - 2020 SUV - Stock #LU100695B\n3. **Hyundai Palisade Base** - $33,761 - 2024 SUV - Stock #RU723067\n\nWhich one interests you?",
+          "processingTime": 5665,
+          "quality": {
+            "overallScore": 8.3,
+            "scores": {
+              "relevance": 8,
+              "accuracy": 10,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 5,
+              "contextAwareness": 8,
+              "inventoryUsage": 10,
+              "budgetCompliance": 10
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 7,
+          "message": "I'd like to schedule a test drive",
+          "response": "Great! I'd be happy to schedule a test drive for you. When would you like to come in?",
+          "processingTime": 3909,
+          "quality": {
+            "overallScore": 6.3,
+            "scores": {
+              "relevance": 5,
+              "accuracy": 7,
+              "helpfulness": 8,
+              "tone": 9,
+              "completeness": 5,
+              "contextAwareness": 6,
+              "inventoryUsage": 3,
+              "budgetCompliance": 7
+            },
+            "problems": [
+              "Low relevance",
+              "Poor inventory usage"
+            ]
+          }
+        },
+        {
+          "step": 8,
+          "message": "Yes, I'm ready to buy the Hyundai Palisade after the test drive",
+          "response": "Great! I see you're ready to buy the Hyundai Palisade. Here are the details:\n\n1. **Hyundai Palisade Base** - $21,409 - 2020 - Stock #LU034869C\n2. **Hyundai Palisade Base** - $22,178 - 2020 - Stock #LU100695B\n3. **Hyundai Palisade Base** - $33,761 - 2024 - Stock #RU723067\n\nWhich one would you like to proceed with?",
+          "processingTime": 5222,
+          "quality": {
+            "overallScore": 7.6,
+            "scores": {
+              "relevance": 6,
+              "accuracy": 10,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 5,
+              "contextAwareness": 6,
+              "inventoryUsage": 9,
+              "budgetCompliance": 10
+            },
+            "problems": []
+          }
+        }
+      ],
+      "scores": [
+        8.6,
+        7.5,
+        7.3,
+        7.1,
+        8.5,
+        8.3,
+        6.3,
+        7.6
+      ],
+      "issues": [
+        {
+          "step": 7,
+          "message": "I'd like to schedule a test drive",
+          "score": 6.3,
+          "problems": [
+            "Low relevance",
+            "Poor inventory usage"
+          ],
+          "severity": "MEDIUM"
+        }
+      ],
+      "averageScore": 7.6499999999999995
+    },
+    "luxury_car": {
+      "name": "🚗 Luxury Car Enthusiast",
+      "budget": 80000,
+      "vehicleType": "sedan",
+      "priorities": [
+        "technology",
+        "performance",
+        "comfort"
+      ],
+      "responses": [
+        {
+          "step": 1,
+          "message": "Hello! I'm interested in a luxury vehicle",
+          "response": "I understand you're looking for a luxury vehicle. Here are our premium options available:\n\n- **2022 BMW X5**  \n  Price: $65,000  \n  Availability: In Stock (Stock #12345)\n\n- **2023 Audi Q7**  \n  Price: $70,000  \n  Availability: In Stock (Stock #67890)\n\n- **2022 Mercedes-Benz GLE**  \n  Price: $68,000  \n  Availability: In Stock (Stock #54321)\n\nWould you like more details on any of these models?",
+          "processingTime": 5132,
+          "quality": {
+            "overallScore": 6.9,
+            "scores": {
+              "relevance": 6,
+              "accuracy": 8,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 7,
+              "contextAwareness": 6,
+              "inventoryUsage": 6,
+              "budgetCompliance": 7
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 2,
+          "message": "I want a premium sedan with advanced technology",
+          "response": "I understand you're looking for a luxury sedan with advanced technology. Here are our premium options:\n\n1. **Ford Fusion Hybrid Base** - $12,400 - Sedan - Stock #JR169883\n2. **Suzuki Cultus VXR** - $14,590.50 - Sedan - Stock #Main Lot\n3. **Hyundai Elantra Base** - $19,132 - Sedan - Stock #RU740482\n\nWhich of these vehicles interests you?",
+          "processingTime": 5083,
+          "quality": {
+            "overallScore": 8.8,
+            "scores": {
+              "relevance": 10,
+              "accuracy": 10,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 7,
+              "contextAwareness": 8,
+              "inventoryUsage": 10,
+              "budgetCompliance": 10
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 3,
+          "message": "Budget is not a major concern, around $80,000+",
+          "response": "Great! I see you're open to various options with a budget of around $80,000+. Here are some premium vehicles that fit your criteria:\n\n- **Make:** BMW  \n  **Model:** X5  \n  **Year:** 2023  \n  **Price:** $78,500  \n  **Availability:** In Stock (Stock #12345)\n\n- **Make:** Mercedes-Benz  \n  **Model:** GLE 350  \n  **Year:** 2023  \n  **Price:** $79,900  \n  **Availability:** In Stock (Stock #67890)\n\nWould you like more details on any of these options?",
+          "processingTime": 6076,
+          "quality": {
+            "overallScore": 7.3,
+            "scores": {
+              "relevance": 6,
+              "accuracy": 8,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 8,
+              "contextAwareness": 8,
+              "inventoryUsage": 6,
+              "budgetCompliance": 7
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 4,
+          "message": "I need cutting-edge tech, premium materials, and performance",
+          "response": "I understand you're looking for a luxury vehicle with cutting-edge technology, premium materials, and high performance. Here are some options from our inventory:\n\n- **Make: [Luxury Brand]**\n  - **Model: [Model Name]**\n  - **Year: [Year]**\n  - **Price: $[Price]**\n  - **Availability: Stock #[StockNumber]**\n\n- **Make: [Luxury Brand]**\n  - **Model: [Model Name]**\n  - **Year: [Year]**\n  - **Price: $[Price]**\n  - **Availability: Stock #[StockNumber]**\n\nWould you like more details on any specific model?",
+          "processingTime": 6318,
+          "quality": {
+            "overallScore": 7.1,
+            "scores": {
+              "relevance": 8,
+              "accuracy": 8,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 7,
+              "contextAwareness": 6,
+              "inventoryUsage": 6,
+              "budgetCompliance": 7
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 5,
+          "message": "I prefer Mercedes-Benz or BMW",
+          "response": "Great! I see you're interested in Mercedes-Benz or BMW vehicles. However, I don't have current inventory data available right now. Please contact our sales team directly for the most up-to-date information on available models. Is there anything else I can assist you with?",
+          "processingTime": 4140,
+          "quality": {
+            "overallScore": 7,
+            "scores": {
+              "relevance": 5,
+              "accuracy": 8,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 7,
+              "contextAwareness": 6,
+              "inventoryUsage": 5,
+              "budgetCompliance": 10
+            },
+            "problems": [
+              "Low relevance"
+            ]
+          }
+        },
+        {
+          "step": 6,
+          "message": "Yes, show me the Mercedes S-Class",
+          "response": "I see you're interested in the Mercedes S-Class. However, we currently don't have any Mercedes S-Class vehicles in stock. Here are some available options you might consider:\n\n1. **Ford Fusion Hybrid Base** - $12,400 - Sedan - Stock #JR169883\n2. **Suzuki Cultus VXR** - $14,590.50 - Sedan - Main Lot\n3. **Hyundai Elantra Base** - $19,132 - Sedan - Stock #RU740482\n\nWould you like more details on any of these vehicles?",
+          "processingTime": 5960,
+          "quality": {
+            "overallScore": 8,
+            "scores": {
+              "relevance": 6,
+              "accuracy": 10,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 7,
+              "contextAwareness": 6,
+              "inventoryUsage": 10,
+              "budgetCompliance": 10
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 7,
+          "message": "I'd like to schedule a test drive",
+          "response": "Great! I'd be happy to schedule a test drive for you. When would you like to come in?",
+          "processingTime": 4025,
+          "quality": {
+            "overallScore": 6.3,
+            "scores": {
+              "relevance": 5,
+              "accuracy": 7,
+              "helpfulness": 8,
+              "tone": 9,
+              "completeness": 5,
+              "contextAwareness": 6,
+              "inventoryUsage": 3,
+              "budgetCompliance": 7
+            },
+            "problems": [
+              "Low relevance",
+              "Poor inventory usage"
+            ]
+          }
+        },
+        {
+          "step": 8,
+          "message": "Yes, I'm ready to proceed with the Mercedes S-Class",
+          "response": "Perfect! I see you're ready to proceed with the Mercedes S-Class. Unfortunately, we don't have that specific model in stock at the moment. However, here are some available sedans you might consider:\n\n1. **Ford Fusion Hybrid Base** - $12,400 - Sedan - Stock #JR169883\n2. **Suzuki Cultus VXR** - $14,590.50 - Sedan - Stock #Main Lot\n3. **Hyundai Elantra Base** - $19,132 - Sedan - Stock #RU740482\n\nWould you like more details on any of these options?",
+          "processingTime": 5708,
+          "quality": {
+            "overallScore": 8.3,
+            "scores": {
+              "relevance": 8,
+              "accuracy": 10,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 5,
+              "contextAwareness": 8,
+              "inventoryUsage": 10,
+              "budgetCompliance": 10
+            },
+            "problems": []
+          }
+        }
+      ],
+      "scores": [
+        6.9,
+        8.8,
+        7.3,
+        7.1,
+        7,
+        8,
+        6.3,
+        8.3
+      ],
+      "issues": [
+        {
+          "step": 1,
+          "message": "Hello! I'm interested in a luxury vehicle",
+          "score": 6.9,
+          "problems": [],
+          "severity": "MEDIUM"
+        },
+        {
+          "step": 7,
+          "message": "I'd like to schedule a test drive",
+          "score": 6.3,
+          "problems": [
+            "Low relevance",
+            "Poor inventory usage"
+          ],
+          "severity": "MEDIUM"
+        }
+      ],
+      "averageScore": 7.4625
+    },
+    "budget_conscious": {
+      "name": "💰 Budget-Conscious Buyer",
+      "budget": 20000,
+      "vehicleType": "compact",
+      "priorities": [
+        "reliability",
+        "fuel_economy",
+        "value"
+      ],
+      "responses": [
+        {
+          "step": 1,
+          "message": "Hi! I need a reliable car on a tight budget",
+          "response": "Great! I see you're looking for a reliable car on a tight budget. Here are some options that might fit your needs:\n\n- **Make:** Toyota  \n  **Model:** Corolla  \n  **Year:** 2020  \n  **Price:** $18,500  \n  **Availability:** In stock (Stock #12345)\n\n- **Make:** Honda  \n  **Model:** Civic  \n  **Year:** 2019  \n  **Price:** $19,000  \n  **Availability:** In stock (Stock #67890)\n\nWould you like more details on any of these options?",
+          "processingTime": 5395,
+          "quality": {
+            "overallScore": 7,
+            "scores": {
+              "relevance": 6,
+              "accuracy": 8,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 8,
+              "contextAwareness": 6,
+              "inventoryUsage": 6,
+              "budgetCompliance": 7
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 2,
+          "message": "I want a compact sedan or small SUV",
+          "response": "Great! I see you're looking for a compact sedan or small SUV. Here are some options available:\n\n- **2022 Honda HR-V**  \n  - Price: $28,000  \n  - Availability: In stock (Stock #12345)\n\n- **2023 Toyota Corolla**  \n  - Price: $24,500  \n  - Availability: In stock (Stock #67890)\n\nWould you like more details on any of these vehicles?",
+          "processingTime": 5417,
+          "quality": {
+            "overallScore": 7.4,
+            "scores": {
+              "relevance": 8,
+              "accuracy": 8,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 7,
+              "contextAwareness": 8,
+              "inventoryUsage": 6,
+              "budgetCompliance": 7
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 3,
+          "message": "My budget is around $20,000",
+          "response": "Great! I see you're looking for options within a budget of $20,000. Here are some vehicles available in our inventory that fit your budget:\n\n- **Make:** [Make]  \n  **Model:** [Model]  \n  **Year:** [Year]  \n  **Price:** $[Price]  \n  **Availability:** [Stock #]\n\n- **Make:** [Make]  \n  **Model:** [Model]  \n  **Year:** [Year]  \n  **Price:** $[Price]  \n  **Availability:** [Stock #]\n\nWould you like more details on any of these options?",
+          "processingTime": 6571,
+          "quality": {
+            "overallScore": 7.3,
+            "scores": {
+              "relevance": 6,
+              "accuracy": 8,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 8,
+              "contextAwareness": 8,
+              "inventoryUsage": 6,
+              "budgetCompliance": 7
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 4,
+          "message": "I need good fuel economy and reliability",
+          "response": "Great! I see you're looking for a vehicle with good fuel economy and reliability. Here are some options from our inventory that fit those criteria:\n\n- **Toyota RAV4**  \n  - Year: 2022  \n  - Price: $32,000  \n  - Availability: In stock (Stock #12345)  \n\n- **Honda CR-V**  \n  - Year: 2021  \n  - Price: $29,500  \n  - Availability: In stock (Stock #67890)  \n\nWould you like more details on any of these models?",
+          "processingTime": 5605,
+          "quality": {
+            "overallScore": 7.1,
+            "scores": {
+              "relevance": 8,
+              "accuracy": 8,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 7,
+              "contextAwareness": 6,
+              "inventoryUsage": 6,
+              "budgetCompliance": 7
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 5,
+          "message": "I prefer Honda or Toyota for reliability",
+          "response": "Great! I see you prefer Honda or Toyota for reliability. Here are some options currently available:\n\n1. **Toyota Prius Base** - $20,688 - Hatchback - Stock #L3116946\n2. **Toyota Camry Base** - $23,856 - Sedan - Stock #NU624486\n3. **Honda Civic Base** - $25,000 - Hatchback - Stock #PE012219\n\nWhich vehicle interests you?",
+          "processingTime": 5421,
+          "quality": {
+            "overallScore": 7.8,
+            "scores": {
+              "relevance": 8,
+              "accuracy": 10,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 7,
+              "contextAwareness": 8,
+              "inventoryUsage": 10,
+              "budgetCompliance": 4
+            },
+            "problems": [
+              "Vehicles outside budget suggested",
+              "Budget compliance issues"
+            ]
+          }
+        },
+        {
+          "step": 6,
+          "message": "Yes, show me the Honda Civic",
+          "response": "Great! I see you're interested in the Honda Civic. Here are the details:\n\n1. **Honda Civic Base** - $25,000 - Hatchback - Stock #PE012219\n\nWould you like to schedule a test drive for this vehicle?",
+          "processingTime": 4438,
+          "quality": {
+            "overallScore": 7.4,
+            "scores": {
+              "relevance": 6,
+              "accuracy": 10,
+              "helpfulness": 8,
+              "tone": 9,
+              "completeness": 7,
+              "contextAwareness": 6,
+              "inventoryUsage": 9,
+              "budgetCompliance": 4
+            },
+            "problems": [
+              "Vehicles outside budget suggested",
+              "Budget compliance issues"
+            ]
+          }
+        },
+        {
+          "step": 7,
+          "message": "I'd like to schedule a test drive",
+          "response": "Great! I'd be happy to schedule a test drive for you. When would you like to come in?",
+          "processingTime": 4106,
+          "quality": {
+            "overallScore": 6.3,
+            "scores": {
+              "relevance": 5,
+              "accuracy": 7,
+              "helpfulness": 8,
+              "tone": 9,
+              "completeness": 5,
+              "contextAwareness": 6,
+              "inventoryUsage": 3,
+              "budgetCompliance": 7
+            },
+            "problems": [
+              "Low relevance",
+              "Poor inventory usage"
+            ]
+          }
+        },
+        {
+          "step": 8,
+          "message": "Yes, I'm ready to buy the Honda Civic",
+          "response": "Great! I see you're ready to buy the Honda Civic. Here are the details:\n\n1. **Honda Civic Base** - $25,000 - Hatchback - Stock #PE012219\n\nWould you like to schedule a test drive for the Honda Civic?",
+          "processingTime": 5389,
+          "quality": {
+            "overallScore": 7.1,
+            "scores": {
+              "relevance": 6,
+              "accuracy": 10,
+              "helpfulness": 8,
+              "tone": 9,
+              "completeness": 5,
+              "contextAwareness": 6,
+              "inventoryUsage": 9,
+              "budgetCompliance": 4
+            },
+            "problems": [
+              "Vehicles outside budget suggested",
+              "Budget compliance issues"
+            ]
+          }
+        }
+      ],
+      "scores": [
+        7,
+        7.4,
+        7.3,
+        7.1,
+        7.8,
+        7.4,
+        6.3,
+        7.1
+      ],
+      "issues": [
+        {
+          "step": 7,
+          "message": "I'd like to schedule a test drive",
+          "score": 6.3,
+          "problems": [
+            "Low relevance",
+            "Poor inventory usage"
+          ],
+          "severity": "MEDIUM"
+        }
+      ],
+      "averageScore": 7.174999999999999
+    },
+    "business_fleet": {
+      "name": "🏢 Business Fleet Manager",
+      "budget": 200000,
+      "vehicleType": "multiple",
+      "priorities": [
+        "fleet_pricing",
+        "reliability",
+        "warranties"
+      ],
+      "responses": [
+        {
+          "step": 1,
+          "message": "Hello! I'm managing a business fleet purchase",
+          "response": "I see you're managing a business fleet purchase. Could you please provide the size of your fleet and any specific vehicle requirements you have in mind? This will help me present the best options for your needs!",
+          "processingTime": 4604,
+          "quality": {
+            "overallScore": 6.4,
+            "scores": {
+              "relevance": 5,
+              "accuracy": 7,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 7,
+              "contextAwareness": 6,
+              "inventoryUsage": 4,
+              "budgetCompliance": 7
+            },
+            "problems": [
+              "Low relevance",
+              "Poor inventory usage"
+            ]
+          }
+        },
+        {
+          "step": 2,
+          "message": "I need 5-10 vehicles for our sales team",
+          "response": "I see you're managing a business fleet purchase for 5-10 vehicles for your sales team. Here are our best options:\n\n- **Ford Transit 2023**  \n  - Price: $35,000  \n  - Availability: In stock (Stock #12345)\n\n- **Chevrolet Express 2023**  \n  - Price: $32,000  \n  - Availability: In stock (Stock #67890)\n\n- **Ram ProMaster 2023**  \n  - Price: $34,000  \n  - Availability: In stock (Stock #54321)\n\nWould you like more details on any of these options?",
+          "processingTime": 5129,
+          "quality": {
+            "overallScore": 6.9,
+            "scores": {
+              "relevance": 6,
+              "accuracy": 8,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 7,
+              "contextAwareness": 6,
+              "inventoryUsage": 6,
+              "budgetCompliance": 7
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 3,
+          "message": "Budget is around $200,000 total",
+          "response": "Great! I see you're looking for options within a $200,000 budget. Here are some vehicles available in our inventory that fit your budget:\n\n- **Make**: [Make]  \n  **Model**: [Model]  \n  **Year**: [Year]  \n  **Price**: $[Price]  \n  **Availability**: Stock #[StockNumber]  \n\n- **Make**: [Make]  \n  **Model**: [Model]  \n  **Year**: [Year]  \n  **Price**: $[Price]  \n  **Availability**: Stock #[StockNumber]  \n\nWould you like more details on any specific model?",
+          "processingTime": 5817,
+          "quality": {
+            "overallScore": 7.3,
+            "scores": {
+              "relevance": 6,
+              "accuracy": 8,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 8,
+              "contextAwareness": 8,
+              "inventoryUsage": 6,
+              "budgetCompliance": 7
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 4,
+          "message": "I need reliable, fuel-efficient vehicles with good warranties",
+          "response": "Great! I see you're looking for reliable, fuel-efficient vehicles with good warranties. Here are some options from our inventory:\n\n- **Toyota Camry**  \n  - Price: $25,000  \n  - Availability: In stock (Stock #12345)  \n\n- **Honda Accord**  \n  - Price: $27,500  \n  - Availability: In stock (Stock #67890)  \n\n- **Hyundai Elantra**  \n  - Price: $22,000  \n  - Availability: In stock (Stock #54321)  \n\nWould you like more details on any of these models?",
+          "processingTime": 5539,
+          "quality": {
+            "overallScore": 6.9,
+            "scores": {
+              "relevance": 6,
+              "accuracy": 8,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 7,
+              "contextAwareness": 6,
+              "inventoryUsage": 6,
+              "budgetCompliance": 7
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 5,
+          "message": "I prefer Ford or Chevrolet for fleet pricing",
+          "response": "I see you're interested in Ford or Chevrolet for your fleet purchase. Here are some options that may suit your needs:\n\n- **2023 Ford Transit Van**\n  - Price: $35,000\n  - Availability: In stock (Stock #12345)\n\n- **2023 Chevrolet Express Cargo Van**\n  - Price: $32,000\n  - Availability: In stock (Stock #67890)\n\nThese vehicles offer great reliability for business use. Would you like more details on any of these options?",
+          "processingTime": 4784,
+          "quality": {
+            "overallScore": 7.1,
+            "scores": {
+              "relevance": 8,
+              "accuracy": 8,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 7,
+              "contextAwareness": 6,
+              "inventoryUsage": 6,
+              "budgetCompliance": 7
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 6,
+          "message": "Yes, show me the Ford Fusion fleet options",
+          "response": "I see you're interested in Ford Fusion options for your fleet. Here’s what we have available:\n\n1. **Ford Fusion Hybrid Base** - $12,400 - Sedan - Stock #JR169883\n\nThis vehicle is perfect for fleet use, offering efficiency and comfort. Would you like more details or to schedule a test drive?",
+          "processingTime": 4430,
+          "quality": {
+            "overallScore": 8.3,
+            "scores": {
+              "relevance": 6,
+              "accuracy": 10,
+              "helpfulness": 8,
+              "tone": 9,
+              "completeness": 7,
+              "contextAwareness": 6,
+              "inventoryUsage": 10,
+              "budgetCompliance": 10
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 7,
+          "message": "I'd like to schedule fleet test drives",
+          "response": "I see you're interested in scheduling test drives for your fleet purchase. How many vehicles are you looking to test drive? This will help me provide the best options for your business needs.",
+          "processingTime": 6619,
+          "quality": {
+            "overallScore": 6.6,
+            "scores": {
+              "relevance": 5,
+              "accuracy": 7,
+              "helpfulness": 8,
+              "tone": 9,
+              "completeness": 7,
+              "contextAwareness": 6,
+              "inventoryUsage": 4,
+              "budgetCompliance": 7
+            },
+            "problems": [
+              "Low relevance",
+              "Poor inventory usage"
+            ]
+          }
+        },
+        {
+          "step": 8,
+          "message": "Yes, we're ready to proceed with the fleet purchase",
+          "response": "I see you're ready to proceed with a fleet purchase. How many vehicles are you looking to acquire, and do you have specific models or features in mind? This will help me provide the best options for your business needs.",
+          "processingTime": 4357,
+          "quality": {
+            "overallScore": 6.5,
+            "scores": {
+              "relevance": 5,
+              "accuracy": 7,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 8,
+              "contextAwareness": 6,
+              "inventoryUsage": 4,
+              "budgetCompliance": 7
+            },
+            "problems": [
+              "Low relevance",
+              "Poor inventory usage"
+            ]
+          }
+        }
+      ],
+      "scores": [
+        6.4,
+        6.9,
+        7.3,
+        6.9,
+        7.1,
+        8.3,
+        6.6,
+        6.5
+      ],
+      "issues": [
+        {
+          "step": 1,
+          "message": "Hello! I'm managing a business fleet purchase",
+          "score": 6.4,
+          "problems": [
+            "Low relevance",
+            "Poor inventory usage"
+          ],
+          "severity": "MEDIUM"
+        },
+        {
+          "step": 2,
+          "message": "I need 5-10 vehicles for our sales team",
+          "score": 6.9,
+          "problems": [],
+          "severity": "MEDIUM"
+        },
+        {
+          "step": 4,
+          "message": "I need reliable, fuel-efficient vehicles with good warranties",
+          "score": 6.9,
+          "problems": [],
+          "severity": "MEDIUM"
+        },
+        {
+          "step": 7,
+          "message": "I'd like to schedule fleet test drives",
+          "score": 6.6,
+          "problems": [
+            "Low relevance",
+            "Poor inventory usage"
+          ],
+          "severity": "MEDIUM"
+        },
+        {
+          "step": 8,
+          "message": "Yes, we're ready to proceed with the fleet purchase",
+          "score": 6.5,
+          "problems": [
+            "Low relevance",
+            "Poor inventory usage"
+          ],
+          "severity": "MEDIUM"
+        }
+      ],
+      "averageScore": 7.000000000000001
+    },
+    "first_time_buyer": {
+      "name": "🎓 First-Time Car Buyer",
+      "budget": 25000,
+      "vehicleType": "compact",
+      "priorities": [
+        "safety",
+        "ease_of_use"
+      ],
+      "responses": [
+        {
+          "step": 1,
+          "message": "Hi! This is my first time buying a car",
+          "response": "Great! I see you're looking for a sedan. Since this is your first time buying a car, I'm here to help guide you through the process. Would you like to see some options available in our inventory?",
+          "processingTime": 4259,
+          "quality": {
+            "overallScore": 8.1,
+            "scores": {
+              "relevance": 7,
+              "accuracy": 10,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 7,
+              "contextAwareness": 6,
+              "inventoryUsage": 10,
+              "budgetCompliance": 10
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 2,
+          "message": "I want something safe and easy to drive",
+          "response": "Great! I see you're looking for a vehicle that is safe and easy to drive. Here are some options from our inventory that prioritize safety features and user-friendly handling:\n\n- **Toyota RAV4**  \n  - Year: 2022  \n  - Price: $38,500  \n  - Availability: In Stock (Stock #12345)  \n\n- **Honda CR-V**  \n  - Year: 2021  \n  - Price: $36,000  \n  - Availability: In Stock (Stock #67890)  \n\nWould you like more details on any of these models?",
+          "processingTime": 5932,
+          "quality": {
+            "overallScore": 7.3,
+            "scores": {
+              "relevance": 8,
+              "accuracy": 8,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 8,
+              "contextAwareness": 6,
+              "inventoryUsage": 6,
+              "budgetCompliance": 7
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 3,
+          "message": "My budget is around $25,000",
+          "response": "Great! I see you're looking for vehicles within a budget of $25,000. Here are some options available in our inventory:\n\n- **Make**: [Model 1]  \n  **Year**: [Year 1]  \n  **Price**: $[Price 1]  \n  **Availability**: Stock #[StockNumber 1]\n\n- **Make**: [Model 2]  \n  **Year**: [Year 2]  \n  **Price**: $[Price 2]  \n  **Availability**: Stock #[StockNumber 2]\n\n- **Make**: [Model 3]  \n  **Year**: [Year 3]  \n  **Price**: $[Price 3]  \n  **Availability**: Stock #[StockNumber 3]\n\nWould you like more details on any of these options?",
+          "processingTime": 6012,
+          "quality": {
+            "overallScore": 7.3,
+            "scores": {
+              "relevance": 6,
+              "accuracy": 8,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 8,
+              "contextAwareness": 8,
+              "inventoryUsage": 6,
+              "budgetCompliance": 7
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 4,
+          "message": "I need safety features and good gas mileage",
+          "response": "Great! I see you're looking for a vehicle with a focus on safety features and good gas mileage. Here are some options from our inventory that meet those criteria:\n\n- **Toyota RAV4**  \n  - Year: 2022  \n  - Price: $36,000  \n  - Availability: In stock (Stock #12345)\n\n- **Honda CR-V**  \n  - Year: 2021  \n  - Price: $34,500  \n  - Availability: In stock (Stock #67890)\n\nWould you like more details on any of these models?",
+          "processingTime": 5212,
+          "quality": {
+            "overallScore": 7.3,
+            "scores": {
+              "relevance": 8,
+              "accuracy": 8,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 8,
+              "contextAwareness": 6,
+              "inventoryUsage": 6,
+              "budgetCompliance": 7
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 5,
+          "message": "I'm open to any reliable brand",
+          "response": "Great! I see you're looking for an SUV with a $40,000 budget and sunroof features. Here are some reliable options from our inventory:\n\n- **2022 Honda CR-V**\n  - Price: $36,500\n  - Availability: In stock (Stock #12345)\n\n- **2023 Toyota RAV4**\n  - Price: $38,000\n  - Availability: In stock (Stock #67890)\n\n- **2022 Ford Escape**\n  - Price: $34,000\n  - Availability: In stock (Stock #54321)\n\nWould you like more details on any of these models?",
+          "processingTime": 5227,
+          "quality": {
+            "overallScore": 7.1,
+            "scores": {
+              "relevance": 8,
+              "accuracy": 8,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 7,
+              "contextAwareness": 6,
+              "inventoryUsage": 6,
+              "budgetCompliance": 7
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 6,
+          "message": "Yes, show me the Toyota Corolla",
+          "response": "I see you're interested in the Toyota Corolla. However, we currently don't have any Toyota Corollas in stock. Here are some available sedan options:\n\n1. **Ford Fusion Hybrid Base** - $12,400 - Sedan - Stock #JR169883\n2. **Suzuki Cultus VXR** - $14,590.50 - Sedan - Main Lot\n3. **Hyundai Elantra Base** - $19,132 - Sedan - Stock #RU740482\n\nWhich of these options interests you?",
+          "processingTime": 5368,
+          "quality": {
+            "overallScore": 8,
+            "scores": {
+              "relevance": 8,
+              "accuracy": 10,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 5,
+              "contextAwareness": 6,
+              "inventoryUsage": 10,
+              "budgetCompliance": 10
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 7,
+          "message": "I'd like to schedule a test drive",
+          "response": "Great! I'd be happy to schedule a test drive for you. When would you like to come in?",
+          "processingTime": 3797,
+          "quality": {
+            "overallScore": 6.3,
+            "scores": {
+              "relevance": 5,
+              "accuracy": 7,
+              "helpfulness": 8,
+              "tone": 9,
+              "completeness": 5,
+              "contextAwareness": 6,
+              "inventoryUsage": 3,
+              "budgetCompliance": 7
+            },
+            "problems": [
+              "Low relevance",
+              "Poor inventory usage"
+            ]
+          }
+        },
+        {
+          "step": 8,
+          "message": "Yes, I'm ready to buy my first car",
+          "response": "Great! I see you're ready to buy your first car. Since you're looking for a sedan, here are some options available in our inventory:\n\n1. **Ford Fusion Hybrid - $12,400 - Sedan** (Stock #JR169883)\n2. **Suzuki Cultus VXR - $14,590.50 - Sedan** (Main Lot)\n3. **Hyundai Elantra - $19,132 - Sedan** (Stock #RU740482)\n\nWhich of these vehicles interests you?",
+          "processingTime": 5095,
+          "quality": {
+            "overallScore": 8.3,
+            "scores": {
+              "relevance": 8,
+              "accuracy": 10,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 7,
+              "contextAwareness": 6,
+              "inventoryUsage": 10,
+              "budgetCompliance": 10
+            },
+            "problems": []
+          }
+        }
+      ],
+      "scores": [
+        8.1,
+        7.3,
+        7.3,
+        7.3,
+        7.1,
+        8,
+        6.3,
+        8.3
+      ],
+      "issues": [
+        {
+          "step": 7,
+          "message": "I'd like to schedule a test drive",
+          "score": 6.3,
+          "problems": [
+            "Low relevance",
+            "Poor inventory usage"
+          ],
+          "severity": "MEDIUM"
+        }
+      ],
+      "averageScore": 7.4625
+    }
+  },
+  "optimizationIssues": [
+    {
+      "scenario": "family_suv",
+      "step": 7,
+      "message": "I'd like to schedule a test drive",
+      "score": 6.3,
+      "problems": [
+        "Low relevance",
+        "Poor inventory usage"
+      ],
+      "severity": "MEDIUM"
+    },
+    {
+      "scenario": "luxury_car",
+      "step": 1,
+      "message": "Hello! I'm interested in a luxury vehicle",
+      "score": 6.9,
+      "problems": [],
+      "severity": "MEDIUM"
+    },
+    {
+      "scenario": "luxury_car",
+      "step": 7,
+      "message": "I'd like to schedule a test drive",
+      "score": 6.3,
+      "problems": [
+        "Low relevance",
+        "Poor inventory usage"
+      ],
+      "severity": "MEDIUM"
+    },
+    {
+      "scenario": "budget_conscious",
+      "step": 7,
+      "message": "I'd like to schedule a test drive",
+      "score": 6.3,
+      "problems": [
+        "Low relevance",
+        "Poor inventory usage"
+      ],
+      "severity": "MEDIUM"
+    },
+    {
+      "scenario": "business_fleet",
+      "step": 1,
+      "message": "Hello! I'm managing a business fleet purchase",
+      "score": 6.4,
+      "problems": [
+        "Low relevance",
+        "Poor inventory usage"
+      ],
+      "severity": "MEDIUM"
+    },
+    {
+      "scenario": "business_fleet",
+      "step": 2,
+      "message": "I need 5-10 vehicles for our sales team",
+      "score": 6.9,
+      "problems": [],
+      "severity": "MEDIUM"
+    },
+    {
+      "scenario": "business_fleet",
+      "step": 4,
+      "message": "I need reliable, fuel-efficient vehicles with good warranties",
+      "score": 6.9,
+      "problems": [],
+      "severity": "MEDIUM"
+    },
+    {
+      "scenario": "business_fleet",
+      "step": 7,
+      "message": "I'd like to schedule fleet test drives",
+      "score": 6.6,
+      "problems": [
+        "Low relevance",
+        "Poor inventory usage"
+      ],
+      "severity": "MEDIUM"
+    },
+    {
+      "scenario": "business_fleet",
+      "step": 8,
+      "message": "Yes, we're ready to proceed with the fleet purchase",
+      "score": 6.5,
+      "problems": [
+        "Low relevance",
+        "Poor inventory usage"
+      ],
+      "severity": "MEDIUM"
+    },
+    {
+      "scenario": "first_time_buyer",
+      "step": 7,
+      "message": "I'd like to schedule a test drive",
+      "score": 6.3,
+      "problems": [
+        "Low relevance",
+        "Poor inventory usage"
+      ],
+      "severity": "MEDIUM"
+    }
+  ],
+  "summary": {
+    "totalScenarios": 5,
+    "totalIssues": 10,
+    "averageScore": 7.35
+  }
+}

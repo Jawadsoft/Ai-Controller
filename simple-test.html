@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple D.A.I.V.E. Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .chat { border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: auto; margin: 10px 0; }
+        .input { width: 80%; padding: 5px; }
+        .button { padding: 5px 10px; }
+        .quick-btn {
+            padding: 6px 12px;
+            background-color: #e3f2fd;
+            color: #1976d2;
+            border: 1px solid #bbdefb;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+        .quick-btn:hover {
+            background-color: #bbdefb;
+            border-color: #90caf9;
+        }
+        .quick-btn:disabled {
+            background-color: #f5f5f5;
+            color: #999;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <h1>Simple D.A.I.V.E. Test</h1>
+    
+    <div>
+        <label>Vehicle ID: </label>
+        <input type="text" id="vehicleId" value="fe21b82a-5e3b-46e4-a51d-0f6806a46cc5" style="width: 300px;">
+    </div>
+    
+    <div>
+        <label>Message: </label>
+        <input type="text" id="message" value="I want an ideal car for my family" style="width: 300px;">
+        <button onclick="sendMessage()" class="button">Send</button>
+    </div>
+
+    <!-- Quick Action Buttons -->
+    <div id="quickActions" style="margin: 15px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; background-color: #f8f9fa;">
+        <p style="margin: 0 0 10px 0; font-weight: bold; color: #666;">Quick questions:</p>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+            <button onclick="sendQuickMessage('I want an ideal car for my family')" class="quick-btn">Family Features</button>
+            <button onclick="sendQuickMessage('What safety features does this vehicle have?')" class="quick-btn">Safety Info</button>
+            <button onclick="sendQuickMessage('What is the price and financing options?')" class="quick-btn">Pricing</button>
+            <button onclick="sendQuickMessage('Can I schedule a test drive?')" class="quick-btn">Test Drive</button>
+            <button onclick="sendQuickMessage('What are the fuel efficiency ratings?')" class="quick-btn">Fuel Economy</button>
+            <button onclick="sendQuickMessage('How much cargo space does it have?')" class="quick-btn">Cargo Space</button>
+            <button onclick="sendQuickMessage('Show me other vehicles from this dealer')" class="quick-btn">More Options</button>
+        </div>
+    </div>
+    
+    <div class="chat" id="chat">
+        <div style="margin: 5px 0; padding: 5px; background-color: #f5f5f5;">
+            <strong>D.A.I.V.E.:</strong> Hi, I'm D.A.I.V.E., your AI sales assistant! I'm here to help you find the perfect vehicle for your needs. This vehicle is a great choice with excellent features for families, safety, and reliability. What would you like to know about it?
+        </div>
+    </div>
+    
+    <div id="status"></div>
+
+    <script>
+        function addMessage(text, isUser = false) {
+            const chat = document.getElementById('chat');
+            const div = document.createElement('div');
+            div.style.margin = '5px 0';
+            div.style.padding = '5px';
+            div.style.backgroundColor = isUser ? '#e3f2fd' : '#f5f5f5';
+            div.textContent = (isUser ? 'You: ' : 'D.A.I.V.E.: ') + text;
+            chat.appendChild(div);
+            chat.scrollTop = chat.scrollHeight;
+        }
+
+        function updateStatus(text) {
+            document.getElementById('status').textContent = text;
+        }
+
+        function sendQuickMessage(message) {
+            // Hide quick actions after first use
+            document.getElementById('quickActions').style.display = 'none';
+            
+            // Set the message input
+            document.getElementById('message').value = message;
+            
+            // Send the message
+            sendMessage();
+        }
+
+        async function sendMessage() {
+            const vehicleId = document.getElementById('vehicleId').value;
+            const message = document.getElementById('message').value;
+            
+            if (!vehicleId || !message) {
+                updateStatus('Please enter both vehicle ID and message');
+                return;
+            }
+
+            addMessage(message, true);
+            updateStatus('Sending...');
+
+            try {
+                const response = await fetch('http://localhost:3000/api/daive/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        vehicleId: vehicleId,
+                        sessionId: 'simple_test_' + Date.now(),
+                        message: message,
+                        customerInfo: {
+                            name: 'Test User',
+                            email: 'test@example.com'
+                        }
+                    }),
+                });
+
+                const data = await response.text();
+                console.log('Response:', data);
+
+                if (response.ok) {
+                    const result = JSON.parse(data);
+                    if (result.success) {
+                        addMessage(result.data.response);
+                        updateStatus(`Success! Lead Score: ${result.data.leadScore}%`);
+                    } else {
+                        addMessage('Error: ' + (result.error || 'Unknown error'));
+                        updateStatus('Failed');
+                    }
+                } else {
+                    addMessage('Error: ' + data);
+                    updateStatus('Failed');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                addMessage('Error: ' + error.message);
+                updateStatus('Network error');
+            }
+        }
+
+        // Auto-send on Enter
+        document.getElementById('message').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html> 

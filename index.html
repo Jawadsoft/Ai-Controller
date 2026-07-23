@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dealer IQ DMS</title>
+    <meta name="description" content="Dealer IQ DMS - Dealership Management System" />
+    <meta name="author" content="Dealer IQ" />
+
+    <meta property="og:title" content="Dealer IQ DMS" />
+    <meta property="og:description" content="Dealer IQ DMS - Dealership Management System" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://app.dealeriq.co/favicon.ico" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@dealeriq" />
+    <meta name="twitter:image" content="https://app.dealeriq.co/favicon.ico" />
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script>
+      console.log('HTML loaded, about to load main.tsx');
+      window.addEventListener('error', (e) => {
+        console.error('Global error:', e.error, e.message, e.filename);
+      });
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

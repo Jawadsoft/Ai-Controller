@@ -1,0 +1,1021 @@
+{
+  "timestamp": "2025-08-29T16:58:31.928Z",
+  "sessionId": "optimization-test-1756486258162-6vn0xt6nt",
+  "testResults": {
+    "family_suv": {
+      "name": "👨‍👩‍👧‍👦 Family SUV Buyer",
+      "budget": 45000,
+      "vehicleType": "SUV",
+      "priorities": [
+        "safety",
+        "space",
+        "reliability"
+      ],
+      "responses": [
+        {
+          "step": 1,
+          "message": "Hi! I'm looking for a new family SUV",
+          "response": "Great! I see you're looking for a family SUV. Could you please share your budget or any specific features you're interested in?",
+          "processingTime": 8767,
+          "quality": {
+            "overallScore": 7,
+            "scores": {
+              "relevance": 8,
+              "accuracy": 7,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 7,
+              "contextAwareness": 8,
+              "inventoryUsage": 4,
+              "budgetCompliance": 7
+            },
+            "problems": [
+              "Poor inventory usage"
+            ]
+          }
+        },
+        {
+          "step": 2,
+          "message": "I want an SUV with 7 seats and good safety features",
+          "response": "Great! Here are some SUVs with 7 seats and good safety features from our inventory:\n\n1. **Kia Sorento Base** - $13,125 - SUV (Stock #LG674474A)\n2. **Subaru Forester Base** - $15,650 - SUV (Stock #KH440700A)\n3. **Hyundai Tucson Base** - $16,796 - SUV (Stock #NH014773A)\n\nAll vehicles shown are under your budget. Which one interests you?",
+          "processingTime": 11667,
+          "quality": {
+            "overallScore": 8.9,
+            "scores": {
+              "relevance": 10,
+              "accuracy": 10,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 9,
+              "contextAwareness": 8,
+              "inventoryUsage": 9,
+              "budgetCompliance": 10
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 3,
+          "message": "My budget is around $45,000",
+          "response": "Great! I see you're looking for vehicles within a $45,000 budget. Here are some SUVs available in our inventory:\n\n1. **Kia Sorento Base** - $13,125 - SUV (Stock #LG674474A)\n2. **Subaru Forester Base** - $15,650 - SUV (Stock #KH440700A)\n3. **Hyundai Tucson Base** - $16,796 - SUV (Stock #NH014773A)\n\nAll vehicles shown are under your budget. Which one interests you?",
+          "processingTime": 10438,
+          "quality": {
+            "overallScore": 8.8,
+            "scores": {
+              "relevance": 8,
+              "accuracy": 10,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 8,
+              "contextAwareness": 10,
+              "inventoryUsage": 9,
+              "budgetCompliance": 10
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 4,
+          "message": "I need advanced safety features, 7 seats, and good fuel economy",
+          "response": "Great! I see you're looking for a vehicle with advanced safety features, 7 seats, and good fuel economy. Unfortunately, I don't have specific inventory data to provide you with matching vehicles at this moment. However, I recommend checking our dealership for SUVs that typically meet these criteria. Would you like assistance with anything else or to explore other options?",
+          "processingTime": 9723,
+          "quality": {
+            "overallScore": 7.3,
+            "scores": {
+              "relevance": 9,
+              "accuracy": 7,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 8,
+              "contextAwareness": 8,
+              "inventoryUsage": 4,
+              "budgetCompliance": 7
+            },
+            "problems": [
+              "Poor inventory usage"
+            ]
+          }
+        },
+        {
+          "step": 5,
+          "message": "I prefer Hyundai or Toyota",
+          "response": "I found 3 vehicles in stock:\n\n1. Toyota Prius - $20,688 - hatchback (Stock #abd88a9e-6401-483c-b9ab-fb0c6766ef09)\n2. Toyota Camry - $23,856 - sedan (Stock #6f2fe607-eec3-4cfa-89f2-6665d842e65b)\n3. Toyota RAV4 - $25,111 - SUV (Stock #79af5b62-5b74-49ea-9c44-e90eeb0e4056)\n\nWhich would you like more details on?",
+          "processingTime": 13007,
+          "quality": {
+            "overallScore": 8.4,
+            "scores": {
+              "relevance": 8,
+              "accuracy": 10,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 7,
+              "contextAwareness": 8,
+              "inventoryUsage": 9,
+              "budgetCompliance": 10
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 6,
+          "message": "Yes, show me the Hyundai Palisade",
+          "response": "Currently, we don't have the Hyundai Palisade in stock. However, here are some available Hyundai SUVs that you might find interesting:\n\n1. **Hyundai Tucson Base** - $16,796 - SUV (Stock #NH014773A)\n2. **Hyundai Santa Fe Sport Base** - $16,991 - SUV (Stock #HG482158B)\n3. **Hyundai Tucson Base** - $17,998 - SUV (Stock #KU032466B)\n\nWould you like more details on any of these options?",
+          "processingTime": 10778,
+          "quality": {
+            "overallScore": 8.3,
+            "scores": {
+              "relevance": 8,
+              "accuracy": 10,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 5,
+              "contextAwareness": 8,
+              "inventoryUsage": 10,
+              "budgetCompliance": 10
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 7,
+          "message": "I'd like to schedule a test drive",
+          "response": "Great! I can help you schedule a test drive. Which vehicle are you interested in? Here are some options from our inventory:\n\n1. **Kia Sorento Base** - $13,125 - SUV (Stock #LG674474A)\n2. **Subaru Forester Base** - $15,650 - SUV (Stock #KH440700A)\n3. **Hyundai Tucson Base** - $16,796 - SUV (Stock #NH014773A)\n\nLet me know which one you'd like to test drive!",
+          "processingTime": 9938,
+          "quality": {
+            "overallScore": 8.8,
+            "scores": {
+              "relevance": 8,
+              "accuracy": 10,
+              "helpfulness": 8,
+              "tone": 9,
+              "completeness": 7,
+              "contextAwareness": 8,
+              "inventoryUsage": 10,
+              "budgetCompliance": 10
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 8,
+          "message": "Yes, I'm ready to buy the Hyundai Palisade after the test drive",
+          "response": "Great choice! However, I don't have the Hyundai Palisade in stock at the moment. Here are some other Hyundai SUVs available for you:\n\n1. **Hyundai Tucson Base** - $16,796 - SUV (Stock #NH014773A)\n2. **Hyundai Santa Fe Sport Base** - $16,991 - SUV (Stock #HG482158B)\n3. **Hyundai Tucson Base** - $17,998 - SUV (Stock #KU032466B)\n\nWould you like to schedule a test drive for any of these options?",
+          "processingTime": 14259,
+          "quality": {
+            "overallScore": 8.5,
+            "scores": {
+              "relevance": 8,
+              "accuracy": 10,
+              "helpfulness": 8,
+              "tone": 9,
+              "completeness": 5,
+              "contextAwareness": 8,
+              "inventoryUsage": 10,
+              "budgetCompliance": 10
+            },
+            "problems": []
+          }
+        }
+      ],
+      "scores": [
+        7,
+        8.9,
+        8.8,
+        7.3,
+        8.4,
+        8.3,
+        8.8,
+        8.5
+      ],
+      "issues": [],
+      "averageScore": 8.25
+    },
+    "luxury_car": {
+      "name": "🚗 Luxury Car Enthusiast",
+      "budget": 80000,
+      "vehicleType": "sedan",
+      "priorities": [
+        "technology",
+        "performance",
+        "comfort"
+      ],
+      "responses": [
+        {
+          "step": 1,
+          "message": "Hello! I'm interested in a luxury vehicle",
+          "response": "Great! I see you're looking for a luxury vehicle. However, I currently need to check our inventory for specific options. Please hold on for a moment while I do that!",
+          "processingTime": 10818,
+          "quality": {
+            "overallScore": 6.4,
+            "scores": {
+              "relevance": 5,
+              "accuracy": 7,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 7,
+              "contextAwareness": 6,
+              "inventoryUsage": 4,
+              "budgetCompliance": 7
+            },
+            "problems": [
+              "Low relevance",
+              "Poor inventory usage"
+            ]
+          }
+        },
+        {
+          "step": 2,
+          "message": "I want a premium sedan with advanced technology",
+          "response": "We don't have premium sedans in stock, but here's what we do have:\n\n1. **Ford Fusion Hybrid - $12,400 - Sedan** (Stock #JR169883)\n2. **Suzuki Cultus VXR - $14,590.50 - Sedan** (Stock #Main Lot)\n3. **Hyundai Elantra - $19,132 - Sedan** (Stock #RU740482)\n\nAll vehicles feature advanced technology options. Which one interests you?",
+          "processingTime": 12449,
+          "quality": {
+            "overallScore": 8.8,
+            "scores": {
+              "relevance": 10,
+              "accuracy": 10,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 7,
+              "contextAwareness": 8,
+              "inventoryUsage": 10,
+              "budgetCompliance": 10
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 3,
+          "message": "Budget is not a major concern, around $80,000+",
+          "response": "I understand your budget is around $80,000+, but unfortunately, our current inventory only includes vehicles under that range, such as the Kia Sorento for $13,125. If you have specific features or types of vehicles in mind, please let me know!",
+          "processingTime": 13541,
+          "quality": {
+            "overallScore": 8.1,
+            "scores": {
+              "relevance": 6,
+              "accuracy": 9,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 9,
+              "contextAwareness": 8,
+              "inventoryUsage": 8,
+              "budgetCompliance": 10
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 4,
+          "message": "I need cutting-edge tech, premium materials, and performance",
+          "response": "Great! I see you're looking for vehicles with cutting-edge tech, premium materials, and performance. Here are some SUVs from our inventory that match your preferences:\n\n1. **Hyundai Tucson Base** - $16,796 - SUV (Stock #NH014773A)\n2. **Subaru Forester Base** - $15,650 - SUV (Stock #KH440700A)\n3. **Kia Sorento Base** - $13,125 - SUV (Stock #LG674474A)\n\nAll vehicles shown are under your budget. Which one interests you?",
+          "processingTime": 11204,
+          "quality": {
+            "overallScore": 8.5,
+            "scores": {
+              "relevance": 10,
+              "accuracy": 10,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 8,
+              "contextAwareness": 6,
+              "inventoryUsage": 9,
+              "budgetCompliance": 10
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 5,
+          "message": "I prefer Mercedes-Benz or BMW",
+          "response": "Great! I see you're interested in Mercedes-Benz or BMW vehicles. Here’s what we currently have in stock:\n\n1. **Mercedes-Benz GLC Base** - $35,000 - SUV (Stock #GF033197)\n\nWould you like more details on the Mercedes-Benz GLC?",
+          "processingTime": 9608,
+          "quality": {
+            "overallScore": 8.1,
+            "scores": {
+              "relevance": 8,
+              "accuracy": 10,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 7,
+              "contextAwareness": 6,
+              "inventoryUsage": 9,
+              "budgetCompliance": 10
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 6,
+          "message": "Yes, show me the Mercedes S-Class",
+          "response": "Currently, we don't have the Mercedes S-Class in stock. However, I found a similar option for you:\n\n- **1. Mercedes-Benz GLC Base - $35,000 - SUV (Stock #GF033197)**\n\nWould you like more details on the GLC or explore other options?",
+          "processingTime": 9950,
+          "quality": {
+            "overallScore": 8,
+            "scores": {
+              "relevance": 8,
+              "accuracy": 10,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 5,
+              "contextAwareness": 6,
+              "inventoryUsage": 10,
+              "budgetCompliance": 10
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 7,
+          "message": "I'd like to schedule a test drive",
+          "response": "Great! I can help you schedule a test drive. Which vehicle are you interested in? Here are some options from our inventory:\n\n1. **Kia Sorento Base** - $13,125 - SUV (Stock #LG674474A)\n2. **Subaru Forester Base** - $15,650 - SUV (Stock #KH440700A)\n3. **Hyundai Tucson Base** - $16,796 - SUV (Stock #NH014773A)\n\nLet me know which one you'd like to test drive!",
+          "processingTime": 11360,
+          "quality": {
+            "overallScore": 8.5,
+            "scores": {
+              "relevance": 8,
+              "accuracy": 10,
+              "helpfulness": 8,
+              "tone": 9,
+              "completeness": 7,
+              "contextAwareness": 6,
+              "inventoryUsage": 10,
+              "budgetCompliance": 10
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 8,
+          "message": "Yes, I'm ready to proceed with the Mercedes S-Class",
+          "response": "Unfortunately, we don't have the Mercedes S-Class in stock at the moment. However, I can offer you the following vehicle that might interest you:\n\n1. **Mercedes-Benz GLC Base** - $35,000 - SUV (Stock #GF033197)\n\nWould you like more details on the GLC or discuss financing options?",
+          "processingTime": 10339,
+          "quality": {
+            "overallScore": 8.3,
+            "scores": {
+              "relevance": 8,
+              "accuracy": 10,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 7,
+              "contextAwareness": 6,
+              "inventoryUsage": 10,
+              "budgetCompliance": 10
+            },
+            "problems": []
+          }
+        }
+      ],
+      "scores": [
+        6.4,
+        8.8,
+        8.1,
+        8.5,
+        8.1,
+        8,
+        8.5,
+        8.3
+      ],
+      "issues": [
+        {
+          "step": 1,
+          "message": "Hello! I'm interested in a luxury vehicle",
+          "score": 6.4,
+          "problems": [
+            "Low relevance",
+            "Poor inventory usage"
+          ],
+          "severity": "MEDIUM"
+        }
+      ],
+      "averageScore": 8.0875
+    },
+    "budget_conscious": {
+      "name": "💰 Budget-Conscious Buyer",
+      "budget": 20000,
+      "vehicleType": "compact",
+      "priorities": [
+        "reliability",
+        "fuel_economy",
+        "value"
+      ],
+      "responses": [
+        {
+          "step": 1,
+          "message": "Hi! I need a reliable car on a tight budget",
+          "response": "I understand you're looking for a reliable sedan on a tight budget. Here are some options from our inventory:\n\n1. **Ford Fusion Hybrid** - $12,400 - Sedan (Stock #JR169883)\n2. **Suzuki Cultus VXR** - $14,590.50 - Sedan (Main Lot)\n3. **Hyundai Elantra** - $19,132 - Sedan (Stock #RU740482)\n\nAll vehicles are in stock and under your budget. Which one interests you?",
+          "processingTime": 11493,
+          "quality": {
+            "overallScore": 8.4,
+            "scores": {
+              "relevance": 8,
+              "accuracy": 10,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 8,
+              "contextAwareness": 6,
+              "inventoryUsage": 10,
+              "budgetCompliance": 10
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 2,
+          "message": "I want a compact sedan or small SUV",
+          "response": "Great! I see you're looking for a compact sedan or small SUV. Let me check our current inventory for options that match your preferences. Please hold on for a moment. \n\n[Checking inventory...] \n\nUnfortunately, we don't have any compact sedans or small SUVs available at this time. However, I can assist you with other vehicle types or features if you're interested. Would you like to explore different options?",
+          "processingTime": 11492,
+          "quality": {
+            "overallScore": 7.4,
+            "scores": {
+              "relevance": 7,
+              "accuracy": 8,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 8,
+              "contextAwareness": 8,
+              "inventoryUsage": 6,
+              "budgetCompliance": 7
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 3,
+          "message": "My budget is around $20,000",
+          "response": "Great! I see you're looking for vehicles within a $20,000 budget. Here are some options available in our inventory:\n\n1. **Kia Sorento Base** - $13,125 - SUV (Stock #LG674474A)\n2. **Subaru Forester Base** - $15,650 - SUV (Stock #KH440700A)\n3. **Hyundai Tucson Base** - $16,796 - SUV (Stock #NH014773A)\n\nWould you like details on any of these vehicles?",
+          "processingTime": 13041,
+          "quality": {
+            "overallScore": 8.6,
+            "scores": {
+              "relevance": 8,
+              "accuracy": 10,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 8,
+              "contextAwareness": 8,
+              "inventoryUsage": 10,
+              "budgetCompliance": 10
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 4,
+          "message": "I need good fuel economy and reliability",
+          "response": "Great! Here are some SUVs from our inventory known for their fuel economy and reliability:\n\n1. **Kia Sorento Base** - $13,125 - SUV (Stock #LG674474A)\n2. **Subaru Forester Base** - $15,650 - SUV (Stock #KH440700A)\n3. **Hyundai Tucson Base** - $16,796 - SUV (Stock #NH014773A)\n\nAll vehicles shown are under your budget. Which one interests you?",
+          "processingTime": 10381,
+          "quality": {
+            "overallScore": 8.5,
+            "scores": {
+              "relevance": 10,
+              "accuracy": 10,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 8,
+              "contextAwareness": 6,
+              "inventoryUsage": 9,
+              "budgetCompliance": 10
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 5,
+          "message": "I prefer Honda or Toyota for reliability",
+          "response": "Great! I see you prefer Honda or Toyota for reliability. Here are some available options in our inventory:\n\n1. **Toyota Prius Base** - $20,688 - Hatchback (Stock #L3116946)\n2. **Toyota Camry Base** - $23,856 - Sedan (Stock #NU624486)\n3. **Honda Civic Base** - $25,000 - Hatchback (Stock #PE012219)\n\nWould you like details on any specific model?",
+          "processingTime": 10508,
+          "quality": {
+            "overallScore": 7.5,
+            "scores": {
+              "relevance": 8,
+              "accuracy": 10,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 5,
+              "contextAwareness": 8,
+              "inventoryUsage": 10,
+              "budgetCompliance": 4
+            },
+            "problems": [
+              "Vehicles outside budget suggested",
+              "Budget compliance issues"
+            ]
+          }
+        },
+        {
+          "step": 6,
+          "message": "Yes, show me the Honda Civic",
+          "response": "Currently, we have the following Honda Civic available:\n\n- **Honda Civic Base** - $25,000 - Hatchback  \n  - **Year:** 2023  \n  - **Stock #:** PE012219  \n  - **Mileage:** 52,119  \n\nWould you like more details on this Civic?",
+          "processingTime": 10778,
+          "quality": {
+            "overallScore": 6.9,
+            "scores": {
+              "relevance": 6,
+              "accuracy": 10,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 5,
+              "contextAwareness": 6,
+              "inventoryUsage": 9,
+              "budgetCompliance": 4
+            },
+            "problems": [
+              "Vehicles outside budget suggested",
+              "Budget compliance issues"
+            ]
+          }
+        },
+        {
+          "step": 7,
+          "message": "I'd like to schedule a test drive",
+          "response": "Great! I can help you with that. Which vehicle are you interested in test driving? Here are some options from our inventory:\n\n1. **Kia Sorento Base** - $13,125 - SUV (Stock #LG674474A)\n2. **Subaru Forester Base** - $15,650 - SUV (Stock #KH440700A)\n3. **Hyundai Tucson Base** - $16,796 - SUV (Stock #NH014773A)\n\nLet me know which one you'd like to test drive, and we can set it up!",
+          "processingTime": 10600,
+          "quality": {
+            "overallScore": 8.5,
+            "scores": {
+              "relevance": 8,
+              "accuracy": 10,
+              "helpfulness": 8,
+              "tone": 9,
+              "completeness": 7,
+              "contextAwareness": 6,
+              "inventoryUsage": 10,
+              "budgetCompliance": 10
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 8,
+          "message": "Yes, I'm ready to buy the Honda Civic",
+          "response": "Great choice! We have a 2023 Honda Civic Base available for $25,000. Here are the details:\n\n- **Make**: Honda\n- **Model**: Civic\n- **Year**: 2023\n- **Price**: $25,000\n- **Type**: Hatchback\n- **Stock #**: PE012219\n\nWould you like to schedule a test drive or need more information on financing options?",
+          "processingTime": 11120,
+          "quality": {
+            "overallScore": 7.3,
+            "scores": {
+              "relevance": 6,
+              "accuracy": 10,
+              "helpfulness": 8,
+              "tone": 9,
+              "completeness": 5,
+              "contextAwareness": 6,
+              "inventoryUsage": 10,
+              "budgetCompliance": 4
+            },
+            "problems": [
+              "Vehicles outside budget suggested",
+              "Budget compliance issues"
+            ]
+          }
+        }
+      ],
+      "scores": [
+        8.4,
+        7.4,
+        8.6,
+        8.5,
+        7.5,
+        6.9,
+        8.5,
+        7.3
+      ],
+      "issues": [
+        {
+          "step": 6,
+          "message": "Yes, show me the Honda Civic",
+          "score": 6.9,
+          "problems": [
+            "Vehicles outside budget suggested",
+            "Budget compliance issues"
+          ],
+          "severity": "MEDIUM"
+        }
+      ],
+      "averageScore": 7.887499999999999
+    },
+    "business_fleet": {
+      "name": "🏢 Business Fleet Manager",
+      "budget": 200000,
+      "vehicleType": "multiple",
+      "priorities": [
+        "fleet_pricing",
+        "reliability",
+        "warranties"
+      ],
+      "responses": [
+        {
+          "step": 1,
+          "message": "Hello! I'm managing a business fleet purchase",
+          "response": "Hello! It's great to hear you're managing a business fleet purchase. We can assist you with a variety of vehicles suitable for fleet needs. Could you share more about the types of vehicles you're considering or any specific requirements for your fleet?",
+          "processingTime": 11883,
+          "quality": {
+            "overallScore": 7.5,
+            "scores": {
+              "relevance": 5,
+              "accuracy": 9,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 7,
+              "contextAwareness": 6,
+              "inventoryUsage": 8,
+              "budgetCompliance": 10
+            },
+            "problems": [
+              "Low relevance"
+            ]
+          }
+        },
+        {
+          "step": 2,
+          "message": "I need 5-10 vehicles for our sales team",
+          "response": "I see you're looking for 5-10 vehicles for your sales team. Could you please specify any particular vehicle types, budget range, or features you have in mind for these vehicles? This will help me find the best options for you.",
+          "processingTime": 9548,
+          "quality": {
+            "overallScore": 6.8,
+            "scores": {
+              "relevance": 6,
+              "accuracy": 7,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 9,
+              "contextAwareness": 6,
+              "inventoryUsage": 4,
+              "budgetCompliance": 7
+            },
+            "problems": [
+              "Poor inventory usage"
+            ]
+          }
+        },
+        {
+          "step": 3,
+          "message": "Budget is around $200,000 total",
+          "response": "Perfect! Here are 3 vehicles under $40,000:\n\n1. Kia Sorento - $13,125\n2. Subaru Forester - $15,650\n3. Hyundai Tucson - $16,796\n\nWhich one would you like to explore?",
+          "processingTime": 14813,
+          "quality": {
+            "overallScore": 7.5,
+            "scores": {
+              "relevance": 6,
+              "accuracy": 9,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 7,
+              "contextAwareness": 6,
+              "inventoryUsage": 7,
+              "budgetCompliance": 10
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 4,
+          "message": "I need reliable, fuel-efficient vehicles with good warranties",
+          "response": "I found several reliable and fuel-efficient SUVs in our inventory that may interest you:\n\n1. **Kia Sorento Base** - $13,125 - SUV (Stock #LG674474A)\n2. **Subaru Forester Base** - $15,650 - SUV (Stock #KH440700A)\n3. **Hyundai Tucson Base** - $16,796 - SUV (Stock #NH014773A)\n\nAll these vehicles are in stock and offer great warranties. Which one would you like to know more about?",
+          "processingTime": 11834,
+          "quality": {
+            "overallScore": 8.1,
+            "scores": {
+              "relevance": 8,
+              "accuracy": 10,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 7,
+              "contextAwareness": 6,
+              "inventoryUsage": 9,
+              "budgetCompliance": 10
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 5,
+          "message": "I prefer Ford or Chevrolet for fleet pricing",
+          "response": "Great choice! We have several Ford vehicles available for fleet pricing. Here are some options:\n\n1. **Ford Fusion Hybrid** - $12,400 - Sedan (Stock #JR169883)\n2. **Ford Escape** - $21,498 - SUV (Stock #NUA13440)\n3. **Ford Bronco Sport** - $29,769 - SUV (Stock #SRE72959)\n\nWould you like more details on any of these models?",
+          "processingTime": 10231,
+          "quality": {
+            "overallScore": 8.3,
+            "scores": {
+              "relevance": 8,
+              "accuracy": 10,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 7,
+              "contextAwareness": 6,
+              "inventoryUsage": 10,
+              "budgetCompliance": 10
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 6,
+          "message": "Yes, show me the Ford Fusion fleet options",
+          "response": "We don't have any Ford Fusion vehicles in stock, but here are some available options from our inventory:\n\n1. **Ford Escape Base** - $21,498 - SUV (Stock #NUA13440)\n2. **Ford Bronco Sport Base** - $29,769 - SUV (Stock #SRE72959)\n\nWould you like more details on either of these models?",
+          "processingTime": 10851,
+          "quality": {
+            "overallScore": 8.3,
+            "scores": {
+              "relevance": 8,
+              "accuracy": 10,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 7,
+              "contextAwareness": 6,
+              "inventoryUsage": 10,
+              "budgetCompliance": 10
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 7,
+          "message": "I'd like to schedule fleet test drives",
+          "response": "I can help with that! Could you please specify which vehicles you're interested in for the fleet test drives? We have a variety of SUVs available.",
+          "processingTime": 9009,
+          "quality": {
+            "overallScore": 8.3,
+            "scores": {
+              "relevance": 7,
+              "accuracy": 10,
+              "helpfulness": 8,
+              "tone": 9,
+              "completeness": 7,
+              "contextAwareness": 6,
+              "inventoryUsage": 9,
+              "budgetCompliance": 10
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 8,
+          "message": "Yes, we're ready to proceed with the fleet purchase",
+          "response": "Great to hear you're ready to proceed with the fleet purchase! Could you please provide more details about the specific vehicle types or features you're interested in for your fleet? This will help me find the best options for you.",
+          "processingTime": 19675,
+          "quality": {
+            "overallScore": 7.6,
+            "scores": {
+              "relevance": 5,
+              "accuracy": 9,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 8,
+              "contextAwareness": 6,
+              "inventoryUsage": 8,
+              "budgetCompliance": 10
+            },
+            "problems": [
+              "Low relevance"
+            ]
+          }
+        }
+      ],
+      "scores": [
+        7.5,
+        6.8,
+        7.5,
+        8.1,
+        8.3,
+        8.3,
+        8.3,
+        7.6
+      ],
+      "issues": [
+        {
+          "step": 2,
+          "message": "I need 5-10 vehicles for our sales team",
+          "score": 6.8,
+          "problems": [
+            "Poor inventory usage"
+          ],
+          "severity": "MEDIUM"
+        }
+      ],
+      "averageScore": 7.8
+    },
+    "first_time_buyer": {
+      "name": "🎓 First-Time Car Buyer",
+      "budget": 25000,
+      "vehicleType": "compact",
+      "priorities": [
+        "safety",
+        "ease_of_use"
+      ],
+      "responses": [
+        {
+          "step": 1,
+          "message": "Hi! This is my first time buying a car",
+          "response": "Hi there! It's great to hear you're considering buying your first car. Since you're looking for a sedan, I can help you find some options. Do you have a budget in mind or any specific features you're interested in?",
+          "processingTime": 10587,
+          "quality": {
+            "overallScore": 8.1,
+            "scores": {
+              "relevance": 8,
+              "accuracy": 9,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 9,
+              "contextAwareness": 6,
+              "inventoryUsage": 8,
+              "budgetCompliance": 10
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 2,
+          "message": "I want something safe and easy to drive",
+          "response": "I found 3 vehicles in stock:\n\n1. Kia Sorento - $13,125 - SUV (Stock #3bafb3b5-e19d-47ca-bde0-a3acb82ea7bb)\n2. Subaru Forester - $15,650 - SUV (Stock #d652d6c0-6772-4a8a-b6fe-b7c54116391c)\n3. Hyundai Tucson - $16,796 - SUV (Stock #ed1815cd-b153-4bec-87a0-d1e35d6bc6d4)\n\nWhich would you like more details on?",
+          "processingTime": 13185,
+          "quality": {
+            "overallScore": 8.1,
+            "scores": {
+              "relevance": 8,
+              "accuracy": 10,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 7,
+              "contextAwareness": 6,
+              "inventoryUsage": 9,
+              "budgetCompliance": 10
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 3,
+          "message": "My budget is around $25,000",
+          "response": "Great! I see you're looking for vehicles within a $25,000 budget. Here are some options available in our inventory:\n\n1. **Kia Sorento Base** - $13,125 - SUV (Stock #LG674474A)\n2. **Subaru Forester Base** - $15,650 - SUV (Stock #KH440700A)\n3. **Hyundai Tucson Base** - $16,796 - SUV (Stock #NH014773A)\n\nAll vehicles shown are under your $25,000 budget. Which one interests you?",
+          "processingTime": 9915,
+          "quality": {
+            "overallScore": 8.6,
+            "scores": {
+              "relevance": 8,
+              "accuracy": 10,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 8,
+              "contextAwareness": 8,
+              "inventoryUsage": 10,
+              "budgetCompliance": 10
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 4,
+          "message": "I need safety features and good gas mileage",
+          "response": "Great! I see you're looking for vehicles that emphasize safety and fuel efficiency. Here are some SUVs from our inventory that meet those criteria:\n\n1. **Kia Sorento Base** - $13,125 - SUV (Stock #LG674474A)\n2. **Subaru Forester Base** - $15,650 - SUV (Stock #KH440700A)\n3. **Hyundai Tucson Base** - $16,796 - SUV (Stock #NH014773A)\n\nAll vehicles shown are under your budget. Which one interests you?",
+          "processingTime": 9972,
+          "quality": {
+            "overallScore": 8.5,
+            "scores": {
+              "relevance": 10,
+              "accuracy": 10,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 8,
+              "contextAwareness": 6,
+              "inventoryUsage": 9,
+              "budgetCompliance": 10
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 5,
+          "message": "I'm open to any reliable brand",
+          "response": "I found 3 vehicles in stock:\n\n1. Kia Sorento - $13,125 - SUV (Stock #3bafb3b5-e19d-47ca-bde0-a3acb82ea7bb)\n2. Subaru Forester - $15,650 - SUV (Stock #d652d6c0-6772-4a8a-b6fe-b7c54116391c)\n3. Hyundai Tucson - $16,796 - SUV (Stock #ed1815cd-b153-4bec-87a0-d1e35d6bc6d4)\n\nWhich would you like more details on?",
+          "processingTime": 18582,
+          "quality": {
+            "overallScore": 8.1,
+            "scores": {
+              "relevance": 8,
+              "accuracy": 10,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 7,
+              "contextAwareness": 6,
+              "inventoryUsage": 9,
+              "budgetCompliance": 10
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 6,
+          "message": "Yes, show me the Toyota Corolla",
+          "response": "We don't have any Toyota Corollas in stock at the moment. However, here are some available Toyota options:\n\n1. **Toyota Prius Base** - $20,688 - Hatchback (Stock #L3116946)\n2. **Toyota Camry Base** - $23,856 - Sedan (Stock #NU624486)\n3. **Toyota RAV4 LE** - $25,111 - SUV (Stock #LC037000)\n\nWould you like more details on any of these vehicles?",
+          "processingTime": 8695,
+          "quality": {
+            "overallScore": 7.8,
+            "scores": {
+              "relevance": 8,
+              "accuracy": 10,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 7,
+              "contextAwareness": 8,
+              "inventoryUsage": 10,
+              "budgetCompliance": 4
+            },
+            "problems": [
+              "Vehicles outside budget suggested",
+              "Budget compliance issues"
+            ]
+          }
+        },
+        {
+          "step": 7,
+          "message": "I'd like to schedule a test drive",
+          "response": "Great! I can help you with that. Which vehicle are you interested in test driving? Here are some options available:\n\n1. **Kia Sorento Base** - $13,125 - SUV (Stock #LG674474A)\n2. **Subaru Forester Base** - $15,650 - SUV (Stock #KH440700A)\n3. **Hyundai Tucson Base** - $16,796 - SUV (Stock #NH014773A)\n\nLet me know which one you'd like to schedule a test drive for!",
+          "processingTime": 8560,
+          "quality": {
+            "overallScore": 8.5,
+            "scores": {
+              "relevance": 8,
+              "accuracy": 10,
+              "helpfulness": 8,
+              "tone": 9,
+              "completeness": 7,
+              "contextAwareness": 6,
+              "inventoryUsage": 10,
+              "budgetCompliance": 10
+            },
+            "problems": []
+          }
+        },
+        {
+          "step": 8,
+          "message": "Yes, I'm ready to buy my first car",
+          "response": "That's exciting! I see you're looking for a sedan. Here are some options available for you:\n\n1. **Ford Fusion Hybrid** - $12,400 - Sedan (Stock #JR169883)\n2. **Suzuki Cultus VXR** - $14,590.50 - Sedan (Stock #Main Lot)\n3. **Hyundai Elantra** - $19,132 - Sedan (Stock #RU740482)\n\nWould you like details on any of these models?",
+          "processingTime": 8921,
+          "quality": {
+            "overallScore": 8,
+            "scores": {
+              "relevance": 8,
+              "accuracy": 10,
+              "helpfulness": 6,
+              "tone": 9,
+              "completeness": 5,
+              "contextAwareness": 6,
+              "inventoryUsage": 10,
+              "budgetCompliance": 10
+            },
+            "problems": []
+          }
+        }
+      ],
+      "scores": [
+        8.1,
+        8.1,
+        8.6,
+        8.5,
+        8.1,
+        7.8,
+        8.5,
+        8
+      ],
+      "issues": [],
+      "averageScore": 8.212499999999999
+    }
+  },
+  "optimizationIssues": [
+    {
+      "scenario": "luxury_car",
+      "step": 1,
+      "message": "Hello! I'm interested in a luxury vehicle",
+      "score": 6.4,
+      "problems": [
+        "Low relevance",
+        "Poor inventory usage"
+      ],
+      "severity": "MEDIUM"
+    },
+    {
+      "scenario": "budget_conscious",
+      "step": 6,
+      "message": "Yes, show me the Honda Civic",
+      "score": 6.9,
+      "problems": [
+        "Vehicles outside budget suggested",
+        "Budget compliance issues"
+      ],
+      "severity": "MEDIUM"
+    },
+    {
+      "scenario": "business_fleet",
+      "step": 2,
+      "message": "I need 5-10 vehicles for our sales team",
+      "score": 6.8,
+      "problems": [
+        "Poor inventory usage"
+      ],
+      "severity": "MEDIUM"
+    }
+  ],
+  "summary": {
+    "totalScenarios": 5,
+    "totalIssues": 3,
+    "averageScore": 8.0475
+  }
+}

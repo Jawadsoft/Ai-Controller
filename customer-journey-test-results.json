@@ -1,0 +1,59 @@
+{
+  "summary": {
+    "totalTests": 8,
+    "passedTests": 0,
+    "failedTests": 8,
+    "successRate": 0,
+    "timestamp": "2025-08-27T18:09:36.460Z"
+  },
+  "results": [
+    {
+      "name": "Basic Inventory Inquiry",
+      "success": false,
+      "error": "OptimizedCrewAgentAI not initialized",
+      "timestamp": "2025-08-27T18:09:36.429Z"
+    },
+    {
+      "name": "Budget Inquiry with Vehicle Type",
+      "success": false,
+      "error": "OptimizedCrewAgentAI not initialized",
+      "timestamp": "2025-08-27T18:09:36.433Z"
+    },
+    {
+      "name": "External Service Request (Redirect)",
+      "success": false,
+      "error": "OptimizedCrewAgentAI not initialized",
+      "timestamp": "2025-08-27T18:09:36.435Z"
+    },
+    {
+      "name": "Specific Vehicle Availability",
+      "success": false,
+      "error": "OptimizedCrewAgentAI not initialized",
+      "timestamp": "2025-08-27T18:09:36.438Z"
+    },
+    {
+      "name": "Financing Inquiry",
+      "success": false,
+      "error": "OptimizedCrewAgentAI not initialized",
+      "timestamp": "2025-08-27T18:09:36.441Z"
+    },
+    {
+      "name": "Unavailable Vehicle Request",
+      "success": false,
+      "error": "OptimizedCrewAgentAI not initialized",
+      "timestamp": "2025-08-27T18:09:36.443Z"
+    },
+    {
+      "name": "Service and Maintenance Inquiry",
+      "success": false,
+      "error": "OptimizedCrewAgentAI not initialized",
+      "timestamp": "2025-08-27T18:09:36.446Z"
+    },
+    {
+      "name": "Test Drive Request",
+      "success": false,
+      "error": "OptimizedCrewAgentAI not initialized",
+      "timestamp": "2025-08-27T18:09:36.448Z"
+    }
+  ]
+}

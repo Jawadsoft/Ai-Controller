@@ -1,0 +1,399 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+html,
+body {
+  overflow-x: hidden;
+}
+
+/* DAIVE showroom theme — HSL tokens drive shadcn/ui + Tailwind semantic colors.
+   Accent orange #FF6B2B, structural slate #5D6D7E, canvas #F3F6FB. */
+
+@layer base {
+  :root {
+    /* Canvas & type */
+    --background: 220 33% 97%;
+    --foreground: 204 12% 19%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 204 12% 19%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 204 12% 19%;
+
+    /* Primary = DealerIQ marketing orange ≈ #F26522 */
+    --primary: 17 89% 54%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary = soft panel gray ≈ #E8EEF5 */
+    --secondary: 218 28% 94%;
+    --secondary-foreground: 213 15% 28%;
+
+    --muted: 218 28% 94%;
+    --muted-foreground: 213 12% 42%;
+
+    /* Accent = slate for strong hovers / nav emphasis ≈ #5D6D7E */
+    --accent: 213 15% 43%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 218 20% 88%;
+    --input: 218 20% 88%;
+    --ring: 17 89% 54%;
+
+    --radius: 1rem;
+
+    --dealer-success: 142 76% 36%;
+    --dealer-warning: 38 92% 50%;
+    --dealer-info: 213 15% 43%;
+    --dealer-header: 213 15% 43%;
+
+    --chart-1: 17 89% 54%;
+    --chart-2: 213 15% 43%;
+    --chart-3: 28 90% 55%;
+    --chart-4: 43 74% 52%;
+    --chart-5: 200 18% 50%;
+
+    --sidebar-background: 220 33% 97%;
+    --sidebar-foreground: 213 15% 28%;
+    --sidebar-primary: 17 89% 54%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 218 28% 92%;
+    --sidebar-accent-foreground: 213 15% 28%;
+    --sidebar-border: 218 20% 88%;
+    --sidebar-ring: 17 89% 54%;
+  }
+
+  .dark {
+    --background: 222 18% 11%;
+    --foreground: 210 25% 96%;
+
+    --card: 222 16% 14%;
+    --card-foreground: 210 25% 96%;
+
+    --popover: 222 16% 14%;
+    --popover-foreground: 210 25% 96%;
+
+    --primary: 17 85% 52%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 217 16% 22%;
+    --secondary-foreground: 210 25% 96%;
+
+    --muted: 217 16% 22%;
+    --muted-foreground: 215 14% 70%;
+
+    --accent: 213 15% 50%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217 16% 24%;
+    --input: 217 16% 24%;
+    --ring: 17 85% 52%;
+
+    --sidebar-background: 222 18% 11%;
+    --sidebar-foreground: 210 25% 96%;
+    --sidebar-primary: 17 85% 52%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 217 16% 20%;
+    --sidebar-accent-foreground: 210 25% 96%;
+    --sidebar-border: 217 16% 24%;
+    --sidebar-ring: 17 85% 52%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-family: "Inter", sans-serif;
+  }
+}
+
+@layer components {
+  /* More compact buttons */
+  .btn-dealer-primary {
+    @apply bg-primary hover:bg-primary/90 text-primary-foreground font-medium px-4 py-2 rounded-full transition-all duration-200 shadow-sm hover:shadow-md;
+  }
+  
+  .btn-dealer-accent {
+    @apply bg-accent hover:bg-accent/90 text-accent-foreground font-medium px-4 py-2 rounded-full transition-all duration-200 shadow-sm hover:shadow-md;
+  }
+  
+  /* More compact cards */
+  .card-dealer {
+    @apply bg-card rounded-2xl border border-border shadow-sm hover:shadow-md transition-shadow duration-200 p-3;
+  }
+  
+  /* More compact badges */
+  .badge-status {
+    @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium;
+  }
+  
+  .badge-success {
+    @apply badge-status bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400;
+  }
+  
+  .badge-warning {
+    @apply badge-status bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400;
+  }
+  
+  .badge-info {
+    @apply badge-status bg-primary/10 text-primary border border-primary/20;
+  }
+  
+  .badge-accent {
+    @apply badge-status bg-accent/10 text-accent border border-accent/20;
+  }
+  
+  .text-dealer-primary {
+    @apply text-primary;
+  }
+  
+  .text-dealer-accent {
+    @apply text-accent;
+  }
+  
+  .bg-dealer-gradient {
+    @apply bg-gradient-to-r from-primary to-accent;
+  }
+  
+  .border-dealer-primary {
+    @apply border-primary;
+  }
+  
+  .border-dealer-accent {
+    @apply border-accent;
+  }
+
+  /* Table Styles - Compact */
+  .table-compact {
+    @apply w-full text-sm;
+  }
+
+  .table-compact thead {
+    @apply bg-gray-50 dark:bg-gray-800;
+  }
+
+  .table-compact th {
+    @apply px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700;
+  }
+
+  .table-compact td {
+    @apply px-3 py-2 border-b border-gray-100 dark:border-gray-800 text-gray-900 dark:text-gray-100;
+  }
+
+  .table-compact tbody tr {
+    @apply hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors;
+  }
+
+  /* DAIVE Inventory List Styles - Compact */
+  .inventory-list {
+    @apply list-none p-0 m-0 space-y-2;
+  }
+
+  .inventory-grid {
+    @apply grid grid-cols-1 gap-1.5 p-1.5;
+    @apply max-w-full overflow-hidden;
+    @apply max-h-80 overflow-y-auto;
+    @apply bg-muted/80 rounded-2xl border border-border;
+  }
+
+  /* Mobile responsive adjustments */
+  @media (max-width: 640px) {
+    .inventory-grid {
+      @apply max-h-64 gap-1 p-1;
+    }
+    
+    .vehicle-compact-card {
+      @apply min-h-[60px] max-h-[72px];
+      font-size: 0.5rem;
+    }
+    
+    .vehicle-compact-info {
+      @apply p-1.5;
+    }
+    
+    .vehicle-compact-header {
+      @apply mb-0.5;
+    }
+    
+    .vehicle-compact-actions {
+      @apply gap-0.5;
+    }
+    
+    .btn-test-drive-compact,
+    .btn-contact-sales-compact {
+      @apply px-1.5 py-0.5 text-xs;
+    }
+  }
+
+  /* Custom scrollbar for inventory grid */
+  .inventory-grid::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .inventory-grid::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 2px;
+  }
+
+  .inventory-grid::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 2px;
+  }
+
+  .inventory-grid::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+
+  .vehicle-compact-card {
+    @apply bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md cursor-pointer transition-all duration-200 overflow-hidden;
+    @apply hover:border-primary/50 hover:scale-[1.01] flex flex-row;
+    @apply backdrop-blur-sm bg-white/95;
+    @apply ring-1 ring-gray-100;
+    @apply focus-within:ring-2 focus-within:ring-primary/50;
+    @apply min-h-[68px] max-h-[80px];
+    @apply hover:shadow-lg;
+    @apply max-w-full;
+    font-size: 0.575rem;
+  }
+  
+  .vehicle-compact-card:hover {
+    @apply shadow-lg ring-primary/20;
+  }
+  
+  .vehicle-compact-image {
+    @apply relative w-[4.5rem] h-[2.7rem] sm:w-[5.4rem] sm:h-[3.15rem] overflow-hidden flex-shrink-0;
+    @apply bg-gradient-to-br from-gray-50 to-gray-100;
+    @apply border-r border-gray-200;
+  }
+  
+  .vehicle-compact-image::after {
+    @apply absolute inset-0 bg-gradient-to-t from-black/10 to-transparent pointer-events-none;
+  }
+  
+  .vehicle-cover-compact {
+    @apply w-full h-full object-cover transition-transform duration-300;
+  }
+  
+  .vehicle-compact-card:hover .vehicle-cover-compact {
+    @apply scale-105;
+  }
+  
+
+  .vehicle-compact-info {
+    @apply p-2 flex-1 flex flex-col justify-between;
+    @apply min-w-0;
+  }
+
+  .vehicle-compact-header {
+    @apply flex justify-between items-start mb-1.5;
+    @apply gap-1.5;
+  }
+
+  .vehicle-compact-name {
+    @apply text-base sm:text-lg font-bold text-gray-900 flex items-center gap-1.5;
+    @apply flex-1 min-w-0;
+  }
+
+  .vehicle-compact-price {
+    @apply text-lg font-bold text-primary bg-primary/5 px-1.5 py-0.5 rounded text-right;
+    @apply flex-shrink-0;
+  }
+
+  .vehicle-compact-details {
+    @apply flex flex-wrap gap-1.5 text-xs sm:text-sm text-gray-600 mb-1.5;
+  }
+
+  .vehicle-compact-details .color-compact {
+    @apply bg-gray-100 px-1.5 py-0.5 rounded-full text-gray-700 font-medium;
+  }
+
+  .vehicle-compact-details .mileage-compact {
+    @apply bg-primary/10 px-1.5 py-0.5 rounded-full text-primary font-medium;
+  }
+
+  .vehicle-compact-actions {
+    @apply flex gap-1.5 mt-auto;
+  }
+
+  .btn-test-drive-compact {
+    @apply px-2.5 py-1 bg-primary text-white text-xs font-semibold rounded-md hover:bg-primary/90 transition-all duration-200 hover:shadow-sm;
+    @apply hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-1;
+  }
+
+  .btn-contact-sales-compact {
+    @apply px-2.5 py-1 bg-gray-100 text-gray-700 text-xs font-semibold rounded-md hover:bg-gray-200 transition-all duration-200 hover:shadow-sm;
+    @apply hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-1;
+  }
+
+  /* Dark mode support */
+  .dark .vehicle-compact-card {
+    @apply bg-gray-800 border-gray-700 hover:border-primary/50;
+  }
+
+  .dark .vehicle-compact-name {
+    @apply text-gray-100;
+  }
+
+  .dark .vehicle-compact-price {
+    @apply bg-primary/10 text-primary;
+  }
+
+  .dark .vehicle-compact-details {
+    @apply text-gray-300;
+  }
+
+  .dark .vehicle-compact-details .color-compact {
+    @apply bg-gray-700 text-gray-200;
+  }
+
+  .dark .vehicle-compact-details .mileage-compact {
+    @apply bg-primary/20 text-primary;
+  }
+
+  .dark .btn-contact-sales-compact {
+    @apply bg-gray-700 text-gray-200 hover:bg-gray-600;
+  }
+
+  /* ── Mobile global touch targets & spacing ── */
+  @media (max-width: 768px) {
+    .btn-dealer-primary,
+    .btn-dealer-accent {
+      @apply min-h-[44px] w-full justify-center;
+    }
+
+    .card-dealer {
+      @apply p-3 rounded-lg;
+    }
+
+    .table-compact {
+      @apply text-xs;
+    }
+
+    .table-compact th,
+    .table-compact td {
+      @apply px-2 py-1.5;
+    }
+
+    .badge-status {
+      @apply text-xs px-1.5 py-0.5;
+    }
+  }
+}

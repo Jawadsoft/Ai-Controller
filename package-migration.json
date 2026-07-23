@@ -1,0 +1,32 @@
+{
+  "name": "sql-migration-tool",
+  "version": "1.0.0",
+  "description": "A web-based SQL migration tool for PostgreSQL databases",
+  "main": "sql-migration-api.js",
+  "scripts": {
+    "start": "node sql-migration-api.js",
+    "dev": "nodemon sql-migration-api.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "sql",
+    "migration",
+    "postgresql",
+    "database",
+    "tool"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "pg": "^8.11.3",
+    "multer": "^1.4.5-lts.1",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "crewai-test-suite",
+  "version": "1.0.0",
+  "description": "Test suite for CrewAI chat functionality",
+  "type": "module",
+  "scripts": {
+    "test": "node simple-crewai-test.js",
+    "test-full": "node test-crewai-chat.js"
+  },
+  "dependencies": {
+    "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {},
+  "keywords": ["crewai", "testing", "chat", "ai"],
+  "author": "Your Name",
+  "license": "MIT"
+}

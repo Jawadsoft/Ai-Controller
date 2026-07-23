@@ -1,0 +1,48 @@
+services:
+  - type: web
+    name: vehicle-management-frontend
+    env: node
+    plan: starter
+    
+     # ✅ THIS IS THE KEY FIX
+    disk:
+      name: uploads-disk
+      mountPath: /opt/render/project/src/uploads
+      sizeGB: 10
+    # Build and deployment configuration
+    buildCommand: node fix-uploads-directory.js && npm install
+    startCommand: npm start
+    autoDeploy: true
+    
+    # Health check
+    healthCheckPath: /api/daive/health
+    
+    # Environment variables
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      - key: DEEPGRAM_API_KEY
+        sync: false
+      - key: API_BASE_URL
+        value: https://app.dealeriq.co
+    
+    # Build filter - only rebuild when these files change
+    buildFilter:
+      paths:
+        - "src/**"
+        - "package.json"
+        - "package-lock.json"
+        - "fix-uploads-directory.js"
+        - "render.yaml"
+        - "vite.config.ts"
+        - "tailwind.config.ts"
+
+

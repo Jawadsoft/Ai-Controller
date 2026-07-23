@@ -1,0 +1,155 @@
+### Credit Application System - API Testing
+### Use with REST Client extension in VS Code or copy to Postman
+
+@baseUrl = http://localhost:3000
+@dealerId = 857310bf-94a6-4fbb-b08b-1b5fa5f82bfb
+# ⚠️ IMPORTANT: Replace token below after step 1 (login)
+@customerToken = YOUR_TOKEN_HERE
+
+###############################################
+# STEP 1: Login as Customer
+###############################################
+
+### 1A. Register New Customer (if needed)
+POST {{baseUrl}}/api/customer-auth/register
+Content-Type: application/json
+
+{
+  "email": "testcustomer@example.com",
+  "password": "password123",
+  "first_name": "John",
+  "last_name": "Doe",
+  "phone": "5551234567",
+  "terms_accepted": true,
+  "privacy_policy_accepted": true
+}
+
+### 1B. Login as Customer
+POST {{baseUrl}}/api/customer-auth/login
+Content-Type: application/json
+
+{
+  "email": "testcustomer@example.com",
+  "password": "password123"
+}
+
+# 📝 Copy the "token" from response above and paste it in @customerToken variable at top
+
+###############################################
+# STEP 2: Submit Credit Application
+###############################################
+
+### 2. Submit Complete Credit Application
+POST {{baseUrl}}/api/customer/credit-application
+Content-Type: application/json
+Authorization: Bearer {{customerToken}}
+
+{
+  "customer_name": "John Doe",
+  "customer_email": "testcustomer@example.com",
+  "customer_phone": "5551234567",
+  "date_of_birth": "1990-01-15",
+  "street_address": "123 Main Street",
+  "city": "Los Angeles",
+  "state": "CA",
+  "zip_code": "90001",
+  
+  "vehicle_make": "Toyota",
+  "vehicle_model": "Camry",
+  "vehicle_year": 2023,
+  "vehicle_mileage": 15000,
+  "vehicle_purchase_price": 28000,
+  
+  "requested_loan_amount": 25000,
+  "requested_term_months": 60,
+  "down_payment": 3000,
+  
+  "employer_name": "Tech Corporation",
+  "job_title": "Software Engineer",
+  "work_address": "456 Business Blvd, Suite 100",
+  "work_city": "Los Angeles",
+  "work_state": "CA",
+  "work_zip_code": "90002",
+  "monthly_income": 8000,
+  "employment_status": "employed",
+  "years_employed": 3.5,
+  
+  "ssn": "123-45-6789",
+  "dl_number": "D1234567",
+  "credit_score": 720,
+  
+  "signature_data": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+  "terms_accepted": true,
+  
+  "dealer_id": "{{dealerId}}"
+}
+
+###############################################
+# STEP 3: Retrieve Applications
+###############################################
+
+### 3A. Get All Applications for Customer
+GET {{baseUrl}}/api/customer/credit-applications
+Authorization: Bearer {{customerToken}}
+
+### 3B. Get Single Application (replace {id} with actual ID from step 2 response)
+GET {{baseUrl}}/api/customer/credit-application/{application-id-here}
+Authorization: Bearer {{customerToken}}
+
+###############################################
+# STEP 4: Test Edge Cases
+###############################################
+
+### 4A. Minimal Application (Only Required Fields)
+POST {{baseUrl}}/api/customer/credit-application
+Content-Type: application/json
+Authorization: Bearer {{customerToken}}
+
+{
+  "customer_name": "Jane Smith",
+  "customer_email": "jane@example.com",
+  "customer_phone": "5559876543",
+  "terms_accepted": true,
+  "dealer_id": "{{dealerId}}"
+}
+
+### 4B. Test Validation Error (Missing Terms)
+POST {{baseUrl}}/api/customer/credit-application
+Content-Type: application/json
+Authorization: Bearer {{customerToken}}
+
+{
+  "customer_name": "Test User",
+  "customer_email": "test@example.com",
+  "customer_phone": "5551234567",
+  "terms_accepted": false,
+  "dealer_id": "{{dealerId}}"
+}
+
+### 4C. Test Invalid Email
+POST {{baseUrl}}/api/customer/credit-application
+Content-Type: application/json
+Authorization: Bearer {{customerToken}}
+
+{
+  "customer_name": "Test User",
+  "customer_email": "not-an-email",
+  "customer_phone": "5551234567",
+  "terms_accepted": true,
+  "dealer_id": "{{dealerId}}"
+}
+
+###############################################
+# NOTES
+###############################################
+# 
+# After successful submission:
+# 1. Check database: SELECT * FROM credit_applications ORDER BY created_at DESC LIMIT 1;
+# 2. Check PDF: public/pdfs/credit-applications/
+# 3. Check email: Customer and dealer should receive emails
+# 4. Check logs: Server console should show complete flow
+#
+# Sample Dealer ID from your database: 857310bf-94a6-4fbb-b08b-1b5fa5f82bfb
+# 
+###############################################
+

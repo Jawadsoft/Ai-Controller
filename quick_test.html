@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Endpoint Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
+        .success { background: #d4edda; }
+        .error { background: #f8d7da; }
+        .pending { background: #fff3cd; }
+        button { padding: 10px 20px; margin: 5px; }
+    </style>
+</head>
+<body>
+    <h1>🧪 API Endpoint Tester</h1>
+    <p>This tests the PDF and signature endpoints directly from your browser.</p>
+    
+    <div>
+        <button onclick="testFinanceDeals()">Test: GET /api/finance/deals</button>
+        <button onclick="testFinancePrograms()">Test: GET /api/finance/programs</button>
+        <button onclick="testPDFGeneration()">Test: POST /api/finance/deals/[id]/generate-sheet</button>
+        <button onclick="testSignatureRequest()">Test: POST /api/signatures/request</button>
+    </div>
+    
+    <div id="results"></div>
+    
+    <script>
+        const authToken = localStorage.getItem('auth_token');
+        
+        function log(message, type = 'pending') {
+            const div = document.createElement('div');
+            div.className = `test ${type}`;
+            div.innerHTML = message;
+            document.getElementById('results').prepend(div);
+        }
+        
+        async function testEndpoint(method, url, body = null) {
+            const startTime = Date.now();
+            log(`Testing ${method} ${url}...`, 'pending');
+            
+            try {
+                const options = {
+                    method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                };
+                
+                if (body) {
+                    options.body = JSON.stringify(body);
+                }
+                
+                const response = await fetch(url, options);
+                const duration = Date.now() - startTime;
+                const status = response.status;
+                
+                let result;
+                try {
+                    result = await response.json();
+                } catch {
+                    result = await response.text();
+                }
+                
+                if (status === 404) {
+                    log(`❌ 404 - ${url} - Endpoint not found! (${duration}ms)<br><pre>${JSON.stringify(result, null, 2)}</pre>`, 'error');
+                } else if (status === 401 || status === 403) {
+                    log(`⚠️ ${status} - ${url} - Authentication error (endpoint exists!) (${duration}ms)<br><pre>${JSON.stringify(result, null, 2)}</pre>`, 'pending');
+                } else if (status >= 200 && status < 300) {
+                    log(`✅ ${status} - ${url} - Success! (${duration}ms)<br><pre>${JSON.stringify(result, null, 2).substring(0, 500)}</pre>`, 'success');
+                } else {
+                    log(`⚠️ ${status} - ${url} - Response: (${duration}ms)<br><pre>${JSON.stringify(result, null, 2).substring(0, 500)}</pre>`, 'pending');
+                }
+                
+            } catch (error) {
+                log(`❌ Error testing ${url}: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testFinanceDeals() {
+            await testEndpoint('GET', '/api/finance/deals');
+        }
+        
+        async function testFinancePrograms() {
+            await testEndpoint('GET', '/api/finance/programs');
+        }
+        
+        async function testPDFGeneration() {
+            // Use a dummy ID - will get 404 for deal not found, but 404 for route not found is different
+            await testEndpoint('POST', '/api/finance/deals/00000000-0000-0000-0000-000000000000/generate-sheet');
+        }
+        
+        async function testSignatureRequest() {
+            await testEndpoint('POST', '/api/signatures/request', {
+                deal_id: '00000000-0000-0000-0000-000000000000',
+                signer_name: 'Test User',
+                signer_email: 'test@example.com',
+                document_url: 'http://example.com/doc.pdf',
+                document_name: 'Test Document'
+            });
+        }
+        
+        // Auto-test on load
+        if (!authToken) {
+            log('⚠️ No auth_token found in localStorage. Please log in first, then refresh this page.', 'error');
+        } else {
+            log('✅ Auth token found in localStorage', 'success');
+        }
+    </script>
+</body>
+</html>
+

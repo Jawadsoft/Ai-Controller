@@ -1,0 +1,10 @@
+[33mefdfbab[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Update documentation and fix summaries for various features including AI bot greeting, cache clearing, chat dealer ID, DAIVE prompts, and vehicle type additions
+[33mb87d944[m Add voice settings centralization, CrewAI debug interface, and various optimizations
+[33m1fa39b3[m Update crewAI, daive integration, and add new utility scripts
+[33m6f715a9[m Update DAIVE components, database migration, and package dependencies
+[33md7bc20f[m Update DAIVE components, voice settings, and add utility scripts
+[33m686e5b4[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m  Add enhanced database tables list feature to test-inspect.html and new sample data endpoint
+[33m0d0110e[m  Fix SPA routing issues - add _redirects, custom 404 page, and switch to HashRouter for better static hosting compatibility
+[33m6f77606[m  Fix DOM manipulation error in delete all tables - improve error handling and DOM safety
+[33mf92558f[m  Fix delete all tables permission issue - remove session_replication_role dependency and add force mode
+[33m50f4ee6[m  Add delete all tables functionality and local database export script for complete migration

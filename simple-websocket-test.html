@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple WebSocket Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; font-weight: bold; }
+        .connected { background: #d4edda; color: #155724; }
+        .disconnected { background: #f8d7da; color: #721c24; }
+        .connecting { background: #fff3cd; color: #856404; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        .log { background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 15px 0; max-height: 300px; overflow-y: auto; font-family: monospace; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <h1>🔌 Simple WebSocket Test</h1>
+    
+    <div>
+        <label>Dealer ID: <input type="text" id="dealerId" value="0aa94346-ed1d-420e-8823-bcd97bf6456f" style="width: 300px;"></label>
+    </div>
+    
+    <div>
+        <button onclick="connect()">Connect</button>
+        <button onclick="disconnect()">Disconnect</button>
+        <button onclick="clearLog()">Clear Log</button>
+    </div>
+    
+    <div id="status" class="status disconnected">❌ Disconnected</div>
+    
+    <div class="log" id="log"></div>
+    
+    <script>
+        let ws = null;
+        
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(message);
+        }
+        
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+        
+        function updateStatus(status, message) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = `status ${status}`;
+            statusDiv.textContent = message;
+        }
+        
+        function connect() {
+            const dealerId = document.getElementById('dealerId').value;
+            
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+            
+            updateStatus('connecting', '⏳ Connecting...');
+            log('🔌 Attempting WebSocket connection...');
+            
+            const wsUrl = `ws://localhost:3000/streaming-voice?dealerId=${dealerId}`;
+            log(`🔌 URL: ${wsUrl}`);
+            
+            try {
+                ws = new WebSocket(wsUrl);
+                
+                ws.onopen = function(event) {
+                    log('✅ WebSocket connected successfully!');
+                    updateStatus('connected', '🚀 Connected');
+                    
+                    // Send a simple message
+                    try {
+                        ws.send(JSON.stringify({
+                            type: 'initialize',
+                            dealerId: dealerId
+                        }));
+                        log('📤 Sent initialization message');
+                    } catch (error) {
+                        log(`❌ Error sending message: ${error}`);
+                    }
+                };
+                
+                ws.onmessage = function(event) {
+                    try {
+                        const data = JSON.parse(event.data);
+                        log(`📥 Received: ${JSON.stringify(data)}`);
+                    } catch (error) {
+                        log(`📥 Received raw: ${event.data}`);
+                    }
+                };
+                
+                ws.onerror = function(error) {
+                    log(`❌ WebSocket error: ${JSON.stringify(error)}`);
+                    log(`❌ Error type: ${error.type}`);
+                    log(`❌ Error target: ${error.target}`);
+                    log(`❌ ReadyState: ${ws?.readyState}`);
+                    
+                    // Log more error details
+                    if (error.target) {
+                        log(`❌ Target URL: ${error.target.url}`);
+                        log(`❌ Target readyState: ${error.target.readyState}`);
+                        log(`❌ Target protocol: ${error.target.protocol}`);
+                    }
+                };
+                
+                ws.onclose = function(event) {
+                    log(`🔌 WebSocket closed: Code ${event.code}, Reason: ${event.reason || 'No reason'}`);
+                    log(`🔌 Clean close: ${event.wasClean}`);
+                    updateStatus('disconnected', '❌ Disconnected');
+                    ws = null;
+                };
+                
+            } catch (error) {
+                log(`❌ Error creating WebSocket: ${error}`);
+                updateStatus('disconnected', '❌ Connection Error');
+            }
+        }
+        
+        function disconnect() {
+            if (ws) {
+                log('🔌 Manually disconnecting...');
+                ws.close(1000, 'Manual disconnect');
+                ws = null;
+            }
+        }
+        
+        // Auto-connect on page load
+        window.addEventListener('load', function() {
+            log('🚀 Page loaded, ready to test WebSocket');
+        });
+        
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function() {
+            if (ws) {
+                ws.close();
+            }
+        });
+    </script>
+</body>
+</html>

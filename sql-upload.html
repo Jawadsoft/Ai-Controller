@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQL File Upload</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .header {
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1rem;
+        }
+
+        .upload-area {
+            border: 3px dashed #ddd;
+            border-radius: 15px;
+            padding: 40px 20px;
+            margin: 20px 0;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background: #fafafa;
+        }
+
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .upload-area.dragover {
+            border-color: #667eea;
+            background: #e8f2ff;
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 4rem;
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+
+        .upload-text {
+            color: #666;
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+        }
+
+        .upload-subtext {
+            color: #999;
+            font-size: 0.9rem;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .file-info {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .file-info.show {
+            display: block;
+        }
+
+        .file-name {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .file-size {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .upload-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 25px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 20px 0;
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .upload-btn.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .upload-btn:active {
+            transform: translateY(0);
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .status {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 10px;
+            font-weight: 500;
+            display: none;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .results {
+            margin: 20px 0;
+            text-align: left;
+            display: none;
+        }
+
+        .results.show {
+            display: block;
+        }
+
+        .result-item {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 4px solid #667eea;
+        }
+
+        .result-type {
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .result-message {
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .result-details {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .clear-btn {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+        }
+
+        .clear-btn:hover {
+            background: #5a6268;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .upload-area {
+                padding: 30px 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>SQL File Upload</h1>
+            <p>Upload and execute SQL files on your database server</p>
+        </div>
+
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📁</div>
+            <div class="upload-text">Drop your SQL file here</div>
+            <div class="upload-subtext">or click to browse</div>
+            <input type="file" id="fileInput" class="file-input" accept=".sql,.txt">
+        </div>
+
+        <div class="file-info" id="fileInfo">
+            <div class="file-name" id="fileName"></div>
+            <div class="file-size" id="fileSize"></div>
+        </div>
+
+        <button class="upload-btn" id="uploadBtn" disabled>Upload & Execute SQL</button>
+
+        <div class="progress-bar" id="progressBar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+
+        <div class="status" id="status"></div>
+
+        <div class="results" id="results"></div>
+
+        <button class="clear-btn" id="clearBtn" style="display: none;">Clear Results</button>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const progressBar = document.getElementById('progressBar');
+        const progressFill = document.getElementById('progressFill');
+        const status = document.getElementById('status');
+        const results = document.getElementById('results');
+        const clearBtn = document.getElementById('clearBtn');
+
+        let selectedFile = null;
+
+        // Drag and drop functionality
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileSelect(files[0]);
+            }
+        });
+
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+
+        function handleFileSelect(file) {
+            // Check if it's a SQL file
+            if (!file.name.toLowerCase().endsWith('.sql') && !file.name.toLowerCase().endsWith('.txt')) {
+                showStatus('Please select a .sql or .txt file', 'error');
+                return;
+            }
+
+            selectedFile = file;
+            fileName.textContent = file.name;
+            fileSize.textContent = formatFileSize(file.size);
+            fileInfo.classList.add('show');
+            uploadBtn.disabled = false;
+            uploadBtn.classList.add('active');
+            hideStatus();
+            hideResults();
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        uploadBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+
+            try {
+                await uploadAndExecuteSQL();
+            } catch (error) {
+                showStatus('Upload failed: ' + error.message, 'error');
+            }
+        });
+
+        async function uploadAndExecuteSQL() {
+            const formData = new FormData();
+            formData.append('sqlFile', selectedFile);
+
+            // Show progress
+            progressBar.style.display = 'block';
+            progressFill.style.width = '0%';
+            uploadBtn.disabled = true;
+            showStatus('Uploading SQL file...', 'info');
+
+            // Simulate progress
+            const progressInterval = setInterval(() => {
+                const currentWidth = parseInt(progressFill.style.width) || 0;
+                if (currentWidth < 90) {
+                    progressFill.style.width = (currentWidth + 10) + '%';
+                }
+            }, 200);
+
+            try {
+                // First, upload the file
+                const uploadResponse = await fetch('/api/database-admin/upload-sql', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!uploadResponse.ok) {
+                    throw new Error(`Upload failed: ${uploadResponse.statusText}`);
+                }
+
+                const uploadResult = await uploadResponse.json();
+                
+                if (!uploadResult.success) {
+                    throw new Error(uploadResult.error || 'Upload failed');
+                }
+
+                progressFill.style.width = '100%';
+                showStatus('File uploaded successfully! Executing SQL...', 'info');
+
+                // Now execute the SQL
+                const executeResponse = await fetch('/api/database-admin/execute-sql', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        sql: uploadResult.sqlContent,
+                        source: `File: ${selectedFile.name}`
+                    })
+                });
+
+                if (!executeResponse.ok) {
+                    throw new Error(`SQL execution failed: ${executeResponse.statusText}`);
+                }
+
+                const executeResult = await executeResponse.json();
+                
+                if (!executeResult.success) {
+                    throw new Error(executeResult.error || 'SQL execution failed');
+                }
+
+                showStatus('SQL executed successfully!', 'success');
+                showResults(executeResult);
+                clearBtn.style.display = 'block';
+
+            } catch (error) {
+                showStatus('Error: ' + error.message, 'error');
+                progressFill.style.width = '0%';
+            } finally {
+                clearInterval(progressInterval);
+                uploadBtn.disabled = false;
+                setTimeout(() => {
+                    progressBar.style.display = 'none';
+                }, 1000);
+            }
+        }
+
+        function showStatus(message, type) {
+            status.textContent = message;
+            status.className = `status ${type}`;
+            status.style.display = 'block';
+        }
+
+        function hideStatus() {
+            status.style.display = 'none';
+        }
+
+        function showResults(data) {
+            results.innerHTML = '';
+            
+            if (data.results && data.results.length > 0) {
+                data.results.forEach((result, index) => {
+                    const resultDiv = document.createElement('div');
+                    resultDiv.className = 'result-item';
+                    
+                    let content = `<div class="result-type">${result.type}</div>`;
+                    
+                    if (result.error) {
+                        content += `<div class="result-message">Error: ${result.error}</div>`;
+                        if (result.statement) {
+                            content += `<div class="result-details">Statement: ${result.statement}</div>`;
+                        }
+                    } else if (result.type === 'SELECT') {
+                        content += `<div class="result-message">Rows returned: ${result.rowCount}</div>`;
+                        if (result.rows && result.rows.length > 0) {
+                            content += `<div class="result-details">Sample data: ${JSON.stringify(result.rows, null, 2)}</div>`;
+                        }
+                        if (result.truncated) {
+                            content += `<div class="result-details">(Results truncated - showing first 10 rows)</div>`;
+                        }
+                    } else {
+                        content += `<div class="result-message">${result.message}</div>`;
+                        if (result.rowCount !== undefined) {
+                            content += `<div class="result-details">Rows affected: ${result.rowCount}</div>`;
+                        }
+                    }
+                    
+                    resultDiv.innerHTML = content;
+                    results.appendChild(resultDiv);
+                });
+            }
+            
+            results.classList.add('show');
+        }
+
+        function hideResults() {
+            results.classList.remove('show');
+            clearBtn.style.display = 'none';
+        }
+
+        clearBtn.addEventListener('click', () => {
+            hideResults();
+            hideStatus();
+            fileInfo.classList.remove('show');
+            fileInput.value = '';
+            selectedFile = null;
+            uploadBtn.disabled = true;
+            uploadBtn.classList.remove('active');
+        });
+    </script>
+</body>
+</html>

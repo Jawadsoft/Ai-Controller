@@ -1,0 +1,21 @@
+export interface Vehicle {
+  id: string;
+  vin: string;
+  make: string;
+  model: string;
+  year: number;
+  new_used: string;
+  stock_number?: string;
+  trim?: string;
+  color?: string;
+  mileage?: number;
+  price?: number;
+  description?: string;
+  features?: string[];
+  photo_url_list?: string[]; // Now properly TEXT[] type in database
+  vehicle_type?: string; // New field for vehicle body type (SUV, Sedan, Truck, etc.)
+  status: string;
+  qr_code_url?: string;
+  dealer_name?: string;
+  created_at: string;
+}

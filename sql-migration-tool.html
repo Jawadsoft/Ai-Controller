@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQL Database Migration Tool</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .upload-section {
+            border: 3px dashed #3498db;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 30px;
+            transition: all 0.3s ease;
+            background: #f8f9fa;
+        }
+
+        .upload-section:hover {
+            border-color: #2980b9;
+            background: #e8f4fd;
+        }
+
+        .upload-section.dragover {
+            border-color: #27ae60;
+            background: #e8f5e8;
+            transform: scale(1.02);
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .upload-btn {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 20px 0;
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(52, 152, 219, 0.3);
+        }
+
+        .file-info {
+            margin: 20px 0;
+            padding: 15px;
+            background: #e8f4fd;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+        }
+
+        .file-info h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .file-info p {
+            color: #34495e;
+            margin: 5px 0;
+        }
+
+        .database-config {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            border: 1px solid #e9ecef;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+
+        .execute-btn {
+            background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        .execute-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(39, 174, 96, 0.3);
+        }
+
+        .execute-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .progress-section {
+            margin-top: 30px;
+            display: none;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3498db, #2ecc71);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-weight: 500;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .sql-preview {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+
+        .warning {
+            background: #fff3cd;
+            color: #856404;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #ffeaa7;
+            margin: 20px 0;
+        }
+
+        .warning h4 {
+            margin-bottom: 10px;
+            color: #856404;
+        }
+
+        .warning ul {
+            margin-left: 20px;
+        }
+
+        .warning li {
+            margin: 5px 0;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                border-radius: 10px;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 SQL Migration Tool</h1>
+            <p>Upload and execute SQL files to migrate your database</p>
+        </div>
+
+        <div class="content">
+            <div class="warning">
+                <h4>⚠️ Important Safety Information</h4>
+                <ul>
+                    <li>Always backup your database before running migrations</li>
+                    <li>Review SQL files carefully before execution</li>
+                    <li>Test migrations on a development environment first</li>
+                    <li>Ensure you have proper database permissions</li>
+                </ul>
+            </div>
+
+            <div class="upload-section" id="uploadSection">
+                <h3>📁 Upload SQL File</h3>
+                <p>Drag and drop your .sql file here or click to browse</p>
+                <input type="file" id="sqlFile" class="file-input" accept=".sql">
+                <button class="upload-btn" onclick="document.getElementById('sqlFile').click()">
+                    Choose SQL File
+                </button>
+                <div id="fileInfo" class="file-info" style="display: none;"></div>
+            </div>
+
+            <div class="database-config">
+                <h3>🔧 Database Configuration</h3>
+                <div class="form-group">
+                    <label for="dbHost">Database Host:</label>
+                    <input type="text" id="dbHost" value="localhost" placeholder="localhost">
+                </div>
+                <div class="form-group">
+                    <label for="dbPort">Port:</label>
+                    <input type="number" id="dbPort" value="5432" placeholder="5432">
+                </div>
+                <div class="form-group">
+                    <label for="dbName">Database Name:</label>
+                    <input type="text" id="dbName" value="vehicle_management" placeholder="vehicle_management">
+                </div>
+                <div class="form-group">
+                    <label for="dbUser">Username:</label>
+                    <input type="text" id="dbUser" value="postgres" placeholder="postgres">
+                </div>
+                <div class="form-group">
+                    <label for="dbPassword">Password:</label>
+                    <input type="password" id="dbPassword" placeholder="Enter your database password">
+                </div>
+                <div class="form-group">
+                    <label for="dbSSL">SSL Mode:</label>
+                    <select id="dbSSL">
+                        <option value="false">Disabled</option>
+                        <option value="true">Enabled</option>
+                        <option value="require">Require</option>
+                    </select>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 15px; margin-top: 20px;">
+                <button class="upload-btn" onclick="testConnection()" style="flex: 1; background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);">
+                    🔌 Test Connection
+                </button>
+                <button class="execute-btn" id="executeBtn" onclick="executeMigration()" disabled style="flex: 2;">
+                    🚀 Execute Migration
+                </button>
+            </div>
+
+            <div class="progress-section" id="progressSection">
+                <h3>📊 Migration Progress</h3>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div id="status" class="status info">Ready to execute migration...</div>
+            </div>
+
+            <div id="sqlPreview" class="sql-preview" style="display: none;"></div>
+        </div>
+
+        <div class="footer">
+            <p>Built with ❤️ for safe database migrations</p>
+        </div>
+    </div>
+
+    <script>
+        let selectedFile = null;
+        let isExecuting = false;
+
+        // File upload handling
+        document.getElementById('sqlFile').addEventListener('change', handleFileSelect);
+        
+        // Drag and drop handling
+        const uploadSection = document.getElementById('uploadSection');
+        
+        uploadSection.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadSection.classList.add('dragover');
+        });
+        
+        uploadSection.addEventListener('dragleave', () => {
+            uploadSection.classList.remove('dragover');
+        });
+        
+        uploadSection.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadSection.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0 && files[0].name.endsWith('.sql')) {
+                handleFile(files[0]);
+            }
+        });
+
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (file) {
+                handleFile(file);
+            }
+        }
+
+        function handleFile(file) {
+            if (!file.name.endsWith('.sql')) {
+                showStatus('Please select a valid .sql file', 'error');
+                return;
+            }
+
+            selectedFile = file;
+            displayFileInfo(file);
+            document.getElementById('executeBtn').disabled = false;
+            showStatus('File selected successfully. Review and click Execute Migration.', 'success');
+        }
+
+        function displayFileInfo(file) {
+            const fileInfo = document.getElementById('fileInfo');
+            fileInfo.style.display = 'block';
+            fileInfo.innerHTML = `
+                <h3>📄 File Information</h3>
+                <p><strong>Name:</strong> ${file.name}</p>
+                <p><strong>Size:</strong> ${(file.size / 1024).toFixed(2)} KB</p>
+                <p><strong>Type:</strong> ${file.type || 'text/plain'}</p>
+                <p><strong>Last Modified:</strong> ${new Date(file.lastModified).toLocaleString()}</p>
+            `;
+
+            // Preview SQL content
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const sqlContent = e.target.result;
+                const preview = document.getElementById('sqlPreview');
+                preview.textContent = sqlContent;
+                preview.style.display = 'block';
+            };
+            reader.readAsText(file);
+        }
+
+        async function executeMigration() {
+            if (!selectedFile || isExecuting) return;
+
+            isExecuting = true;
+            document.getElementById('executeBtn').disabled = true;
+            document.getElementById('progressSection').style.display = 'block';
+            
+            const status = document.getElementById('status');
+            const progressFill = document.getElementById('progressFill');
+            
+            try {
+                // Get database configuration
+                const config = {
+                    host: document.getElementById('dbHost').value,
+                    port: parseInt(document.getElementById('dbPort').value),
+                    database: document.getElementById('dbName').value,
+                    user: document.getElementById('dbUser').value,
+                    password: document.getElementById('dbPassword').value,
+                    ssl: document.getElementById('dbSSL').value === 'true' ? true : 
+                         document.getElementById('dbSSL').value === 'require' ? { rejectUnauthorized: false } : false
+                };
+
+                // Validate configuration
+                if (!config.password) {
+                    throw new Error('Database password is required');
+                }
+
+                showStatus('Connecting to database...', 'info');
+                progressFill.style.width = '20%';
+
+                // Read SQL file content
+                const sqlContent = await readFileContent(selectedFile);
+                progressFill.style.width = '40%';
+                showStatus('SQL file loaded, executing queries...', 'info');
+
+                // Execute migration
+                const result = await executeSQLMigration(config, sqlContent);
+                
+                progressFill.style.width = '100%';
+                showStatus('Migration completed successfully!', 'success');
+                
+                console.log('Migration result:', result);
+                
+            } catch (error) {
+                console.error('Migration error:', error);
+                showStatus(`Migration failed: ${error.message}`, 'error');
+                progressFill.style.width = '0%';
+            } finally {
+                isExecuting = false;
+                document.getElementById('executeBtn').disabled = false;
+            }
+        }
+
+        function readFileContent(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = (e) => reject(new Error('Failed to read file'));
+                reader.readAsText(file);
+            });
+        }
+
+        async function executeSQLMigration(config, sqlContent) {
+            showStatus('Preparing SQL statements...', 'info');
+            
+            // Split SQL into individual statements for preview
+            const statements = sqlContent
+                .split(';')
+                .map(stmt => stmt.trim())
+                .filter(stmt => stmt.length > 0 && !stmt.startsWith('--'));
+            
+            showStatus(`Found ${statements.length} SQL statements to execute`, 'info');
+            
+            // Create FormData to send file and config
+            const formData = new FormData();
+            formData.append('sqlFile', selectedFile);
+            formData.append('host', config.host);
+            formData.append('port', config.port);
+            formData.append('database', config.database);
+            formData.append('user', config.user);
+            formData.append('password', config.password);
+            formData.append('ssl', config.ssl);
+            
+            try {
+                showStatus('Sending migration to server...', 'info');
+                progressFill.style.width = '60%';
+                
+                const response = await fetch('/api/migration/execute-migration', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    progressFill.style.width = '100%';
+                    showStatus(result.message, 'success');
+                    
+                    // Display results
+                    const preview = document.getElementById('sqlPreview');
+                    preview.innerHTML = `
+                        <h4>✅ Migration Results:</h4>
+                        <div style="margin: 10px 0; padding: 15px; background: #27ae60; border-radius: 5px; color: white;">
+                            <strong>Success!</strong> ${result.executedCount} of ${result.totalCount} statements executed successfully.
+                        </div>
+                        
+                        <h5>Statement Details:</h5>
+                        ${result.results.map((stmt, index) => 
+                            `<div style="margin: 10px 0; padding: 10px; background: ${stmt.success ? '#27ae60' : '#e74c3c'}; border-radius: 5px; color: white;">
+                                <strong>Statement ${stmt.statement}:</strong> ${stmt.success ? '✅ Success' : '❌ Failed'}
+                                ${stmt.success ? 
+                                    `<br>Rows affected: ${stmt.rowCount}` : 
+                                    `<br>Error: ${stmt.error}`
+                                }
+                                <pre style="margin: 5px 0; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 3px; font-size: 0.9em;">${stmt.sql}</pre>
+                            </div>`
+                        ).join('')}
+                    `;
+                    
+                    return result;
+                } else {
+                    throw new Error(result.error);
+                }
+                
+            } catch (error) {
+                throw new Error(`Migration execution failed: ${error.message}`);
+            }
+        }
+
+        function showStatus(message, type) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${type}`;
+        }
+
+        // Add some interactive features
+        document.addEventListener('DOMContentLoaded', function() {
+            // Auto-fill common database configurations
+            const commonConfigs = {
+                'PostgreSQL Local': {
+                    host: 'localhost',
+                    port: '5432',
+                    database: 'vehicle_management',
+                    user: 'postgres',
+                    ssl: 'false'
+                },
+                'PostgreSQL Production': {
+                    host: 'your-production-host.com',
+                    port: '5432',
+                    database: 'your_production_db',
+                    user: 'your_user',
+                    ssl: 'require'
+                }
+            };
+
+            // Add preset buttons
+            const configSection = document.querySelector('.database-config');
+            const presetDiv = document.createElement('div');
+            presetDiv.innerHTML = `
+                <div style="margin-top: 20px;">
+                    <label style="margin-bottom: 10px; display: block; font-weight: 600; color: #2c3e50;">
+                        Quick Presets:
+                    </label>
+                    <button onclick="loadPreset('PostgreSQL Local')" style="margin-right: 10px; padding: 8px 16px; background: #3498db; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                        Local Development
+                    </button>
+                    <button onclick="loadPreset('PostgreSQL Production')" style="padding: 8px 16px; background: #e74c3c; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                        Production
+                    </button>
+                </div>
+            `;
+            configSection.appendChild(presetDiv);
+        });
+
+        async function testConnection() {
+            const config = {
+                host: document.getElementById('dbHost').value,
+                port: parseInt(document.getElementById('dbPort').value),
+                database: document.getElementById('dbName').value,
+                user: document.getElementById('dbUser').value,
+                password: document.getElementById('dbPassword').value,
+                ssl: document.getElementById('dbSSL').value
+            };
+
+            if (!config.password) {
+                showStatus('Please enter database password to test connection', 'error');
+                return;
+            }
+
+            try {
+                showStatus('Testing database connection...', 'info');
+                
+                const response = await fetch('/api/migration/test-connection', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(config)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showStatus(`✅ Connection successful! Database: ${result.data.version}`, 'success');
+                    
+                    // Show connection details
+                    const preview = document.getElementById('sqlPreview');
+                    preview.innerHTML = `
+                        <h4>🔌 Connection Test Results:</h4>
+                        <div style="margin: 10px 0; padding: 15px; background: #27ae60; border-radius: 5px; color: white;">
+                            <strong>✅ Connection Successful!</strong>
+                        </div>
+                        <div style="margin: 10px 0; padding: 15px; background: #34495e; border-radius: 5px; color: white;">
+                            <strong>Database Version:</strong> ${result.data.version}<br>
+                            <strong>Current Time:</strong> ${result.data.currentTime}<br>
+                            <strong>Connection Details:</strong><br>
+                            • Host: ${config.host}:${config.port}<br>
+                            • Database: ${config.database}<br>
+                            • User: ${config.user}<br>
+                            • SSL: ${config.ssl}
+                        </div>
+                    `;
+                    preview.style.display = 'block';
+                } else {
+                    throw new Error(result.error);
+                }
+            } catch (error) {
+                console.error('Connection test error:', error);
+                showStatus(`❌ Connection failed: ${error.message}`, 'error');
+                
+                const preview = document.getElementById('sqlPreview');
+                preview.innerHTML = `
+                    <h4>❌ Connection Test Failed:</h4>
+                    <div style="margin: 10px 0; padding: 15px; background: #e74c3c; border-radius: 5px; color: white;">
+                        <strong>Error:</strong> ${error.message}
+                    </div>
+                    <div style="margin: 10px 0; padding: 15px; background: #f39c12; border-radius: 5px; color: white;">
+                        <strong>Troubleshooting Tips:</strong>
+                        <ul style="margin: 10px 0; margin-left: 20px;">
+                            <li>Verify database credentials</li>
+                            <li>Check if database server is running</li>
+                            <li>Ensure firewall allows connections</li>
+                            <li>Verify SSL settings</li>
+                        </ul>
+                    </div>
+                `;
+                preview.style.display = 'block';
+            }
+        }
+
+        function loadPreset(presetName) {
+            const presets = {
+                'PostgreSQL Local': {
+                    host: 'localhost',
+                    port: '5432',
+                    database: 'vehicle_management',
+                    user: 'postgres',
+                    ssl: 'false'
+                },
+                'PostgreSQL Production': {
+                    host: 'your-production-host.com',
+                    port: '5432',
+                    database: 'your_production_db',
+                    user: 'your_user',
+                    ssl: 'require'
+                }
+            };
+
+            const preset = presets[presetName];
+            if (preset) {
+                document.getElementById('dbHost').value = preset.host;
+                document.getElementById('dbPort').value = preset.port;
+                document.getElementById('dbName').value = preset.database;
+                document.getElementById('dbUser').value = preset.user;
+                document.getElementById('dbSSL').value = preset.ssl;
+                
+                showStatus(`Loaded ${presetName} configuration`, 'success');
+            }
+        }
+    </script>
+</body>
+</html>
