@@ -679,31 +679,29 @@ router.post('/preview-csv', authenticateToken, async (req, res) => {
                       
                       // Map specific fields to database columns
                       const fieldMap = {
-                        // Core vehicle fields (vAuto FTP headers)
-                        'Dealer ID': 'reference_dealer_id',
-                        'DealerId': 'reference_dealer_id',
+                        // Core vehicle fields
+                        'Dealer ID': 'dealer_id',
+                        'DealerId': 'dealer_id',
                         'VIN': 'vin',
                         'Make': 'make',
                         'Model': 'model',
                         'Year': 'year',
                         'Trim': 'trim',
                         'Series': 'series',
-                        'New/Used': 'new_used',
                         'Body Style': 'body_style',
                         'Body': 'body_style',
                         'Vehicle Type': 'vehicle_type',
                         'Type': 'vehicle_type',
                         'Color': 'color',
                         'Interior Color': 'interior_color',
-                        'Mileage': 'odometer',
+                        'Mileage': 'mileage',
                         'Odometer': 'odometer',
                         'Price': 'price',
                         'Other Price': 'other_price',
                         'MSRP': 'msrp',
                         'Description': 'description',
-                        'Autowriter Description': 'description',
                         'Features': 'features',
-                        'Images': 'photo_url_list',
+                        'Images': 'images',
                         'Status': 'status',
                         'QR Code': 'qr_code_url',
                         
@@ -774,17 +772,13 @@ router.post('/preview-csv', authenticateToken, async (req, res) => {
                         'Trade-in Value': 'trade_in_value',
                         'Tax Amount': 'tax_amount',
                         'Fees Amount': 'fees_amount',
+                        'Other Price': 'other_price',
                         'Dealer Discount': 'dealer_discount',
-                        'Dealer Discounted': 'dealer_discount',
                         'Consumer Rebate': 'consumer_rebate',
-                        'Consumer Cash': 'consumer_rebate',
                         'Dealer Accessories': 'dealer_accessories',
-                        'Dlr Accessories': 'dealer_accessories',
                         'Total Customer Savings': 'total_customer_savings',
-                        'Total Customer Incentives': 'total_customer_savings',
                         'Total Dealer Rebate': 'total_dealer_rebate',
                         'Photo URL List': 'photo_url_list',
-                        'Photo Url List': 'photo_url_list',
                         'Reference Dealer ID': 'reference_dealer_id'
                       };
                       
@@ -894,39 +888,21 @@ router.post('/test-connection', authenticateToken, async (req, res) => {
       
       return new Promise((resolve, reject) => {
         const conn = new Client();
-        let settled = false;
-
-        const fail = (err) => {
-          if (settled) return;
-          settled = true;
-          try { conn.end(); } catch (_) { /* ignore */ }
-          reject(err instanceof Error ? err : new Error(String(err?.message || err)));
-        };
-
-        const succeed = (payload) => {
-          if (settled) return;
-          settled = true;
-          try { conn.end(); } catch (_) { /* ignore */ }
-          resolve(payload);
-        };
-
-        conn.on('error', (err) => {
-          console.error('SFTP test-connection error:', err.message);
-          fail(err);
-        });
-
+        
         conn.on('ready', () => {
           if (testConfig.connection.type === 'sftp') {
             conn.sftp((err, sftp) => {
               if (err) {
-                fail(err);
+                conn.end();
+                reject(err);
                 return;
               }
               
               // First, try to list the root directory to see what's available
               sftp.readdir('/', (err, rootList) => {
                 if (err) {
-                  fail(new Error(`Cannot access root directory: ${err.message}`));
+                  conn.end();
+                  reject(new Error(`Cannot access root directory: ${err.message}`));
                   return;
                 }
                 
@@ -934,6 +910,7 @@ router.post('/test-connection', authenticateToken, async (req, res) => {
                 
                 // Now try to list the specified remote directory
                 sftp.readdir(testConfig.connection.remote_directory, (err, list) => {
+                  conn.end();
                   if (err) {
                     // Provide more specific error information
                     let errorMessage = err.message;
@@ -950,9 +927,9 @@ router.post('/test-connection', authenticateToken, async (req, res) => {
                     } else if (err.message.includes('Permission denied')) {
                       errorMessage = `Permission denied accessing '${testConfig.connection.remote_directory}'. Check user permissions.`;
                     }
-                    fail(new Error(errorMessage));
+                    reject(new Error(errorMessage));
                   } else {
-                    succeed({
+                    resolve({
                       success: true,
                       message: 'Connection test successful',
                       filesFound: list.length,
@@ -965,20 +942,13 @@ router.post('/test-connection', authenticateToken, async (req, res) => {
             });
           } else {
             // FTP implementation would go here
-            fail(new Error('FTP not implemented yet'));
+            reject(new Error('FTP not implemented yet'));
           }
         }).connect({
-          host: String(testConfig.connection.host_url || '')
-            .trim()
-            .replace(/^(sftp|ftp|ssh):\/\//i, '')
-            .replace(/\/.*$/, '')
-            .trim(),
-          port: Number(testConfig.connection.port) || 22,
-          username: String(testConfig.connection.username || '').trim(),
-          password: testConfig.connection.password,
-          readyTimeout: 45000,
-          keepaliveInterval: 10000,
-          keepaliveCountMax: 3
+          host: testConfig.connection.host_url,
+          port: testConfig.connection.port,
+          username: testConfig.connection.username,
+          password: testConfig.connection.password
         });
       }).then(result => {
         res.json(result);
@@ -1023,42 +993,11 @@ router.post('/test-connection-and-download', authenticateToken, async (req, res)
     console.log('🔄 Test connection and download request started');
     console.log('📋 Request body:', JSON.stringify(req.body, null, 2));
     
-    let {
-      connectionType,
-      hostUrl,
-      port,
-      username,
-      password,
-      remoteDirectory,
-      filePattern,
-      selectedFileName,
-      configId,
-      importConfigId
-    } = req.body;
+    const { connectionType, hostUrl, port, username, password, remoteDirectory, filePattern, selectedFileName } = req.body;
     
     if (!dealerId) {
       console.log('❌ No dealer ID found');
       return res.status(403).json({ error: 'Dealer access required' });
-    }
-
-    // When editing a saved config, UI may omit password — load it from DB
-    const savedConfigId = configId || importConfigId || null;
-    if (savedConfigId && (!password || !hostUrl || !username)) {
-      try {
-        const saved = await importService.getImportConfig(savedConfigId);
-        if (saved && saved.dealer_id === dealerId) {
-          password = password || saved.password || '';
-          hostUrl = hostUrl || saved.host_url;
-          username = username || saved.username;
-          port = port || saved.port;
-          connectionType = connectionType || saved.connection_type;
-          remoteDirectory = remoteDirectory || saved.remote_directory;
-          filePattern = filePattern || saved.file_pattern;
-          console.log('🔑 Filled missing connection fields from saved config', savedConfigId);
-        }
-      } catch (e) {
-        console.error('Failed to load saved config for test-download:', e.message);
-      }
     }
 
     console.log('✅ Extracted values:', { 
@@ -1070,7 +1009,6 @@ router.post('/test-connection-and-download', authenticateToken, async (req, res)
       remoteDirectory, 
       filePattern,
       selectedFileName,
-      configId: savedConfigId,
       dealerId 
     });
     
@@ -1078,9 +1016,6 @@ router.post('/test-connection-and-download', authenticateToken, async (req, res)
       console.log('❌ Missing required connection details');
       return res.status(400).json({ 
         error: 'Connection details are required',
-        details: !password
-          ? 'Password is missing. Re-enter the SFTP password, or reload the saved configuration.'
-          : 'Host URL, username, and password are required',
         missing: {
           hostUrl: !hostUrl,
           username: !username,
@@ -1089,20 +1024,13 @@ router.post('/test-connection-and-download', authenticateToken, async (req, res)
       });
     }
 
-    // Normalize host (UI sometimes stores sftp://host or trailing spaces)
-    const normalizedHost = String(hostUrl || '')
-      .trim()
-      .replace(/^(sftp|ftp|ssh):\/\//i, '')
-      .replace(/\/.*$/, '')
-      .trim();
-
     // Test connection and download file
     const testConfig = {
       connection: {
         type: connectionType || 'sftp',
-        host_url: normalizedHost,
+        host_url: hostUrl,
         port: port || (connectionType === 'sftp' ? 22 : 21),
-        username: String(username || '').trim(),
+        username,
         password,
         remote_directory: remoteDirectory || '/',
         file_pattern: filePattern || '*'
@@ -1122,237 +1050,224 @@ router.post('/test-connection-and-download', authenticateToken, async (req, res)
       const { Client } = await import('ssh2');
       const fs = await import('fs');
       const path = await import('path');
-
-      const isRetryableSshError = (err) => {
-        const msg = String(err?.message || err || '');
-        return /timed out while waiting for handshake|handshake|econnreset|econnrefused|epipe|socket closed|connect etimedout/i.test(msg);
-      };
-
-      const runSftpDownloadOnce = (attempt) => new Promise((resolve, reject) => {
+      
+      console.log('🚀 Starting SFTP connection...');
+      
+      // Add timeout wrapper
+      const connectionPromise = new Promise((resolve, reject) => {
         const conn = new Client();
         let isResolved = false;
-
-        const hardClose = () => {
-          try { conn.end(); } catch (_) { /* ignore */ }
-          try { conn.destroy(); } catch (_) { /* ignore */ }
-        };
-
-        const settle = (fn, value) => {
-          if (isResolved) return;
-          isResolved = true;
-          clearTimeout(operationTimeout);
-          fn(value);
-          setImmediate(hardClose);
-        };
-        const succeed = (payload) => settle(resolve, payload);
-        const fail = (err) => settle(reject, err instanceof Error ? err : new Error(String(err?.message || err)));
-
-        // Covers handshake + list/download; do not clear on SSH ready
-        const operationTimeout = setTimeout(() => {
-          console.log(`⏰ SFTP operation timeout after 2 minutes (attempt ${attempt})`);
-          fail(new Error('SFTP operation timeout after 2 minutes (directory list or download did not complete)'));
-        }, 120000);
-
-        const remoteDir = String(testConfig.connection.remote_directory || '/').replace(/\/+$/, '') || '/';
-
-        const downloadRemoteFile = (sftp, fileToDownload, matchingFiles) => {
-          const remotePath = path.posix.join(remoteDir, fileToDownload.filename);
-
-          const uploadDir = path.join(process.cwd(), 'uploads', 'import');
-          if (!fs.existsSync(uploadDir)) {
-            fs.mkdirSync(uploadDir, { recursive: true });
+        
+        // Set connection timeout
+        const connectionTimeout = setTimeout(() => {
+          if (!isResolved) {
+            isResolved = true;
+            console.log('⏰ Connection timeout after 2 minutes');
+            conn.end();
+            reject(new Error('Connection timeout after 2 minutes'));
           }
-
-          const timestamp = Date.now();
-          const localFileName = `${timestamp}-${fileToDownload.filename}`;
-          const localPath = path.join(uploadDir, localFileName);
-          const fileSize = fileToDownload.attrs?.size ?? 0;
-
-          console.log('⬇️ Downloading remote file:', remotePath, `(${fileSize} bytes)`);
-
-          const readStream = sftp.createReadStream(remotePath);
-          const writeStream = fs.createWriteStream(localPath);
-
-          readStream.on('error', (err) => {
-            console.log('❌ Remote read failed:', err.message);
-            fail(new Error(`Failed to read remote file: ${err.message}`));
-          });
-
-          writeStream.on('error', (err) => {
-            console.log('❌ Local write failed:', err.message);
-            fail(new Error(`Failed to write local file: ${err.message}`));
-          });
-
-          writeStream.on('close', () => {
-            console.log('✅ File downloaded to:', localPath);
-            succeed({
-              success: true,
-              message: 'Connection test successful and file downloaded',
-              filesFound: matchingFiles.length,
-              downloaded: true,
-              downloadedFile: {
-                originalName: fileToDownload.filename,
-                localName: localFileName,
-                localPath: localPath,
-                size: fileSize,
-                sizeFormatted: `${(fileSize / 1024).toFixed(2)} KB`
-              },
-              availableFiles: matchingFiles.map(f => ({
-                name: f.filename,
-                size: f.attrs?.size ?? 0,
-                sizeFormatted: `${((f.attrs?.size ?? 0) / 1024).toFixed(2)} KB`
-              }))
-            });
-          });
-
-          readStream.pipe(writeStream);
-        };
-
+        }, 120000); // 2 minutes
+        
+        // Error handler
         conn.on('error', (err) => {
-          console.log(`❌ SSH connection error (attempt ${attempt}):`, err.message);
-          fail(new Error(`SSH connection failed: ${err.message}`));
-        });
-
-        conn.on('ready', () => {
-          console.log(`✅ SSH connection established (attempt ${attempt})`);
-
-          if (testConfig.connection.type !== 'sftp') {
-            fail(new Error('FTP not implemented yet'));
-            return;
+          console.log('❌ SSH connection error:', err.message);
+          clearTimeout(connectionTimeout);
+          if (!isResolved) {
+            isResolved = true;
+            reject(new Error(`SSH connection failed: ${err.message}`));
           }
-
-          console.log('🔄 Requesting SFTP session...');
-          conn.sftp((err, sftp) => {
-            if (err) {
-              console.log('❌ SFTP session failed:', err.message);
-              fail(new Error(`SFTP session failed: ${err.message}`));
-              return;
-            }
-
-            console.log('✅ SFTP session established');
-
-            if (selectedFileName) {
-              const remotePath = path.posix.join(remoteDir, selectedFileName);
-              console.log('🎯 Selected file provided — skipping directory list, stating:', remotePath);
-              sftp.stat(remotePath, (statErr, attrs) => {
-                try {
-                  if (statErr) {
-                    console.log('❌ Selected file stat failed:', statErr.message);
-                    fail(new Error(`Selected file not found or inaccessible: ${selectedFileName} (${statErr.message})`));
-                    return;
-                  }
-                  if (attrs.isDirectory()) {
-                    fail(new Error(`Selected path is a directory, not a file: ${selectedFileName}`));
-                    return;
-                  }
-                  downloadRemoteFile(sftp, { filename: selectedFileName, attrs }, [{ filename: selectedFileName, attrs }]);
-                } catch (e) {
-                  fail(e);
-                }
-              });
-              return;
-            }
-
-            console.log('📁 Listing directory:', remoteDir);
-            sftp.readdir(remoteDir, (err, list) => {
-              if (err) {
-                console.log('❌ Directory listing failed:', err.message);
-                fail(new Error(`Cannot access directory '${remoteDir}': ${err.message}`));
-                return;
-              }
-
-              console.log('✅ Directory listed successfully');
-              console.log('📂 Found files:', list.length);
-
-              const pattern = testConfig.connection.file_pattern || '*';
-              console.log('🔍 Filtering with pattern:', pattern);
-
-              const matchingFiles = list.filter(file => {
-                if (file.attrs.isDirectory()) return false;
-                if (pattern === '*') return true;
-                if (pattern.startsWith('*.')) {
-                  const extension = pattern.substring(2);
-                  return file.filename.toLowerCase().endsWith('.' + extension.toLowerCase());
-                }
-                return file.filename.includes(pattern);
-              });
-
-              console.log('✅ Matching files found:', matchingFiles.length);
-              console.log('📋 Matching file names:', matchingFiles.map(f => f.filename));
-
-              if (matchingFiles.length === 0) {
-                succeed({
-                  success: true,
-                  message: 'Connection successful but no matching files found',
-                  filesFound: 0,
-                  downloaded: false,
-                  availableFiles: list.filter(f => !f.attrs.isDirectory()).map(f => f.filename)
-                });
-                return;
-              }
-
-              if (matchingFiles.length > 1) {
-                succeed({
-                  success: true,
-                  needsFileSelection: true,
-                  filesFound: matchingFiles.length,
-                  downloaded: false,
-                  matchingFiles: matchingFiles.map(f => ({
-                    name: f.filename,
-                    size: f.attrs.size,
-                    sizeFormatted: `${(f.attrs.size / 1024).toFixed(2)} KB`
-                  }))
-                });
-                return;
-              }
-
-              downloadRemoteFile(sftp, matchingFiles[0], matchingFiles);
-            });
-          });
         });
+        
+        conn.on('ready', () => {
+          console.log('✅ SSH connection established');
+          clearTimeout(connectionTimeout);
+          
+          if (testConfig.connection.type === 'sftp') {
+            console.log('🔄 Requesting SFTP session...');
+            conn.sftp((err, sftp) => {
+              if (err) {
+                console.log('❌ SFTP session failed:', err.message);
+                if (!isResolved) {
+                  isResolved = true;
+                  conn.end();
+                  reject(new Error(`SFTP session failed: ${err.message}`));
+                }
+                return;
+              }
+              
+              console.log('✅ SFTP session established');
+              
+              // First, try to list the remote directory
+              console.log('📁 Listing directory:', testConfig.connection.remote_directory);
+              sftp.readdir(testConfig.connection.remote_directory, (err, list) => {
+                if (err) {
+                  console.log('❌ Directory listing failed:', err.message);
+                  if (!isResolved) {
+                    isResolved = true;
+                    conn.end();
+                    reject(new Error(`Cannot access directory '${testConfig.connection.remote_directory}': ${err.message}`));
+                  }
+                  return;
+                }
+                
+                console.log('✅ Directory listed successfully');
+                console.log('📂 Found files:', list.length);
+                
+                // Filter files based on pattern
+                const pattern = testConfig.connection.file_pattern || '*';
+                console.log('🔍 Filtering with pattern:', pattern);
+                
+                let matchingFiles = list.filter(file => {
+                  if (pattern === '*') return !file.attrs.isDirectory();
+                  if (pattern.startsWith('*.')) {
+                    const extension = pattern.substring(2);
+                    return file.filename.toLowerCase().endsWith('.' + extension.toLowerCase());
+                  }
+                  return file.filename.includes(pattern);
+                });
+                
+                console.log('✅ Matching files found:', matchingFiles.length);
+                console.log('📋 Matching file names:', matchingFiles.map(f => f.filename));
+                
+                if (matchingFiles.length === 0) {
+                  console.log('⚠️ No matching files found');
+                  if (!isResolved) {
+                    isResolved = true;
+                    conn.end();
+                    resolve({
+                      success: true,
+                      message: 'Connection successful but no matching files found',
+                      filesFound: 0,
+                      downloaded: false,
+                      availableFiles: list.filter(f => !f.attrs.isDirectory()).map(f => f.filename)
+                    });
+                  }
+                  return;
+                }
 
-        console.log(`🔌 Attempting connection (attempt ${attempt}):`, {
+                if (matchingFiles.length > 1 && !selectedFileName) {
+                  console.log('📋 Multiple matches; user must select a file');
+                  if (!isResolved) {
+                    isResolved = true;
+                    conn.end();
+                    resolve({
+                      success: true,
+                      needsFileSelection: true,
+                      filesFound: matchingFiles.length,
+                      downloaded: false,
+                      matchingFiles: matchingFiles.map(f => ({
+                        name: f.filename,
+                        size: f.attrs.size,
+                        sizeFormatted: `${(f.attrs.size / 1024).toFixed(2)} KB`
+                      }))
+                    });
+                  }
+                  return;
+                }
+
+                let fileToDownload;
+                if (selectedFileName) {
+                  fileToDownload = matchingFiles.find(f => f.filename === selectedFileName);
+                  if (!fileToDownload) {
+                    if (!isResolved) {
+                      isResolved = true;
+                      conn.end();
+                      reject(new Error(`Selected file not found: ${selectedFileName}`));
+                    }
+                    return;
+                  }
+                } else {
+                  fileToDownload = matchingFiles[0];
+                }
+
+                const remotePath = path.posix.join(testConfig.connection.remote_directory, fileToDownload.filename);
+                
+                // Create uploads/import directory if it doesn't exist
+                const uploadDir = path.join(process.cwd(), 'uploads', 'import');
+                if (!fs.existsSync(uploadDir)) {
+                  fs.mkdirSync(uploadDir, { recursive: true });
+                }
+                
+                // Generate local file path with timestamp to avoid conflicts
+                const timestamp = Date.now();
+                const localFileName = `${timestamp}-${fileToDownload.filename}`;
+                const localPath = path.join(uploadDir, localFileName);
+                
+                // Download the file
+                const readStream = sftp.createReadStream(remotePath);
+                const writeStream = fs.createWriteStream(localPath);
+                
+                readStream.on('error', (err) => {
+                  conn.end();
+                  reject(new Error(`Failed to read remote file: ${err.message}`));
+                });
+                
+                writeStream.on('error', (err) => {
+                  conn.end();
+                  reject(new Error(`Failed to write local file: ${err.message}`));
+                });
+                
+                writeStream.on('close', () => {
+                  conn.end();
+                  resolve({
+                    success: true,
+                    message: 'Connection test successful and file downloaded',
+                    filesFound: matchingFiles.length,
+                    downloaded: true,
+                    downloadedFile: {
+                      originalName: fileToDownload.filename,
+                      localName: localFileName,
+                      localPath: localPath,
+                      size: fileToDownload.attrs.size,
+                      sizeFormatted: `${(fileToDownload.attrs.size / 1024).toFixed(2)} KB`
+                    },
+                    availableFiles: matchingFiles.map(f => ({
+                      name: f.filename,
+                      size: f.attrs.size,
+                      sizeFormatted: `${(f.attrs.size / 1024).toFixed(2)} KB`
+                    }))
+                  });
+                });
+                
+                readStream.pipe(writeStream);
+              });
+            });
+          } else {
+            // FTP implementation would go here
+            console.log('❌ FTP not implemented');
+            if (!isResolved) {
+              isResolved = true;
+              reject(new Error('FTP not implemented yet'));
+            }
+          }
+        });
+        
+        console.log('🔌 Attempting connection to:', {
           host: testConfig.connection.host_url,
           port: testConfig.connection.port,
           username: testConfig.connection.username
         });
-
+        
         conn.connect({
           host: testConfig.connection.host_url,
-          port: Number(testConfig.connection.port) || 22,
+          port: testConfig.connection.port,
           username: testConfig.connection.username,
           password: testConfig.connection.password,
-          readyTimeout: 45000,
-          keepaliveInterval: 10000,
-          keepaliveCountMax: 3
+          readyTimeout: 60000, // 1 minute
+          algorithms: {
+            kex: ['diffie-hellman-group14-sha256', 'diffie-hellman-group14-sha1', 'diffie-hellman-group1-sha1'],
+            cipher: ['aes128-ctr', 'aes192-ctr', 'aes256-ctr', 'aes128-gcm', 'aes256-gcm'],
+            hmac: ['hmac-sha2-256', 'hmac-sha2-512', 'hmac-sha1'],
+            compress: ['none']
+          }
         });
       });
-
-      const maxAttempts = 3;
-      let result;
-      let lastError;
-      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-        try {
-          console.log(`🚀 Starting SFTP connection attempt ${attempt}/${maxAttempts}...`);
-          result = await runSftpDownloadOnce(attempt);
-          lastError = null;
-          break;
-        } catch (err) {
-          lastError = err;
-          console.error(`❌ Attempt ${attempt} failed:`, err.message);
-          if (attempt < maxAttempts && isRetryableSshError(err)) {
-            const delayMs = attempt * 1500;
-            console.log(`🔁 Retrying after ${delayMs}ms...`);
-            await new Promise((r) => setTimeout(r, delayMs));
-            continue;
-          }
-          throw err;
-        }
-      }
-      if (!result && lastError) throw lastError;
-
+      
+      // Use the promise with proper error handling
+      const result = await connectionPromise;
       console.log('✅ Connection and download completed successfully');
       
+      // Ensure CORS headers are included in the success response
       const origin = req.headers.origin;
       if (origin) {
         res.header('Access-Control-Allow-Origin', origin);
@@ -1364,6 +1279,7 @@ router.post('/test-connection-and-download', authenticateToken, async (req, res)
     } catch (connectionError) {
       console.error('❌ Connection error:', connectionError.message);
       
+      // Ensure CORS headers are included in error responses
       const origin = req.headers.origin;
       if (origin) {
         res.header('Access-Control-Allow-Origin', origin);

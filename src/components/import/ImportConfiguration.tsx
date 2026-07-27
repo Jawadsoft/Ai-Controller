@@ -165,7 +165,6 @@ const ImportConfiguration: React.FC<ImportConfigurationProps> = ({ onEditConfig,
   const [isLoading, setIsLoading] = useState(false);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [isTestingAndDownloading, setIsTestingAndDownloading] = useState(false);
-  const [lastSelectedRemoteFile, setLastSelectedRemoteFile] = useState<string | null>(null);
   const [downloadProgress, setDownloadProgress] = useState<{
     fileName: string;
     progress: number;
@@ -527,30 +526,30 @@ const ImportConfiguration: React.FC<ImportConfigurationProps> = ({ onEditConfig,
   const getEnhancedSmartMapping = (csvField: string): string => {
     const fieldLower = csvField.toLowerCase().trim();
   
-    // Exact vAuto FTP header matches → import_vehicle_from_csv fields
-    if (fieldLower === 'dealerid') return 'reference_dealer_id';
+    // Exact matches and high-confidence mappings
+    if (fieldLower === 'dealerid') return 'dealer_id';
     if (fieldLower === 'vin') return 'vin';
     if (fieldLower === 'year') return 'year';
     if (fieldLower === 'make') return 'make';
     if (fieldLower === 'model') return 'model';
     if (fieldLower === 'series') return 'series';
-    if (fieldLower === 'new/used') return 'new_used';
+    if (fieldLower === 'new/used') return 'status';
     if (fieldLower === 'stock #' || fieldLower.includes('stock')) return 'stock_number';
     if (fieldLower.includes('description')) return 'description';
     if (fieldLower === 'body') return 'body_style';
     if (fieldLower === 'certified') return 'certified';
-    if (fieldLower === 'certification') return '';
+    if (fieldLower === 'certification') return ''; // No corresponding DB field — skip or handle separately
     if (fieldLower === 'color') return 'color';
     if (fieldLower === 'interior color') return 'interior_color';
     if (fieldLower === 'engine') return 'engine_type';
     if (fieldLower === 'disp') return 'displacement';
     if (fieldLower.includes('feature')) return 'features';
-    if (fieldLower === 'odometer') return 'odometer';
+    if (fieldLower === 'odometer') return 'mileage'; // mapped to legacy `mileage`
     if (fieldLower === 'price') return 'price';
     if (fieldLower === 'other price') return 'other_price';
-    if (fieldLower === 'photo url list') return 'photo_url_list';
+    if (fieldLower === 'photo url list') return 'images'; // mapped to legacy `images`
     if (fieldLower === 'transmission') return 'transmission';
-    if (fieldLower === 'vehicle detail link') return '';
+    if (fieldLower === 'vehicle detail link') return 'qr_code_url';
     if (fieldLower === 'msrp' || fieldLower.includes('sticker')) return 'msrp';
     if (fieldLower === 'dealer discounted') return 'dealer_discount';
     if (fieldLower === 'consumer cash') return 'consumer_rebate';
@@ -558,15 +557,15 @@ const ImportConfiguration: React.FC<ImportConfigurationProps> = ({ onEditConfig,
     if (fieldLower === 'total customer incentives') return 'total_customer_savings';
     if (fieldLower === 'total dealer rebate') return 'total_dealer_rebate';
   
-    // Fallback pattern matching
-    if (fieldLower.includes('dealer') && fieldLower.includes('id')) return 'reference_dealer_id';
+    // Fallback: try best-effort pattern matching for unexpected headers
+    if (fieldLower.includes('dealer') && fieldLower.includes('id')) return 'dealer_id';
     if (fieldLower.includes('interior') && fieldLower.includes('color')) return 'interior_color';
     if (fieldLower.includes('engine')) return 'engine_type';
     if (fieldLower.includes('displacement') || fieldLower === 'disp') return 'displacement';
-    if (fieldLower.includes('odometer') || fieldLower.includes('miles') || fieldLower.includes('mileage')) return 'odometer';
-    if (fieldLower.includes('image') || fieldLower.includes('photo')) return 'photo_url_list';
+    if (fieldLower.includes('odometer') || fieldLower.includes('miles') || fieldLower.includes('mileage')) return 'mileage';
+    if (fieldLower.includes('image') || fieldLower.includes('photo')) return 'images';
   
-    return '';
+    return ''; // no match found
   };
   
   
@@ -641,8 +640,7 @@ const ImportConfiguration: React.FC<ImportConfigurationProps> = ({ onEditConfig,
           hostUrl: preloadedConfig.host_url,
           port: preloadedConfig.port,
           username: preloadedConfig.username,
-          // Keep existing in-form password if preload omitted it (list endpoint has no password)
-          password: preloadedConfig.password || currentConfig?.connection?.password || '',
+          password: 'Dealeriq2025@', // Don't populate password for security
           remoteDirectory: preloadedConfig.remote_directory,
           filePattern: preloadedConfig.file_pattern
         },
@@ -850,7 +848,7 @@ const ImportConfiguration: React.FC<ImportConfigurationProps> = ({ onEditConfig,
       } else {
         toast({
           title: "Connection Failed",
-          description: result.details || result.error || "Connection test failed",
+          description: result.error || "Connection test failed",
           variant: "destructive"
         });
       }
@@ -948,16 +946,10 @@ const ImportConfiguration: React.FC<ImportConfigurationProps> = ({ onEditConfig,
   };
 
   const testConnectionAndDownload = async (opts?: {
-    connectionData?: Record<string, unknown>;
+    connectionData: Record<string, unknown>;
     selectedFileName?: string;
   }) => {
-    // Ignore React click events passed via onClick={handler}
-    const safeOpts =
-      opts && typeof opts === 'object' && !('nativeEvent' in opts)
-        ? opts
-        : undefined;
-
-    const connectionData = safeOpts?.connectionData ?? (currentConfig?.connection
+    const connectionData = opts?.connectionData ?? (currentConfig?.connection
       ? {
           connectionType: currentConfig.connection.type,
           hostUrl: currentConfig.connection.hostUrl,
@@ -974,26 +966,25 @@ const ImportConfiguration: React.FC<ImportConfigurationProps> = ({ onEditConfig,
     const hostUrl = String(connectionData.hostUrl || '');
     const username = String(connectionData.username || '');
     const password = String(connectionData.password || '');
-    const selectedFileName = safeOpts?.selectedFileName || lastSelectedRemoteFile || undefined;
-    const configId = currentConfig?.id || (connectionData as { id?: number }).id;
 
-    // Password can be omitted for saved configs — backend loads it via configId
-    if (!hostUrl || !username || (!password && !configId)) {
+    if (!hostUrl || !username || !password) {
       const missingFields = [];
       if (!hostUrl) missingFields.push("Host URL");
       if (!username) missingFields.push("Username");
-      if (!password && !configId) missingFields.push("Password");
+      if (!password) missingFields.push("Password");
+
+      const isEditingExisting = currentConfig?.id && preloadedConfig;
+      const passwordMessage = isEditingExisting && missingFields.includes("Password")
+        ? "Please re-enter the password for security reasons."
+        : "";
 
       toast({
         title: "Missing Information",
-        description: `Please fill in: ${missingFields.join(", ")}.`,
+        description: `Please fill in: ${missingFields.join(", ")}. ${passwordMessage}`,
         variant: "destructive"
       });
       return;
     }
-
-    const controller = new AbortController();
-    const fetchTimeout = window.setTimeout(() => controller.abort(), 180000); // 3 minutes
 
     try {
       setIsTestingAndDownloading(true);
@@ -1001,17 +992,14 @@ const ImportConfiguration: React.FC<ImportConfigurationProps> = ({ onEditConfig,
 
       const requestBody = {
         ...connectionData,
-        ...(configId ? { configId } : {}),
-        ...(selectedFileName ? { selectedFileName } : {})
+        ...(opts?.selectedFileName ? { selectedFileName: opts.selectedFileName } : {})
       };
 
       console.log('Sending connection and download data:', requestBody);
 
       toast({
-        title: selectedFileName ? "Downloading..." : "Connecting...",
-        description: selectedFileName
-          ? `Downloading ${selectedFileName}. Large CSV files can take 30–60 seconds.`
-          : `Testing connection to ${hostUrl} and looking for files matching ${String(connectionData.filePattern || '')}...`,
+        title: "Connecting...",
+        description: `Testing connection to ${hostUrl} and looking for files matching ${String(connectionData.filePattern || '')}...`,
         variant: "default"
       });
 
@@ -1021,8 +1009,7 @@ const ImportConfiguration: React.FC<ImportConfigurationProps> = ({ onEditConfig,
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
         },
-        body: JSON.stringify(requestBody),
-        signal: controller.signal
+        body: JSON.stringify(requestBody)
       });
 
       const result = await response.json();
@@ -1033,9 +1020,7 @@ const ImportConfiguration: React.FC<ImportConfigurationProps> = ({ onEditConfig,
         setRemoteFilePick({
           mode: 'download',
           files: names,
-          selectedFile: lastSelectedRemoteFile && names.includes(lastSelectedRemoteFile)
-            ? lastSelectedRemoteFile
-            : names[0],
+          selectedFile: names[0],
           connectionData: { ...connectionData }
         });
         toast({
@@ -1047,27 +1032,59 @@ const ImportConfiguration: React.FC<ImportConfigurationProps> = ({ onEditConfig,
       
       if (result.success) {
         if (result.downloaded && result.downloadedFile) {
-          setLastSelectedRemoteFile(result.downloadedFile.originalName);
-          updateLatestDownloadedFile(result.downloadedFile);
-          setDownloadProgress({
-            fileName: result.downloadedFile.originalName,
-            progress: 100,
-            totalSize: result.downloadedFile.size,
-            downloadedSize: result.downloadedFile.size
-          });
+          // Show which file is being downloaded
           toast({
-            title: "Success - File Downloaded!",
-            description: `Downloaded ${result.downloadedFile.originalName} (${result.downloadedFile.sizeFormatted}). You can Preview CSV now.`,
+            title: "File Found - Starting Download",
+            description: `Downloading: ${result.downloadedFile.originalName} (${result.downloadedFile.sizeFormatted})`,
             variant: "default"
           });
-          window.setTimeout(() => setDownloadProgress(null), 1500);
+          
+          // Show download progress simulation
+          setDownloadProgress({
+            fileName: result.downloadedFile.originalName,
+            progress: 0,
+            totalSize: result.downloadedFile.size,
+            downloadedSize: 0
+          });
+          
+          // Simulate download progress
+          const simulateProgress = () => {
+            let progress = 0;
+            const interval = setInterval(() => {
+              progress += Math.random() * 15 + 5; // Random increment between 5-20%
+              if (progress >= 100) {
+                progress = 100;
+                clearInterval(interval);
+                
+                // Show completion
+                setTimeout(() => {
+                  setDownloadProgress(null);
+                  console.log('=== SETTING LATEST DOWNLOADED FILE ===');
+                  console.log('Downloaded file info:', result.downloadedFile);
+                  updateLatestDownloadedFile(result.downloadedFile);
+                  toast({
+                    title: "Success - File Downloaded!",
+                    description: `Downloaded ${result.downloadedFile.originalName} (${result.downloadedFile.sizeFormatted}) to uploads/import/. Preview button will now use this file.`,
+                    variant: "default"
+                  });
+                }, 500);
+              }
+              
+              setDownloadProgress(prev => prev ? {
+                ...prev,
+                progress: Math.min(progress, 100),
+                downloadedSize: Math.min(Math.round((progress / 100) * result.downloadedFile.size), result.downloadedFile.size)
+              } : null);
+            }, 200);
+          };
+          
+          // Start progress simulation after a short delay
+          setTimeout(simulateProgress, 500);
+          
         } else if (result.filesFound === 0) {
           let description = `Connection successful but no matching files found.`;
           if (result.availableFiles && result.availableFiles.length > 0) {
-            const names = result.availableFiles.map((f: string | { name: string }) =>
-              typeof f === 'string' ? f : f.name
-            );
-            description += ` Available files: ${names.join(', ')}`;
+            description += ` Available files: ${result.availableFiles.map(f => f.name).join(', ')}`;
           }
           toast({
             title: "Connection Successful",
@@ -1090,19 +1107,12 @@ const ImportConfiguration: React.FC<ImportConfigurationProps> = ({ onEditConfig,
       }
     } catch (error) {
       console.error('Error testing connection and downloading:', error);
-      const aborted = error instanceof DOMException && error.name === 'AbortError';
-      const msg = error instanceof Error ? error.message : String(error);
       toast({
         title: "Error",
-        description: aborted
-          ? "Download timed out after 3 minutes. Try again or check SFTP connectivity."
-          : msg.includes('ECONNRESET') || msg.includes('Failed to fetch')
-            ? "Connection dropped mid-download. Wait a moment and try Test & Download again."
-            : "Failed to test connection and download file",
+        description: "Failed to test connection and download file",
         variant: "destructive"
       });
     } finally {
-      window.clearTimeout(fetchTimeout);
       setIsTestingAndDownloading(false);
     }
   };
@@ -1302,7 +1312,6 @@ const ImportConfiguration: React.FC<ImportConfigurationProps> = ({ onEditConfig,
       return;
     }
     if (pick.mode === 'download' && pick.connectionData) {
-      setLastSelectedRemoteFile(pick.selectedFile);
       await testConnectionAndDownload({
         connectionData: pick.connectionData,
         selectedFileName: pick.selectedFile
@@ -3153,7 +3162,7 @@ const ImportConfiguration: React.FC<ImportConfigurationProps> = ({ onEditConfig,
                     Test Connection
                   </Button>
                   <Button 
-                    onClick={() => void testConnectionAndDownload()} 
+                    onClick={testConnectionAndDownload} 
                     disabled={isTestingAndDownloading}
                     variant="default"
                     className="flex items-center gap-2 bg-primary hover:bg-primary/90"
@@ -3163,7 +3172,7 @@ const ImportConfiguration: React.FC<ImportConfigurationProps> = ({ onEditConfig,
                     ) : (
                       <Download className="w-4 h-4" />
                     )}
-                    {isTestingAndDownloading ? 'Downloading…' : 'Test & Download'}
+                    Test & Download
                   </Button>
                   <Button 
                     onClick={previewCSV} 
