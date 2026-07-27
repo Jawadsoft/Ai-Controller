@@ -51,16 +51,18 @@ export default defineConfig(({ mode }) => ({
     },
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        target: 'http://127.0.0.1:3000',
         changeOrigin: true,
         secure: false,
         ws: true, // Enable websocket proxying
+        timeout: 300000, // SFTP test/download can take 30–60s+
+        proxyTimeout: 300000,
         configure: (proxy, _options) => {
           proxy.on('error', (err, _req, _res) => {
             console.log('proxy error', err);
           });
           proxy.on('proxyReq', (proxyReq, req, _res) => {
-            console.log('Proxying request:', req.method, req.url, '→', 'http://localhost:3000' + req.url);
+            console.log('Proxying request:', req.method, req.url, '→', 'http://127.0.0.1:3000' + req.url);
           });
           proxy.on('proxyRes', (proxyRes, req, _res) => {
             console.log('Proxy response:', req.method, req.url, '→', proxyRes.statusCode);

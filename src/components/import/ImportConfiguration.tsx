@@ -165,6 +165,7 @@ const ImportConfiguration: React.FC<ImportConfigurationProps> = ({ onEditConfig,
   const [isLoading, setIsLoading] = useState(false);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [isTestingAndDownloading, setIsTestingAndDownloading] = useState(false);
+  const [lastSelectedRemoteFile, setLastSelectedRemoteFile] = useState<string | null>(null);
   const [downloadProgress, setDownloadProgress] = useState<{
     fileName: string;
     progress: number;
@@ -640,9 +641,8 @@ const ImportConfiguration: React.FC<ImportConfigurationProps> = ({ onEditConfig,
           hostUrl: preloadedConfig.host_url,
           port: preloadedConfig.port,
           username: preloadedConfig.username,
-          // Never hardcode a password — use empty so user must re-enter on Test,
-          // or keep previously typed value if parent already provided one
-          password: preloadedConfig.password || '',
+          // Keep existing in-form password if preload omitted it (list endpoint has no password)
+          password: preloadedConfig.password || currentConfig?.connection?.password || '',
           remoteDirectory: preloadedConfig.remote_directory,
           filePattern: preloadedConfig.file_pattern
         },
@@ -948,10 +948,16 @@ const ImportConfiguration: React.FC<ImportConfigurationProps> = ({ onEditConfig,
   };
 
   const testConnectionAndDownload = async (opts?: {
-    connectionData: Record<string, unknown>;
+    connectionData?: Record<string, unknown>;
     selectedFileName?: string;
   }) => {
-    const connectionData = opts?.connectionData ?? (currentConfig?.connection
+    // Ignore React click events passed via onClick={handler}
+    const safeOpts =
+      opts && typeof opts === 'object' && !('nativeEvent' in opts)
+        ? opts
+        : undefined;
+
+    const connectionData = safeOpts?.connectionData ?? (currentConfig?.connection
       ? {
           connectionType: currentConfig.connection.type,
           hostUrl: currentConfig.connection.hostUrl,
@@ -968,25 +974,26 @@ const ImportConfiguration: React.FC<ImportConfigurationProps> = ({ onEditConfig,
     const hostUrl = String(connectionData.hostUrl || '');
     const username = String(connectionData.username || '');
     const password = String(connectionData.password || '');
+    const selectedFileName = safeOpts?.selectedFileName || lastSelectedRemoteFile || undefined;
+    const configId = currentConfig?.id || (connectionData as { id?: number }).id;
 
-    if (!hostUrl || !username || !password) {
+    // Password can be omitted for saved configs — backend loads it via configId
+    if (!hostUrl || !username || (!password && !configId)) {
       const missingFields = [];
       if (!hostUrl) missingFields.push("Host URL");
       if (!username) missingFields.push("Username");
-      if (!password) missingFields.push("Password");
-
-      const isEditingExisting = currentConfig?.id && preloadedConfig;
-      const passwordMessage = isEditingExisting && missingFields.includes("Password")
-        ? "Please re-enter the password for security reasons."
-        : "";
+      if (!password && !configId) missingFields.push("Password");
 
       toast({
         title: "Missing Information",
-        description: `Please fill in: ${missingFields.join(", ")}. ${passwordMessage}`,
+        description: `Please fill in: ${missingFields.join(", ")}.`,
         variant: "destructive"
       });
       return;
     }
+
+    const controller = new AbortController();
+    const fetchTimeout = window.setTimeout(() => controller.abort(), 180000); // 3 minutes
 
     try {
       setIsTestingAndDownloading(true);
@@ -994,14 +1001,17 @@ const ImportConfiguration: React.FC<ImportConfigurationProps> = ({ onEditConfig,
 
       const requestBody = {
         ...connectionData,
-        ...(opts?.selectedFileName ? { selectedFileName: opts.selectedFileName } : {})
+        ...(configId ? { configId } : {}),
+        ...(selectedFileName ? { selectedFileName } : {})
       };
 
       console.log('Sending connection and download data:', requestBody);
 
       toast({
-        title: "Connecting...",
-        description: `Testing connection to ${hostUrl} and looking for files matching ${String(connectionData.filePattern || '')}...`,
+        title: selectedFileName ? "Downloading..." : "Connecting...",
+        description: selectedFileName
+          ? `Downloading ${selectedFileName}. Large CSV files can take 30–60 seconds.`
+          : `Testing connection to ${hostUrl} and looking for files matching ${String(connectionData.filePattern || '')}...`,
         variant: "default"
       });
 
@@ -1011,7 +1021,8 @@ const ImportConfiguration: React.FC<ImportConfigurationProps> = ({ onEditConfig,
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
         },
-        body: JSON.stringify(requestBody)
+        body: JSON.stringify(requestBody),
+        signal: controller.signal
       });
 
       const result = await response.json();
@@ -1022,7 +1033,9 @@ const ImportConfiguration: React.FC<ImportConfigurationProps> = ({ onEditConfig,
         setRemoteFilePick({
           mode: 'download',
           files: names,
-          selectedFile: names[0],
+          selectedFile: lastSelectedRemoteFile && names.includes(lastSelectedRemoteFile)
+            ? lastSelectedRemoteFile
+            : names[0],
           connectionData: { ...connectionData }
         });
         toast({
@@ -1034,59 +1047,27 @@ const ImportConfiguration: React.FC<ImportConfigurationProps> = ({ onEditConfig,
       
       if (result.success) {
         if (result.downloaded && result.downloadedFile) {
-          // Show which file is being downloaded
-          toast({
-            title: "File Found - Starting Download",
-            description: `Downloading: ${result.downloadedFile.originalName} (${result.downloadedFile.sizeFormatted})`,
-            variant: "default"
-          });
-          
-          // Show download progress simulation
+          setLastSelectedRemoteFile(result.downloadedFile.originalName);
+          updateLatestDownloadedFile(result.downloadedFile);
           setDownloadProgress({
             fileName: result.downloadedFile.originalName,
-            progress: 0,
+            progress: 100,
             totalSize: result.downloadedFile.size,
-            downloadedSize: 0
+            downloadedSize: result.downloadedFile.size
           });
-          
-          // Simulate download progress
-          const simulateProgress = () => {
-            let progress = 0;
-            const interval = setInterval(() => {
-              progress += Math.random() * 15 + 5; // Random increment between 5-20%
-              if (progress >= 100) {
-                progress = 100;
-                clearInterval(interval);
-                
-                // Show completion
-                setTimeout(() => {
-                  setDownloadProgress(null);
-                  console.log('=== SETTING LATEST DOWNLOADED FILE ===');
-                  console.log('Downloaded file info:', result.downloadedFile);
-                  updateLatestDownloadedFile(result.downloadedFile);
-                  toast({
-                    title: "Success - File Downloaded!",
-                    description: `Downloaded ${result.downloadedFile.originalName} (${result.downloadedFile.sizeFormatted}) to uploads/import/. Preview button will now use this file.`,
-                    variant: "default"
-                  });
-                }, 500);
-              }
-              
-              setDownloadProgress(prev => prev ? {
-                ...prev,
-                progress: Math.min(progress, 100),
-                downloadedSize: Math.min(Math.round((progress / 100) * result.downloadedFile.size), result.downloadedFile.size)
-              } : null);
-            }, 200);
-          };
-          
-          // Start progress simulation after a short delay
-          setTimeout(simulateProgress, 500);
-          
+          toast({
+            title: "Success - File Downloaded!",
+            description: `Downloaded ${result.downloadedFile.originalName} (${result.downloadedFile.sizeFormatted}). You can Preview CSV now.`,
+            variant: "default"
+          });
+          window.setTimeout(() => setDownloadProgress(null), 1500);
         } else if (result.filesFound === 0) {
           let description = `Connection successful but no matching files found.`;
           if (result.availableFiles && result.availableFiles.length > 0) {
-            description += ` Available files: ${result.availableFiles.map(f => f.name).join(', ')}`;
+            const names = result.availableFiles.map((f: string | { name: string }) =>
+              typeof f === 'string' ? f : f.name
+            );
+            description += ` Available files: ${names.join(', ')}`;
           }
           toast({
             title: "Connection Successful",
@@ -1109,12 +1090,19 @@ const ImportConfiguration: React.FC<ImportConfigurationProps> = ({ onEditConfig,
       }
     } catch (error) {
       console.error('Error testing connection and downloading:', error);
+      const aborted = error instanceof DOMException && error.name === 'AbortError';
+      const msg = error instanceof Error ? error.message : String(error);
       toast({
         title: "Error",
-        description: "Failed to test connection and download file",
+        description: aborted
+          ? "Download timed out after 3 minutes. Try again or check SFTP connectivity."
+          : msg.includes('ECONNRESET') || msg.includes('Failed to fetch')
+            ? "Connection dropped mid-download. Wait a moment and try Test & Download again."
+            : "Failed to test connection and download file",
         variant: "destructive"
       });
     } finally {
+      window.clearTimeout(fetchTimeout);
       setIsTestingAndDownloading(false);
     }
   };
@@ -1314,6 +1302,7 @@ const ImportConfiguration: React.FC<ImportConfigurationProps> = ({ onEditConfig,
       return;
     }
     if (pick.mode === 'download' && pick.connectionData) {
+      setLastSelectedRemoteFile(pick.selectedFile);
       await testConnectionAndDownload({
         connectionData: pick.connectionData,
         selectedFileName: pick.selectedFile
@@ -3164,7 +3153,7 @@ const ImportConfiguration: React.FC<ImportConfigurationProps> = ({ onEditConfig,
                     Test Connection
                   </Button>
                   <Button 
-                    onClick={testConnectionAndDownload} 
+                    onClick={() => void testConnectionAndDownload()} 
                     disabled={isTestingAndDownloading}
                     variant="default"
                     className="flex items-center gap-2 bg-primary hover:bg-primary/90"
@@ -3174,7 +3163,7 @@ const ImportConfiguration: React.FC<ImportConfigurationProps> = ({ onEditConfig,
                     ) : (
                       <Download className="w-4 h-4" />
                     )}
-                    Test & Download
+                    {isTestingAndDownloading ? 'Downloading…' : 'Test & Download'}
                   </Button>
                   <Button 
                     onClick={previewCSV} 
