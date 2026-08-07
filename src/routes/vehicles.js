@@ -2,7 +2,7 @@ import express from 'express';
 import { body, validationResult } from 'express-validator';
 import { query } from '../database/connection.js';
 import { generateVehicleQRCodeWithURL, deleteQRCode } from '../lib/qrCodeGenerator.js';
-import { upload, deleteImage, deleteVehicleImages } from '../lib/imageUpload.js';
+import { upload, deleteImage, deleteVehicleImages, uploadToCloudinary } from '../lib/imageUpload.js';
 
 const router = express.Router();
 
@@ -731,8 +731,12 @@ router.post('/:id/images', upload.array('images', 10), async (req, res) => {
     const currentResult = await query('SELECT photo_url_list FROM vehicles WHERE id = $1', [vehicleId]);
     const currentImages = currentResult.rows[0]?.photo_url_list || [];
     
-    // Create URLs for uploaded files
-    const uploadedImages = req.files.map(file => `/uploads/vehicle-images/${file.filename}`);
+    // Upload to Cloudinary and get URLs
+    console.log(`📤 Uploading ${req.files.length} images to Cloudinary for vehicle ${vehicleId}...`);
+    const uploadPromises = req.files.map(file => 
+      uploadToCloudinary(file.path, vehicleId)
+    );
+    const uploadedImages = await Promise.all(uploadPromises);
     
     // Combine with existing images
     const allImages = [...currentImages, ...uploadedImages];
@@ -743,63 +747,13 @@ router.post('/:id/images', upload.array('images', 10), async (req, res) => {
       [allImages, vehicleId]
     );
     
-    res.json({ 
-      success: true, 
-      images: uploadedImages,
-      allImages: allImages,
-      message: `${req.files.length} image(s) uploaded successfully` 
-    });
-  } catch (error) {
-    console.error('Upload images error:', error);
-    res.status(500).json({ error: 'Failed to upload images' });
-  }
-});
-
-// Upload images for a vehicle
-router.post('/:id/images', upload.array('images', 10), async (req, res) => {
-  try {
-    const vehicleId = req.params.id;
-    const userId = req.user.id;
-    
-    // Check if vehicle belongs to this dealer
-    if (!req.user.dealer_id) {
-      return res.status(403).json({ error: 'Dealer access required' });
-    }
-
-    const vehicleCheck = await query(
-      'SELECT id FROM vehicles WHERE id = $1 AND dealer_id = $2',
-      [vehicleId, req.user.dealer_id]
-    );
-    
-    if (vehicleCheck.rows.length === 0) {
-      return res.status(404).json({ error: 'Vehicle not found' });
-    }
-    
-    if (!req.files || req.files.length === 0) {
-      return res.status(400).json({ error: 'No images uploaded' });
-    }
-    
-    // Get current images
-    const currentResult = await query('SELECT photo_url_list FROM vehicles WHERE id = $1', [vehicleId]);
-    const currentImages = currentResult.rows[0]?.photo_url_list || [];
-    
-    // Create URLs for uploaded files
-    const uploadedImages = req.files.map(file => `/uploads/vehicle-images/${file.filename}`);
-    
-    // Combine with existing images
-    const allImages = [...currentImages, ...uploadedImages];
-    
-    // Update vehicle with new images
-    await query(
-      'UPDATE vehicles SET photo_url_list = $1, updated_at = NOW() WHERE id = $2',
-      [allImages, vehicleId]
-    );
+    console.log(`✅ Successfully uploaded ${uploadedImages.length} images to Cloudinary`);
     
     res.json({ 
       success: true, 
       images: uploadedImages,
       allImages: allImages,
-      message: `${req.files.length} image(s) uploaded successfully` 
+      message: `${req.files.length} image(s) uploaded successfully to Cloudinary` 
     });
   } catch (error) {
     console.error('Upload images error:', error);

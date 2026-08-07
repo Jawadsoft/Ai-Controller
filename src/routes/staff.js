@@ -8,8 +8,12 @@ import fs from 'fs';
 import { query } from '../database/connection.js';
 import { authenticateToken, requireDealerAccess, requireStaffRole, requirePermission } from '../middleware/auth.js';
 import emailService from '../lib/emailService.js';
+import cloudinaryService from '../lib/cloudinaryService.js';
 
 const router = express.Router();
+
+// Use Cloudinary for staff photos
+const USE_CLOUDINARY = process.env.USE_CLOUDINARY !== 'false'; // Default to true
 
 // ── Photo upload storage ─────────────────────────────────────────────────────
 const staffPhotosDir = 'uploads/staff-photos';
@@ -677,14 +681,54 @@ router.post('/:staffId/photo', (req, res, next) => {
 
     if (!req.file) return res.status(400).json({ error: 'No photo file uploaded' });
 
-    // Remove old photo file if it exists
-    const oldUrl = staffCheck.rows[0].photo_url;
-    if (oldUrl && oldUrl.startsWith('/uploads/staff-photos/')) {
-      const oldPath = oldUrl.replace('/uploads/', 'uploads/');
-      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+    let photoUrl;
+
+    // Upload to Cloudinary if enabled
+    if (USE_CLOUDINARY) {
+      try {
+        console.log(`📤 Uploading staff photo to Cloudinary for staff ${staffId}...`);
+        const result = await cloudinaryService.uploadImage(
+          req.file.path,
+          'staff-photos',
+          { 
+            public_id: `staff-${staffId}-${Date.now()}`,
+            deleteLocal: true // Delete local file after upload
+          }
+        );
+        photoUrl = result.url;
+        console.log(`✅ Staff photo uploaded to Cloudinary: ${photoUrl}`);
+      } catch (error) {
+        console.error('❌ Cloudinary upload failed for staff photo, using local:', error);
+        // Fallback to local if Cloudinary fails
+        photoUrl = `/uploads/staff-photos/${req.file.filename}`;
+      }
+    } else {
+      // Use local storage
+      photoUrl = `/uploads/staff-photos/${req.file.filename}`;
     }
 
-    const photoUrl = `/uploads/staff-photos/${req.file.filename}`;
+    // Remove old photo file/URL if it exists
+    const oldUrl = staffCheck.rows[0].photo_url;
+    if (oldUrl) {
+      if (oldUrl.includes('cloudinary.com') && USE_CLOUDINARY) {
+        // Delete from Cloudinary
+        try {
+          const parts = oldUrl.split('/');
+          const filename = parts[parts.length - 1].split('.')[0];
+          const folder = parts[parts.length - 2];
+          const publicId = `${folder}/${filename}`;
+          await cloudinaryService.deleteImage(publicId);
+          console.log(`🗑️ Deleted old staff photo from Cloudinary: ${publicId}`);
+        } catch (error) {
+          console.warn('⚠️ Could not delete old photo from Cloudinary:', error.message);
+        }
+      } else if (oldUrl.startsWith('/uploads/staff-photos/')) {
+        // Delete local file
+        const oldPath = oldUrl.replace('/uploads/', 'uploads/');
+        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+      }
+    }
+
     await query('UPDATE dealership_staff SET photo_url = $1 WHERE id = $2', [photoUrl, staffId]);
 
     res.json({ success: true, photo_url: photoUrl });

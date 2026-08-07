@@ -201,6 +201,15 @@ export const vehiclesAPI = {
     method: 'POST',
   }),
   
+  // Filter dropdown data
+  getMakes: () => apiRequest('/vehicles/makes'),
+  getModels: (make?: string) => {
+    const queryParams = new URLSearchParams();
+    if (make) queryParams.append('make', make);
+    return apiRequest(`/vehicles/models${queryParams.toString() ? `?${queryParams.toString()}` : ''}`);
+  },
+  getYears: () => apiRequest('/vehicles/years'),
+  
   // CARFAX methods
   uploadCarfax: (id: string, formData: FormData) => {
     const token = getToken();

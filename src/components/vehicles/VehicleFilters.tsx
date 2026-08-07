@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Search, Filter, X, RotateCcw, CheckCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { parseVehicleSearch, isCombinedVehicleSearch } from "@/lib/smartSearchParser";
+import { vehiclesAPI } from "@/lib/api";
 
 interface Filters {
   search: string;
@@ -56,25 +57,21 @@ export const VehicleFilters = ({ filters, onFiltersChange, onFilterBlur, onClear
 
   // Fetch makes on mount
   useEffect(() => {
-    fetch('/api/vehicles/makes')
-      .then(res => res.json())
+    vehiclesAPI.getMakes()
       .then(data => setMakes(data.makes || []))
       .catch(err => console.error('Failed to fetch makes:', err));
   }, []);
 
   // Fetch models when make changes
   useEffect(() => {
-    const makeParam = filters.make ? `?make=${encodeURIComponent(filters.make)}` : '';
-    fetch(`/api/vehicles/models${makeParam}`)
-      .then(res => res.json())
+    vehiclesAPI.getModels(filters.make)
       .then(data => setModels(data.models || []))
       .catch(err => console.error('Failed to fetch models:', err));
   }, [filters.make]);
 
   // Fetch years on mount
   useEffect(() => {
-    fetch('/api/vehicles/years')
-      .then(res => res.json())
+    vehiclesAPI.getYears()
       .then(data => setYears(data.years || []))
       .catch(err => console.error('Failed to fetch years:', err));
   }, []);

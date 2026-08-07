@@ -3,9 +3,13 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
+import cloudinaryService from './cloudinaryService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Use Cloudinary for QR codes
+const USE_CLOUDINARY = process.env.USE_CLOUDINARY !== 'false'; // Default to true
 
 // Ensure uploads directory exists
 const uploadsDir = path.join(__dirname, '../../uploads');
@@ -148,10 +152,30 @@ export const generateVehicleQRCodeWithURL = async (vehicleId, frontendBaseURL, v
     // Generate filepath
     const filepath = path.join(qrCodesDir, filename);
 
-    // Save file
+    // Save file locally first
     fs.writeFileSync(filepath, buffer);
 
-    // Return the relative URL for the frontend
+    // Upload to Cloudinary if enabled
+    if (USE_CLOUDINARY) {
+      try {
+        const result = await cloudinaryService.uploadImage(
+          filepath,
+          'qr-codes',
+          { 
+            public_id: `vehicle-${vehicleHash}-qr`,
+            deleteLocal: true // Delete local file after upload
+          }
+        );
+        console.log(`✅ QR code uploaded to Cloudinary: ${result.url}`);
+        return result.url;
+      } catch (error) {
+        console.error('❌ Cloudinary upload failed for QR code, using local:', error);
+        // Fallback to local URL if Cloudinary fails
+        return `/uploads/qr-codes/${filename}`;
+      }
+    }
+
+    // Return the relative URL for the frontend (local)
     return `/uploads/qr-codes/${filename}`;
   } catch (error) {
     console.error('Error generating QR code:', error);
@@ -254,10 +278,30 @@ export const generateDealerProfileQRCode = async (dealerId, frontendBaseURL, sto
     // Generate filepath
     const filepath = path.join(qrCodesDir, filename);
 
-    // Save file
+    // Save file locally first
     fs.writeFileSync(filepath, buffer);
 
-    // Return the relative URL for the frontend
+    // Upload to Cloudinary if enabled
+    if (USE_CLOUDINARY) {
+      try {
+        const result = await cloudinaryService.uploadImage(
+          filepath,
+          'qr-codes',
+          { 
+            public_id: `dealer-${dealerHash}-qr`,
+            deleteLocal: true // Delete local file after upload
+          }
+        );
+        console.log(`✅ Dealer QR code uploaded to Cloudinary: ${result.url}`);
+        return result.url;
+      } catch (error) {
+        console.error('❌ Cloudinary upload failed for dealer QR code, using local:', error);
+        // Fallback to local URL if Cloudinary fails
+        return `/uploads/qr-codes/${filename}`;
+      }
+    }
+
+    // Return the relative URL for the frontend (local)
     return `/uploads/qr-codes/${filename}`;
   } catch (error) {
     console.error('Error generating dealer profile QR code:', error);
