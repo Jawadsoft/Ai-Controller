@@ -33,6 +33,7 @@ import notificationRoutes from './routes/notifications.js';
 import customersRoutes from './routes/customers.js';
 import rebatesRoutes from './routes/rebates.js';
 import followupSettingsRoutes from './routes/followupSettings.js';
+import websiteScrapingRoutes from './routes/websiteScraping.js';
 
 import optimizedAIBotRoutes from './routes/optimizedAIBot.js';
 import marbalismRoutes from './routes/marbalism.js';
@@ -1067,6 +1068,9 @@ app.use('/api/signatures', signaturesRoutes);  // Note: Has its own auth handlin
 
 // D.A.I.V.E. routes (public for customer interactions, protected for dealer access)
 app.use('/api/daive', daiveRoutes);
+
+// Website scraping & knowledge base routes (protected)
+app.use('/api/scraping', authenticateToken, websiteScrapingRoutes);
 
 
 

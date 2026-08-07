@@ -387,8 +387,8 @@ const TopNavigation = () => {
   );
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-[#4a5766] bg-[#5D6D7E] shadow-md">
-      <div className="flex h-16 items-center px-4 md:px-6">
+    <header className="sticky top-0 z-50 w-full border-b border-[#4a5766] bg-[#5D6D7E] shadow-md overflow-x-hidden">
+      <div className="flex h-16 items-center px-3 sm:px-4 md:px-6 max-w-[100vw]">
         {/* Mobile Hamburger */}
         <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
           <SheetTrigger asChild>
@@ -475,12 +475,13 @@ const TopNavigation = () => {
                   </>
                 )}
 
-                {canAccessFeature('marbalism_ai') && (
+                {/* Marbalism AI - HIDDEN */}
+                {/* {canAccessFeature('marbalism_ai') && (
                   <>
                     <Separator className="my-2" />
                     <MobileNavItem icon={<Bot className="h-4 w-4 text-purple-600" />} label="Marbalism AI" href="/marbalism-ai" />
                   </>
-                )}
+                )} */}
 
                 {(isSuperAdmin() || isDealerAdmin() || canAccessFeature('staff_management') || canAccessFeature('daive_settings_management') || canAccessFeature('followup_settings_management')) && (
                   <>
@@ -534,31 +535,31 @@ const TopNavigation = () => {
         </Sheet>
 
         {/* Logo Section */}
-        <div className="flex items-center gap-6 mr-8">
+        <div className="flex items-center gap-2 sm:gap-4 lg:gap-6 mr-2 sm:mr-4 lg:mr-6 flex-shrink-0">
           <button
             onClick={() => navigate('/dashboard')}
-            className="flex items-center gap-2 transition-opacity hover:opacity-80"
+            className="flex items-center gap-1.5 sm:gap-2 transition-opacity hover:opacity-80"
           >
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/85">
-              <Car className="h-5 w-5 text-white" />
+            <div className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/85">
+              <Car className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
             </div>
-            <span className="text-xl font-semibold text-white">DealerIQ</span>
+            <span className="text-lg sm:text-xl font-semibold text-white whitespace-nowrap">DealerIQ</span>
           </button>
         </div>
 
         {/* Main Navigation */}
-        <NavigationMenu className="hidden lg:flex" delayDuration={0}>
-          <NavigationMenuList className="gap-1">
+        <NavigationMenu className="hidden lg:flex flex-shrink min-w-0" delayDuration={0}>
+          <NavigationMenuList className="gap-0.5 lg:gap-1">
             {/* Dashboard */}
             <NavigationMenuItem>
               <NavigationMenuLink
                 className={cn(
                   navigationMenuTriggerStyle(),
-                  'h-9 cursor-pointer bg-transparent px-3 text-sm font-medium text-white/90 hover:bg-white/10 hover:text-white focus:bg-white/10 focus:text-white data-[active]:bg-white/15 data-[state=open]:bg-white/15'
+                  'h-9 cursor-pointer bg-transparent px-2 lg:px-3 text-sm font-medium text-white/90 hover:bg-white/10 hover:text-white focus:bg-white/10 focus:text-white data-[active]:bg-white/15 data-[state=open]:bg-white/15'
                 )}
                 onClick={() => handleNavigation('/dashboard')}
               >
-                <LayoutDashboard className="h-4 w-4 mr-1.5" />
+                <LayoutDashboard className="h-4 w-4 mr-1 lg:mr-1.5" />
                 Dashboard
               </NavigationMenuLink>
             </NavigationMenuItem>
@@ -570,13 +571,13 @@ const TopNavigation = () => {
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="ghost"
-                      className="h-9 px-3 text-sm font-medium text-white/90 hover:bg-white/10 hover:text-white"
+                      className="h-9 px-2 lg:px-3 text-sm font-medium text-white/90 hover:bg-white/10 hover:text-white"
                       onMouseEnter={() => setVehiclesDropdownOpen(true)}
                       onMouseLeave={() => setVehiclesDropdownOpen(false)}
                     >
-                      <Car className="h-4 w-4 mr-1.5" />
+                      <Car className="h-4 w-4 mr-1 lg:mr-1.5" />
                       Vehicles
-                      <ChevronDown className="ml-1 h-3 w-3 text-white/70" />
+                      <ChevronDown className="ml-0.5 lg:ml-1 h-3 w-3 text-white/70" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent 
@@ -616,13 +617,13 @@ const TopNavigation = () => {
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="ghost"
-                      className="h-9 px-3 text-sm font-medium text-white/90 hover:bg-white/10 hover:text-white"
+                      className="h-9 px-2 lg:px-3 text-sm font-medium text-white/90 hover:bg-white/10 hover:text-white"
                       onMouseEnter={() => setLeadsDropdownOpen(true)}
                       onMouseLeave={() => setLeadsDropdownOpen(false)}
                     >
-                      <Users className="h-4 w-4 mr-1.5" />
+                      <Users className="h-4 w-4 mr-1 lg:mr-1.5" />
                       Leads
-                      <ChevronDown className="ml-1 h-3 w-3 text-white/70" />
+                      <ChevronDown className="ml-0.5 lg:ml-1 h-3 w-3 text-white/70" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent 
@@ -669,13 +670,13 @@ const TopNavigation = () => {
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="ghost"
-                      className="h-9 px-3 text-sm font-medium text-white/90 hover:bg-white/10 hover:text-white"
+                      className="h-9 px-2 lg:px-3 text-sm font-medium text-white/90 hover:bg-white/10 hover:text-white"
                       onMouseEnter={() => setCreditApplicationsDropdownOpen(true)}
                       onMouseLeave={() => setCreditApplicationsDropdownOpen(false)}
                     >
-                      <CreditCard className="h-4 w-4 mr-1.5" />
+                      <CreditCard className="h-4 w-4 mr-1 lg:mr-1.5" />
                       Finance
-                      <ChevronDown className="ml-1 h-3 w-3 text-white/70" />
+                      <ChevronDown className="ml-0.5 lg:ml-1 h-3 w-3 text-white/70" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent 
@@ -733,13 +734,13 @@ const TopNavigation = () => {
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="ghost"
-                      className="h-9 px-3 text-sm font-medium text-white/90 hover:bg-white/10 hover:text-white"
+                      className="h-9 px-2 lg:px-3 text-sm font-medium text-white/90 hover:bg-white/10 hover:text-white"
                       onMouseEnter={() => setAnalyticsDropdownOpen(true)}
                       onMouseLeave={() => setAnalyticsDropdownOpen(false)}
                     >
-                      <BarChart3 className="h-4 w-4 mr-1.5" />
+                      <BarChart3 className="h-4 w-4 mr-1 lg:mr-1.5" />
                       Analytics
-                      <ChevronDown className="ml-1 h-3 w-3 text-white/70" />
+                      <ChevronDown className="ml-0.5 lg:ml-1 h-3 w-3 text-white/70" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent 
@@ -772,21 +773,21 @@ const TopNavigation = () => {
               </li>
             )}
 
-            {/* Marbalism AI */}
-            {canAccessFeature('marbalism_ai') && (
+            {/* Marbalism AI - HIDDEN */}
+            {/* {canAccessFeature('marbalism_ai') && (
               <NavigationMenuItem>
                 <NavigationMenuLink
                   className={cn(
                     navigationMenuTriggerStyle(),
-                    'h-9 cursor-pointer bg-transparent px-3 text-sm font-medium text-white/90 hover:bg-white/10 hover:text-white focus:bg-white/10 focus:text-white data-[active]:bg-white/15 data-[state=open]:bg-white/15'
+                    'h-9 cursor-pointer bg-transparent px-2 lg:px-3 text-sm font-medium text-white/90 hover:bg-white/10 hover:text-white focus:bg-white/10 focus:text-white data-[active]:bg-white/15 data-[state=open]:bg-white/15'
                   )}
                   onClick={() => handleNavigation('/marbalism-ai')}
                 >
-                  <Bot className="h-4 w-4 mr-1.5 text-purple-200" />
+                  <Bot className="h-4 w-4 mr-1 lg:mr-1.5 text-purple-200" />
                   Marbalism AI
                 </NavigationMenuLink>
               </NavigationMenuItem>
-            )}
+            )} */}
 
             {/* Admin */}
             {((isSuperAdmin() || isDealerAdmin() || canAccessFeature('staff_management') || canAccessFeature('daive_settings_management') || canAccessFeature('followup_settings_management'))) && (
@@ -795,13 +796,13 @@ const TopNavigation = () => {
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="ghost"
-                      className="h-9 px-3 text-sm font-medium text-white/90 hover:bg-white/10 hover:text-white"
+                      className="h-9 px-2 lg:px-3 text-sm font-medium text-white/90 hover:bg-white/10 hover:text-white"
                       onMouseEnter={() => setAdminDropdownOpen(true)}
                       onMouseLeave={() => setAdminDropdownOpen(false)}
                     >
-                      <Settings className="h-4 w-4 mr-1.5" />
+                      <Settings className="h-4 w-4 mr-1 lg:mr-1.5" />
                       Admin
-                      <ChevronDown className="ml-1 h-3 w-3 text-white/70" />
+                      <ChevronDown className="ml-0.5 lg:ml-1 h-3 w-3 text-white/70" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent 
@@ -866,14 +867,14 @@ const TopNavigation = () => {
         </NavigationMenu>
 
         {/* Right Section */}
-        <div className="ml-auto flex items-center gap-2 md:gap-3">
+        <div className="ml-auto flex items-center gap-1.5 sm:gap-2 md:gap-3 flex-shrink-0">
           {/* Search Bar - hidden on mobile, visible md+ */}
-          <div className="relative hidden md:block">
+          <div className="relative hidden md:block flex-shrink-0">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
             <Input
               type="search"
               placeholder="Search now"
-              className="h-9 w-[200px] lg:w-[280px] border-white/25 bg-white/15 pl-9 pr-4 text-white placeholder:text-white/45 focus-visible:bg-white/20 focus-visible:ring-white/25"
+              className="h-9 w-[160px] lg:w-[220px] xl:w-[280px] border-white/25 bg-white/15 pl-9 pr-4 text-white placeholder:text-white/45 focus-visible:bg-white/20 focus-visible:ring-white/25"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => {
@@ -1009,14 +1010,14 @@ const TopNavigation = () => {
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                className="flex h-9 items-center gap-0 px-2 text-white/90 hover:bg-white/10 hover:text-white lg:gap-2"
+                className="flex h-9 items-center gap-0 px-1.5 sm:px-2 text-white/90 hover:bg-white/10 hover:text-white lg:gap-2"
               >
-                <Avatar className="h-7 w-7">
+                <Avatar className="h-7 w-7 flex-shrink-0">
                   <AvatarFallback className="bg-[#FF6B2B] text-white text-xs font-semibold">
                     {getUserInitials(user)}
                   </AvatarFallback>
                 </Avatar>
-                <span className="hidden text-sm font-medium text-white/95 lg:inline-block">
+                <span className="hidden text-sm font-medium text-white/95 lg:inline-block max-w-[120px] xl:max-w-none truncate">
                   {getUserDisplayName(user)}
                 </span>
                 <ChevronDown className="h-4 w-4 shrink-0 text-white/60" />

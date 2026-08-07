@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DealerProfileForm } from "@/components/dealer/DealerProfileForm";
 import { DealerProfileSticker } from "@/components/dealer/DealerProfileSticker";
-import { Building2, Edit, Phone, Mail, MapPin, Globe, Calendar, CreditCard, LogOut, ArrowLeft, QrCode, Bot, CheckCircle, Sparkles, Clock } from "lucide-react";
+import { Building2, Edit, Phone, Mail, MapPin, Globe, Calendar, CreditCard, LogOut, ArrowLeft, QrCode, Bot, CheckCircle, Sparkles, Clock, Brain, RefreshCw, AlertCircle, TrendingUp, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { dealersAPI } from "@/lib/api";
 import { buildApiUrl } from "@/lib/config";
@@ -44,6 +44,11 @@ const DealerProfile = () => {
   const [editing, setEditing] = useState(false);
   const [isPublicAccess, setIsPublicAccess] = useState(false);
   const [activatingMarbalism, setActivatingMarbalism] = useState(false);
+  const [analyzingWebsite, setAnalyzingWebsite] = useState(false);
+  const [analysisResults, setAnalysisResults] = useState<any>(null);
+  const [knowledgeSummary, setKnowledgeSummary] = useState<any>(null);
+  const [profileSuggestions, setProfileSuggestions] = useState<any>(null);
+  const [applyingUpdates, setApplyingUpdates] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { refreshPermissions } = usePermissions();
@@ -65,6 +70,12 @@ const DealerProfile = () => {
       fetchDealerProfile();
     }
   }, [user, isPublicAccess, id, hash]);
+
+  useEffect(() => {
+    if (dealer && !isPublicAccess) {
+      fetchKnowledgeSummary();
+    }
+  }, [dealer, isPublicAccess]);
 
   const fetchDealerProfile = async () => {
     try {
@@ -205,6 +216,143 @@ const DealerProfile = () => {
     } finally {
       setActivatingMarbalism(false);
     }
+  };
+
+  const fetchKnowledgeSummary = async () => {
+    if (!dealer?.id) return;
+    
+    try {
+      const authToken = localStorage.getItem('auth_token');
+      const response = await fetch(buildApiUrl(`scraping/dealers/${dealer.id}/summary`), {
+        headers: {
+          'Authorization': `Bearer ${authToken}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setKnowledgeSummary(data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching knowledge summary:', error);
+    }
+  };
+
+  const handleAnalyzeWebsite = async () => {
+    if (!dealer?.id || !dealer?.website) {
+      toast({
+        title: "Cannot Analyze",
+        description: "No website URL configured. Please add a website to your profile first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setAnalyzingWebsite(true);
+      setAnalysisResults(null);
+      
+      const authToken = localStorage.getItem('auth_token');
+      const response = await fetch(buildApiUrl(`scraping/dealers/${dealer.id}/scrape`), {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          forceRescrape: true
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setAnalysisResults(data.data);
+        
+        // Check for profile suggestions
+        if (data.data.profileData?.suggestions) {
+          const suggestions = data.data.profileData.suggestions;
+          if (suggestions.description || suggestions.established_year) {
+            setProfileSuggestions(suggestions);
+          }
+        }
+        
+        await fetchKnowledgeSummary(); // Refresh summary
+        toast({
+          title: "Analysis Complete",
+          description: `Successfully extracted ${data.data.entriesStored} pieces of information from your website.`,
+        });
+      } else {
+        throw new Error(data.error || 'Analysis failed');
+      }
+    } catch (error: any) {
+      console.error('Error analyzing website:', error);
+      toast({
+        title: "Analysis Failed",
+        description: error.message || "Failed to analyze website. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setAnalyzingWebsite(false);
+    }
+  };
+
+  const handleViewKnowledge = () => {
+    navigate('/daive/settings', { state: { tab: 'knowledge' } });
+  };
+
+  const handleApplyProfileUpdates = async () => {
+    if (!dealer?.id || !profileSuggestions) return;
+
+    try {
+      setApplyingUpdates(true);
+      
+      const authToken = localStorage.getItem('auth_token');
+      const response = await fetch(buildApiUrl(`scraping/dealers/${dealer.id}/apply-profile-updates`), {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          description: profileSuggestions.description,
+          established_year: profileSuggestions.established_year
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        // Update local dealer state
+        setDealer(prev => prev ? {
+          ...prev,
+          description: data.data.description || prev.description,
+          established_year: data.data.established_year || prev.established_year
+        } : prev);
+        
+        setProfileSuggestions(null); // Clear suggestions after applying
+        
+        toast({
+          title: "Profile Updated",
+          description: "Your dealer profile has been updated with information from your website.",
+        });
+      } else {
+        throw new Error(data.error || 'Failed to update profile');
+      }
+    } catch (error: any) {
+      console.error('Error applying profile updates:', error);
+      toast({
+        title: "Update Failed",
+        description: error.message || "Failed to update profile. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setApplyingUpdates(false);
+    }
+  };
+
+  const handleDismissSuggestions = () => {
+    setProfileSuggestions(null);
   };
 
   const getInitials = (businessName: string) => {
@@ -377,6 +525,213 @@ const DealerProfile = () => {
               </CardContent>
             </Card>
 
+            {/* Website Knowledge Analysis - Only show for authenticated users with website */}
+            {!isPublicAccess && dealer?.website && (
+              <Card className="border-blue-100 bg-gradient-to-br from-white to-blue-50">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-blue-800">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-blue-500">
+                      <Brain className="h-4 w-4 text-white" />
+                    </div>
+                    AI Knowledge Enhancement
+                  </CardTitle>
+                  <CardDescription>
+                    Automatically extract information from your website to enhance DAIVE AI's knowledge about your dealership.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {/* Knowledge Summary */}
+                    {knowledgeSummary && (
+                      <div className="bg-white/50 rounded-lg p-4 border border-blue-100">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div>
+                            <p className="text-2xl font-bold text-blue-600">
+                              {knowledgeSummary.summary?.totalEntries || 0}
+                            </p>
+                            <p className="text-xs text-gray-600">Knowledge Entries</p>
+                          </div>
+                          <div>
+                            <p className="text-2xl font-bold text-blue-600">
+                              {knowledgeSummary.summary?.categoriesCount || 0}
+                            </p>
+                            <p className="text-xs text-gray-600">Categories</p>
+                          </div>
+                          <div>
+                            <p className="text-2xl font-bold text-green-600">
+                              {knowledgeSummary.summary?.verifiedEntries || 0}
+                            </p>
+                            <p className="text-xs text-gray-600">Verified</p>
+                          </div>
+                          <div>
+                            <p className="text-2xl font-bold text-purple-600">
+                              {knowledgeSummary.summary?.avgConfidence || '0'}%
+                            </p>
+                            <p className="text-xs text-gray-600">Confidence</p>
+                          </div>
+                        </div>
+                        {knowledgeSummary.summary?.lastScraped && (
+                          <p className="text-xs text-gray-500 mt-3">
+                            Last analyzed: {new Date(knowledgeSummary.summary.lastScraped).toLocaleString()}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Analysis Results */}
+                    {analysisResults && (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                        <div className="flex items-start gap-3">
+                          <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
+                          <div className="flex-1">
+                            <p className="font-medium text-green-800">Analysis Complete!</p>
+                            <p className="text-sm text-green-700 mt-1">
+                              Found {analysisResults.categoriesFound?.length || 0} categories: {' '}
+                              {analysisResults.categoriesFound?.join(', ')}
+                            </p>
+                            <p className="text-xs text-green-600 mt-2">
+                              {analysisResults.entriesStored} pieces of information extracted
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Profile Suggestions */}
+                    {profileSuggestions && (profileSuggestions.description || profileSuggestions.established_year) && (
+                      <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                        <div className="flex items-start gap-3">
+                          <Sparkles className="h-5 w-5 text-purple-600 mt-0.5" />
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between mb-2">
+                              <p className="font-medium text-purple-800">Profile Updates Available</p>
+                              <button
+                                onClick={handleDismissSuggestions}
+                                className="text-purple-400 hover:text-purple-600"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                            </div>
+                            <p className="text-sm text-purple-700 mb-3">
+                              We found information that can enhance your profile:
+                            </p>
+                            
+                            <div className="space-y-3">
+                              {profileSuggestions.description && (
+                                <div className="bg-white/50 rounded p-3">
+                                  <p className="text-xs font-semibold text-purple-900 mb-1">Business Description:</p>
+                                  <p className="text-sm text-gray-700 line-clamp-3">
+                                    {profileSuggestions.description}
+                                  </p>
+                                </div>
+                              )}
+                              
+                              {profileSuggestions.established_year && (
+                                <div className="bg-white/50 rounded p-3">
+                                  <p className="text-xs font-semibold text-purple-900 mb-1">Established Year:</p>
+                                  <p className="text-sm text-gray-700">
+                                    {profileSuggestions.established_year}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="flex gap-2 mt-4">
+                              <Button
+                                onClick={handleApplyProfileUpdates}
+                                disabled={applyingUpdates}
+                                size="sm"
+                                className="bg-purple-600 hover:bg-purple-700 text-white"
+                              >
+                                {applyingUpdates ? (
+                                  <>
+                                    <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                                    Applying...
+                                  </>
+                                ) : (
+                                  <>
+                                    <CheckCircle className="h-3 w-3 mr-1" />
+                                    Apply Updates
+                                  </>
+                                )}
+                              </Button>
+                              <Button
+                                onClick={handleDismissSuggestions}
+                                variant="outline"
+                                size="sm"
+                                className="border-purple-200 text-purple-700 hover:bg-purple-50"
+                              >
+                                Dismiss
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* What Will Be Extracted */}
+                    {!analysisResults && (
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium text-gray-700">What we'll extract:</p>
+                        <ul className="text-sm text-gray-600 space-y-1">
+                          {[
+                            'Business history and background',
+                            'Services offered (financing, maintenance, etc.)',
+                            'Special programs (military, student discounts)',
+                            'Current promotions and deals',
+                            'Business hours and contact information'
+                          ].map((item) => (
+                            <li key={item} className="flex items-center gap-2">
+                              <TrendingUp className="h-3.5 w-3.5 text-blue-400 shrink-0" />
+                              {item}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-3 pt-2">
+                      <Button
+                        onClick={handleAnalyzeWebsite}
+                        disabled={analyzingWebsite}
+                        className="bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white flex-1"
+                      >
+                        {analyzingWebsite ? (
+                          <>
+                            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                            Analyzing Website...
+                          </>
+                        ) : (
+                          <>
+                            <Brain className="h-4 w-4 mr-2" />
+                            Analyze Website
+                          </>
+                        )}
+                      </Button>
+                      {knowledgeSummary?.summary?.totalEntries > 0 && (
+                        <Button
+                          variant="outline"
+                          onClick={handleViewKnowledge}
+                          className="border-blue-200 text-blue-700 hover:bg-blue-50"
+                        >
+                          View Knowledge
+                        </Button>
+                      )}
+                    </div>
+
+                    {/* Info Note */}
+                    <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 flex items-start gap-2">
+                      <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
+                      <p className="text-xs text-blue-700">
+                        This analysis enhances DAIVE AI's ability to answer customer questions about your dealership's history, services, and current promotions.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Opening Hours */}
             <Card>
               <CardHeader>
@@ -451,8 +806,8 @@ const DealerProfile = () => {
               </Card>
             )}
 
-            {/* Marbalism AI Activation */}
-            {!isPublicAccess && (
+            {/* Marbalism AI Activation - HIDDEN */}
+            {/* {!isPublicAccess && (
               <Card className="border-purple-100 bg-gradient-to-br from-white to-purple-50">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-purple-800">
@@ -524,7 +879,7 @@ const DealerProfile = () => {
                   )}
                 </CardContent>
               </Card>
-            )}
+            )} */}
 
             {/* Quick Actions */}
             <Card>

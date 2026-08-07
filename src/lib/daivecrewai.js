@@ -2634,6 +2634,120 @@ class DAIVEService {
     return info;
   }
 
+  /**
+   * Get dealer knowledge base from scraped website data
+   * Returns organized knowledge by category for use in AI context
+   */
+  async getDealerKnowledgeBase(dealerId) {
+    try {
+      const queryText = `
+        SELECT category, data_key, data_value, confidence_score, is_verified
+        FROM dealer_knowledge_base
+        WHERE dealer_id = $1
+        AND updated_at > NOW() - INTERVAL '90 days'
+        AND (is_verified = true OR confidence_score >= 0.75)
+        ORDER BY category, data_key
+      `;
+      
+      const result = await pool.query(queryText, [dealerId]);
+      
+      // Organize by category
+      const knowledge = {
+        about: {},
+        services: [],
+        programs: [],
+        hours: {},
+        promotions: [],
+        contact: {}
+      };
+      
+      result.rows.forEach(row => {
+        const { category, data_key, data_value, is_verified } = row;
+        
+        if (category === 'about') {
+          knowledge.about[data_key] = data_value;
+        } else if (category === 'services') {
+          knowledge.services.push(data_value);
+        } else if (category === 'programs') {
+          const programs = data_value.split(', ');
+          knowledge.programs.push(...programs);
+        } else if (category === 'hours') {
+          knowledge.hours[data_key] = data_value;
+        } else if (category === 'promotions' && is_verified) {
+          // Only include verified promotions
+          knowledge.promotions.push(data_value);
+        } else if (category === 'contact') {
+          knowledge.contact[data_key] = data_value;
+        }
+      });
+      
+      console.log(`📚 Loaded ${result.rows.length} knowledge entries for dealer ${dealerId}`);
+      return knowledge;
+    } catch (error) {
+      console.error('Error fetching dealer knowledge base:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Format dealer knowledge for system prompt
+   * Converts knowledge base into natural language context
+   */
+  formatDealerKnowledgeForPrompt(knowledge) {
+    if (!knowledge) return '';
+    
+    let knowledgePrompt = '\n\nDEALERSHIP KNOWLEDGE BASE (from website):';
+    
+    // About information
+    if (knowledge.about && Object.keys(knowledge.about).length > 0) {
+      knowledgePrompt += '\n\nABOUT OUR DEALERSHIP:';
+      if (knowledge.about.description) {
+        const shortDesc = knowledge.about.description.substring(0, 500);
+        knowledgePrompt += `\n${shortDesc}${knowledge.about.description.length > 500 ? '...' : ''}`;
+      }
+      if (knowledge.about.detailed_description && !knowledge.about.description) {
+        const shortDesc = knowledge.about.detailed_description.substring(0, 500);
+        knowledgePrompt += `\n${shortDesc}${knowledge.about.detailed_description.length > 500 ? '...' : ''}`;
+      }
+    }
+    
+    // Services offered
+    if (knowledge.services && knowledge.services.length > 0) {
+      knowledgePrompt += '\n\nSERVICES WE OFFER:';
+      knowledge.services.slice(0, 10).forEach(service => {
+        knowledgePrompt += `\n- ${service}`;
+      });
+    }
+    
+    // Special programs
+    if (knowledge.programs && knowledge.programs.length > 0) {
+      knowledgePrompt += '\n\nSPECIAL PROGRAMS AVAILABLE:';
+      const uniquePrograms = [...new Set(knowledge.programs)];
+      uniquePrograms.forEach(program => {
+        const programName = program.replace(/([A-Z])/g, ' $1').trim();
+        knowledgePrompt += `\n- ${programName.charAt(0).toUpperCase() + programName.slice(1)} Program`;
+      });
+    }
+    
+    // Current promotions
+    if (knowledge.promotions && knowledge.promotions.length > 0) {
+      knowledgePrompt += '\n\nCURRENT PROMOTIONS:';
+      knowledge.promotions.slice(0, 5).forEach(promo => {
+        knowledgePrompt += `\n- ${promo.substring(0, 200)}`;
+      });
+    }
+    
+    // Business hours
+    if (knowledge.hours && knowledge.hours.business_hours) {
+      knowledgePrompt += '\n\nBUSINESS HOURS:';
+      knowledgePrompt += `\n${knowledge.hours.business_hours}`;
+    }
+    
+    knowledgePrompt += '\n\nUSE THIS KNOWLEDGE: When customers ask about our dealership, services, or programs, reference this information naturally and confidently.';
+    
+    return knowledgePrompt;
+  }
+
   // Build AI system prompt with context (original DAIVE method)
   async buildSystemPrompt(conversation, vehicleContext, dealerPrompts, userMessage = '') {
     // Determine if vehicle context is relevant to the user's question
@@ -2653,6 +2767,17 @@ General Vehicle Information: I can help you find the perfect vehicle from our in
       // Non-vehicle query - don't include vehicle context
       vehicleInfo = `
 General Dealership Conversation: I can help you with dealership information, services, and general inquiries.`;
+    }
+
+    // Load dealer knowledge base from scraped website
+    let dealerKnowledge = null;
+    let knowledgeContext = '';
+    if (vehicleContext.dealer_id || conversation.dealer_id) {
+      const dealerId = vehicleContext.dealer_id || conversation.dealer_id;
+      dealerKnowledge = await this.getDealerKnowledgeBase(dealerId);
+      if (dealerKnowledge) {
+        knowledgeContext = this.formatDealerKnowledgeForPrompt(dealerKnowledge);
+      }
     }
 
     // Use master prompt if available, otherwise fall back to legacy system
@@ -2676,6 +2801,7 @@ CURRENT CONVERSATION CONTEXT:
 - Phone: ${vehicleContext.phone || 'Contact dealer'}
 - Address: ${vehicleContext.address ? `${vehicleContext.address}, ${vehicleContext.city || ''}, ${vehicleContext.state || ''} ${vehicleContext.zip_code || ''}`.trim().replace(/,\s*,/g, ',') : 'Contact for address'}
 - Opening Hours: ${this.formatOpeningHoursForPrompt(vehicleContext.opening_hours)}
+${knowledgeContext}
 
 IMPORTANT NAMING RULES:
 - NEVER use specific names like "John", "Sarah", etc. in your responses
@@ -13649,7 +13775,7 @@ Respond with JSON only:
     const onLocationIndicators = [
       // Direct presence statements
       'i\'m here', 'i\'m at the dealership', 'i\'m at the lot', 'i\'m in the showroom',
-      'i\'m here now', 'i\'m at clay cooley', 'i\'m at the store', 'i\'m at your location',
+      'i\'m here now', 'i\'m at the store', 'i\'m at your location', 'i\'m at your dealership',
       'i\'m here today', 'i\'m here right now', 'i\'m at the dealership now',
       
       // Immediacy indicators (want to do NOW)
