@@ -53,39 +53,49 @@ class WebsiteScrapingService {
         ]
       };
 
-      // For production/Render: use system Chrome if available
-      if (process.env.NODE_ENV === 'production' || process.env.RENDER) {
-        // Common Chrome/Chromium paths on Linux servers
-        const chromePaths = [
-          '/usr/bin/google-chrome-stable',
-          '/usr/bin/google-chrome',
-          '/usr/bin/chromium-browser',
-          '/usr/bin/chromium',
-          process.env.CHROME_BIN,
-          process.env.PUPPETEER_EXECUTABLE_PATH
-        ].filter(Boolean);
+      // Check for system Chrome (both dev and production)
+      // Common Chrome/Chromium paths on Linux servers and Windows
+      const chromePaths = [
+        // Windows paths  
+        'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+        'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+        process.env.LOCALAPPDATA ? process.env.LOCALAPPDATA + '\\Google\\Chrome\\Application\\chrome.exe' : null,
+        // Linux paths
+        '/usr/bin/google-chrome-stable',
+        '/usr/bin/google-chrome',
+        '/usr/bin/chromium-browser',
+        '/usr/bin/chromium',
+        // Environment variables
+        process.env.CHROME_BIN,
+        process.env.PUPPETEER_EXECUTABLE_PATH
+      ].filter(Boolean);
 
-        // Try to find Chrome
-        for (const chromePath of chromePaths) {
-          try {
-            const fs = await import('fs');
-            if (fs.existsSync(chromePath)) {
-              launchOptions.executablePath = chromePath;
-              console.log(`✅ Using Chrome at: ${chromePath}`);
-              break;
-            }
-          } catch (err) {
-            // Continue to next path
+      // Try to find Chrome
+      let chromeFound = false;
+      for (const chromePath of chromePaths) {
+        try {
+          const fs = await import('fs');
+          if (fs.existsSync(chromePath)) {
+            launchOptions.executablePath = chromePath;
+            console.log(`✅ Using Chrome at: ${chromePath}`);
+            chromeFound = true;
+            break;
           }
+        } catch (err) {
+          // Continue to next path
         }
+      }
 
-        // If no Chrome found, throw helpful error
-        if (!launchOptions.executablePath) {
-          throw new Error(
-            'Chrome/Chromium not found. Please install Chrome or set PUPPETEER_EXECUTABLE_PATH environment variable. ' +
-            'For Render: Add Chrome buildpack or use puppeteer-core with custom executable.'
-          );
-        }
+      // In production, Chrome is required. In development, fall back to bundled Chromium
+      if (!chromeFound && (process.env.NODE_ENV === 'production' || process.env.RENDER)) {
+        throw new Error(
+          'Chrome/Chromium not found. Please install Chrome or set PUPPETEER_EXECUTABLE_PATH environment variable. ' +
+          'For Render: Add Chrome buildpack or use puppeteer-core with custom executable.'
+        );
+      }
+
+      if (!chromeFound) {
+        console.log('ℹ️ Chrome not found, using Puppeteer bundled Chromium');
       }
 
       browser = await puppeteer.launch(launchOptions);
