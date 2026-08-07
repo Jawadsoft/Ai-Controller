@@ -176,19 +176,19 @@ class WebsiteScrapingScheduler {
   async logScheduledScraping(totalDealers, successCount, failureCount) {
     try {
       const query = `
-        INSERT INTO system_logs (log_type, log_level, message, metadata, created_at)
+        INSERT INTO system_logs (log_type, severity, message, details, created_at)
         VALUES ('scheduled_scraping', 'info', $1, $2, NOW())
       `;
 
       const message = `Scheduled scraping completed: ${successCount}/${totalDealers} successful`;
-      const metadata = JSON.stringify({
+      const details = JSON.stringify({
         totalDealers,
         successCount,
         failureCount,
         skippedCount: totalDealers - successCount - failureCount
       });
 
-      await pool.query(query, [message, metadata]);
+      await pool.query(query, [message, details]);
     } catch (error) {
       console.error('Error logging scheduled scraping:', error);
     }

@@ -53,49 +53,39 @@ class WebsiteScrapingService {
         ]
       };
 
-      // Check for system Chrome (both dev and production)
-      // Common Chrome/Chromium paths on Linux servers and Windows
-      const chromePaths = [
-        // Windows paths  
-        'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-        'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-        process.env.LOCALAPPDATA ? process.env.LOCALAPPDATA + '\\Google\\Chrome\\Application\\chrome.exe' : null,
-        // Linux paths
-        '/usr/bin/google-chrome-stable',
-        '/usr/bin/google-chrome',
-        '/usr/bin/chromium-browser',
-        '/usr/bin/chromium',
-        // Environment variables
-        process.env.CHROME_BIN,
-        process.env.PUPPETEER_EXECUTABLE_PATH
-      ].filter(Boolean);
+      // For production/Render: use system Chrome if available
+      if (process.env.NODE_ENV === 'production' || process.env.RENDER) {
+        // Common Chrome/Chromium paths on Linux servers
+        const chromePaths = [
+          '/usr/bin/google-chrome-stable',
+          '/usr/bin/google-chrome',
+          '/usr/bin/chromium-browser',
+          '/usr/bin/chromium',
+          process.env.CHROME_BIN,
+          process.env.PUPPETEER_EXECUTABLE_PATH
+        ].filter(Boolean);
 
-      // Try to find Chrome
-      let chromeFound = false;
-      for (const chromePath of chromePaths) {
-        try {
-          const fs = await import('fs');
-          if (fs.existsSync(chromePath)) {
-            launchOptions.executablePath = chromePath;
-            console.log(`✅ Using Chrome at: ${chromePath}`);
-            chromeFound = true;
-            break;
+        // Try to find Chrome
+        for (const chromePath of chromePaths) {
+          try {
+            const fs = await import('fs');
+            if (fs.existsSync(chromePath)) {
+              launchOptions.executablePath = chromePath;
+              console.log(`✅ Using Chrome at: ${chromePath}`);
+              break;
+            }
+          } catch (err) {
+            // Continue to next path
           }
-        } catch (err) {
-          // Continue to next path
         }
-      }
 
-      // In production, Chrome is required. In development, fall back to bundled Chromium
-      if (!chromeFound && (process.env.NODE_ENV === 'production' || process.env.RENDER)) {
-        throw new Error(
-          'Chrome/Chromium not found. Please install Chrome or set PUPPETEER_EXECUTABLE_PATH environment variable. ' +
-          'For Render: Add Chrome buildpack or use puppeteer-core with custom executable.'
-        );
-      }
-
-      if (!chromeFound) {
-        console.log('ℹ️ Chrome not found, using Puppeteer bundled Chromium');
+        // If no Chrome found, throw helpful error
+        if (!launchOptions.executablePath) {
+          throw new Error(
+            'Chrome/Chromium not found. Please install Chrome or set PUPPETEER_EXECUTABLE_PATH environment variable. ' +
+            'For Render: Add Chrome buildpack or use puppeteer-core with custom executable.'
+          );
+        }
       }
 
       browser = await puppeteer.launch(launchOptions);
@@ -525,16 +515,16 @@ class WebsiteScrapingService {
   async logScrapingActivity(results) {
     try {
       const logQuery = `
-        INSERT INTO system_logs (log_type, log_level, message, metadata, created_at)
-        VALUES ('website_scraping', $1, $2, $3, NOW())
+        INSERT INTO system_logs (log_type, severity, message, details, dealer_id, created_at)
+        VALUES ('scraping', $1, $2, $3, $4, NOW())
       `;
 
-      const logLevel = results.success ? 'info' : 'error';
+      const severity = results.success ? 'info' : 'error';
       const message = results.success 
         ? `Successfully scraped ${results.entriesStored} entries from ${results.websiteUrl}`
         : `Failed to scrape ${results.websiteUrl}: ${results.errors.join(', ')}`;
 
-      await pool.query(logQuery, [logLevel, message, JSON.stringify(results)]);
+      await pool.query(logQuery, [severity, message, JSON.stringify(results), results.dealerId]);
     } catch (error) {
       console.error('Error logging scraping activity:', error.message);
     }
