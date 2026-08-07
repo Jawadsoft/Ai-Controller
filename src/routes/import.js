@@ -112,22 +112,29 @@ router.use((req, res, next) => {
 // GET /api/import/configs - Get all import configurations for a dealer
 router.get('/configs', authenticateToken, async (req, res) => {
   try {
-    const dealerId = req.user.dealer_id;
+    console.log('📋 GET /api/import/configs - Request received');
+    console.log('User:', req.user);
     
+    const dealerId = req.user.dealer_id;
+
     if (!dealerId) {
+      console.error('❌ No dealer_id found for user:', req.user.id);
       return res.status(403).json({ error: 'Dealer access required' });
     }
 
+    console.log('🔍 Fetching import configs for dealer:', dealerId);
     const configs = await importService.getImportConfigs(dealerId);
-    
+    console.log(`✅ Found ${configs.length} import configs`);
+
     res.json({
       success: true,
       data: configs
     });
 
   } catch (error) {
-    console.error('Error getting import configs:', error);
-    res.status(500).json({ error: 'Failed to get import configurations' });
+    console.error('❌ Error getting import configs:', error);
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ error: 'Failed to get import configurations', details: error.message });
   }
 });
 

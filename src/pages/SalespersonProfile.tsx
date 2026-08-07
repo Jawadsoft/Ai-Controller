@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { API_BASE_URL, buildBackendAssetUrl } from '@/lib/config';
+import QuickAuthModal from '@/components/customer/QuickAuthModal';
 
 const getStaffPhotoUrl = (photoUrl?: string | null) => {
   if (!photoUrl) return '';
@@ -47,6 +48,8 @@ const SalespersonProfile = () => {
   const [error, setError] = useState<string | null>(null);
   const [claiming, setClaiming] = useState(false);
   const [claimed, setClaimed] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   // Generate or retrieve a persistent session ID for this browser
   const getSessionId = (): string => {
@@ -61,6 +64,12 @@ const SalespersonProfile = () => {
   useEffect(() => {
     if (!hash) return;
 
+    // Check if customer is already authenticated
+    const customerToken = localStorage.getItem('customerToken');
+    const customerSession = localStorage.getItem('customerSession');
+    const authenticated = !!(customerToken && customerSession);
+    setIsAuthenticated(authenticated);
+
     const fetchProfile = async () => {
       try {
         setLoading(true);
@@ -73,6 +82,11 @@ const SalespersonProfile = () => {
 
         // Auto-claim on load
         claimSalesperson(data.id, hash);
+        
+        // Automatically show auth modal if not authenticated
+        if (!authenticated) {
+          setShowAuthModal(true);
+        }
       } catch (err: any) {
         setError(err.message || 'Failed to load profile');
       } finally {
@@ -116,6 +130,13 @@ const SalespersonProfile = () => {
 
   const handleStartChat = () => {
     if (!profile) return;
+    
+    // Check if customer is authenticated
+    if (!isAuthenticated) {
+      setShowAuthModal(true);
+      return;
+    }
+    
     // Navigate to D.A.I.V.E. with staff context
     navigate(`/ai-bot?dealerId=${encodeURIComponent(profile.dealer_id)}`, {
       state: {
@@ -125,6 +146,28 @@ const SalespersonProfile = () => {
         staffName: profile.name,
       },
     });
+  };
+
+  const handleAuthSuccess = (sessionData: any) => {
+    setIsAuthenticated(true);
+    setShowAuthModal(false);
+    
+    toast({
+      title: "Authentication Successful",
+      description: "You can now start chatting with D.A.I.V.E.",
+    });
+    
+    // Automatically proceed to chat after successful auth
+    if (profile) {
+      navigate(`/ai-bot?dealerId=${encodeURIComponent(profile.dealer_id)}`, {
+        state: {
+          dealerId: profile.dealer_id,
+          assignedStaffId: profile.id,
+          staffQrHash: hash,
+          staffName: profile.name,
+        },
+      });
+    }
   };
 
   const handleCall = () => {
@@ -323,13 +366,26 @@ const SalespersonProfile = () => {
           onClick={handleStartChat}
         >
           <MessageCircle className="h-5 w-5" />
-          Chat with D.A.I.V.E. AI
+          {isAuthenticated ? 'Chat with D.A.I.V.E. AI' : 'Sign In to Chat with D.A.I.V.E.'}
         </Button>
 
         <p className="text-center text-xs text-gray-400 mt-3">
           {profile.dealer_name}
         </p>
       </div>
+
+      {/* Authentication Modal */}
+      <QuickAuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={handleAuthSuccess}
+        dealerData={{
+          id: profile.dealer_id,
+          business_name: profile.dealer_name,
+          contact_name: profile.name,
+        }}
+        qrHash={hash}
+      />
     </div>
   );
 };

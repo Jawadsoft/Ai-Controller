@@ -13,7 +13,7 @@ const __dirname = dirname(__filename);
 class ImportService {
   constructor() {
     this.pool = new Pool({
-      connectionString: 'postgresql://postgres:Dealeriq@localhost:5432/vehicle_management'
+      connectionString: process.env.DATABASE_URL || process.env.DATABASE_CONNECTION_STRING || 'postgresql://postgres:Dealeriq@localhost:5432/vehicle_management'
     });
   }
 
@@ -224,11 +224,13 @@ class ImportService {
   }
 
   async getImportConfigs(dealerId) {
+    console.log('🔍 ImportService.getImportConfigs called for dealer:', dealerId);
     const client = await this.pool.connect();
     try {
       // First get the basic configs
+      console.log('📊 Querying import_configs table...');
       const result = await client.query(`
-        SELECT 
+        SELECT
           ic.*,
           ics.connection_type, ics.host_url, ics.port, ics.username, ics.remote_directory, ics.file_pattern,
           ics.selected_files, ics.available_files, ics.last_file_scan, ics.file_match_keyword,
@@ -244,21 +246,27 @@ class ImportService {
         ORDER BY ic.created_at DESC
       `, [dealerId]);
 
+      console.log(`✅ Found ${result.rows.length} configs`);
+
       // For each config, get the field mappings
       const configsWithMappings = await Promise.all(result.rows.map(async (config) => {
         const mappingsResult = await client.query(`
-          SELECT * FROM import_field_mappings 
-          WHERE import_config_id = $1 
+          SELECT * FROM import_field_mappings
+          WHERE import_config_id = $1
           ORDER BY field_order
         `, [config.id]);
-        
+
         return {
           ...config,
           fieldMappings: mappingsResult.rows
         };
       }));
 
+      console.log('✅ Configs with mappings prepared');
       return configsWithMappings;
+    } catch (error) {
+      console.error('❌ Error in getImportConfigs:', error);
+      throw error;
     } finally {
       client.release();
     }
