@@ -27,6 +27,11 @@ if (!fs.existsSync(qrCodesDir)) {
 const ENCRYPTION_KEY = process.env.QR_ENCRYPTION_KEY || 'dealer-iq-qr-secret-key-2024';
 const ALGORITHM = 'aes-256-cbc';
 
+// Generate a proper 32-byte key from the encryption key
+const getEncryptionKey = () => {
+  return crypto.createHash('sha256').update(ENCRYPTION_KEY).digest();
+};
+
 // Encrypt vehicle and dealer data
 export const encryptVehicleData = (vehicleId, dealerId, vin = null) => {
   try {
@@ -36,10 +41,16 @@ export const encryptVehicleData = (vehicleId, dealerId, vin = null) => {
       vin,
       timestamp: Date.now() 
     });
-    const cipher = crypto.createCipher(ALGORITHM, ENCRYPTION_KEY);
+    
+    const key = getEncryptionKey();
+    const iv = crypto.randomBytes(16);
+    const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
+    
     let encrypted = cipher.update(data, 'utf8', 'hex');
     encrypted += cipher.final('hex');
-    return encrypted;
+    
+    // Prepend IV to encrypted data (IV:encrypted)
+    return iv.toString('hex') + ':' + encrypted;
   } catch (error) {
     console.error('Encryption error:', error);
     // Fallback to simple hash if encryption fails
@@ -50,9 +61,19 @@ export const encryptVehicleData = (vehicleId, dealerId, vin = null) => {
 // Decrypt vehicle data
 export const decryptVehicleData = (encryptedData) => {
   try {
-    const decipher = crypto.createDecipher(ALGORITHM, ENCRYPTION_KEY);
-    let decrypted = decipher.update(encryptedData, 'hex', 'utf8');
+    const parts = encryptedData.split(':');
+    if (parts.length !== 2) {
+      throw new Error('Invalid encrypted data format');
+    }
+    
+    const iv = Buffer.from(parts[0], 'hex');
+    const encrypted = parts[1];
+    const key = getEncryptionKey();
+    
+    const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
+    let decrypted = decipher.update(encrypted, 'hex', 'utf8');
     decrypted += decipher.final('utf8');
+    
     return JSON.parse(decrypted);
   } catch (error) {
     console.error('Decryption error:', error);
@@ -217,10 +238,16 @@ export const encryptDealerData = (dealerId, stockNumber = null) => {
       type: 'dealer_profile',
       timestamp: Date.now() 
     });
-    const cipher = crypto.createCipher(ALGORITHM, ENCRYPTION_KEY);
+    
+    const key = getEncryptionKey();
+    const iv = crypto.randomBytes(16);
+    const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
+    
     let encrypted = cipher.update(data, 'utf8', 'hex');
     encrypted += cipher.final('hex');
-    return encrypted;
+    
+    // Prepend IV to encrypted data (IV:encrypted)
+    return iv.toString('hex') + ':' + encrypted;
   } catch (error) {
     console.error('Dealer encryption error:', error);
     // Fallback to simple hash if encryption fails
@@ -231,9 +258,19 @@ export const encryptDealerData = (dealerId, stockNumber = null) => {
 // Decrypt dealer data
 export const decryptDealerData = (encryptedData) => {
   try {
-    const decipher = crypto.createDecipher(ALGORITHM, ENCRYPTION_KEY);
-    let decrypted = decipher.update(encryptedData, 'hex', 'utf8');
+    const parts = encryptedData.split(':');
+    if (parts.length !== 2) {
+      throw new Error('Invalid encrypted data format');
+    }
+    
+    const iv = Buffer.from(parts[0], 'hex');
+    const encrypted = parts[1];
+    const key = getEncryptionKey();
+    
+    const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
+    let decrypted = decipher.update(encrypted, 'hex', 'utf8');
     decrypted += decipher.final('utf8');
+    
     return JSON.parse(decrypted);
   } catch (error) {
     console.error('Dealer decryption error:', error);
