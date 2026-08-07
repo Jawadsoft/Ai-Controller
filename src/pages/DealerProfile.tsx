@@ -47,8 +47,6 @@ const DealerProfile = () => {
   const [analyzingWebsite, setAnalyzingWebsite] = useState(false);
   const [analysisResults, setAnalysisResults] = useState<any>(null);
   const [knowledgeSummary, setKnowledgeSummary] = useState<any>(null);
-  const [profileSuggestions, setProfileSuggestions] = useState<any>(null);
-  const [applyingUpdates, setApplyingUpdates] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { refreshPermissions } = usePermissions();
@@ -269,18 +267,19 @@ const DealerProfile = () => {
       if (response.ok && data.success) {
         setAnalysisResults(data.data);
         
-        // Check for profile suggestions
+        // Check for profile suggestions and auto-apply them
         if (data.data.profileData?.suggestions) {
           const suggestions = data.data.profileData.suggestions;
           if (suggestions.description || suggestions.established_year) {
-            setProfileSuggestions(suggestions);
+            // Automatically apply profile updates
+            await applyProfileUpdatesDirectly(suggestions);
           }
         }
         
         await fetchKnowledgeSummary(); // Refresh summary
         toast({
           title: "Analysis Complete",
-          description: `Successfully extracted ${data.data.entriesStored} pieces of information from your website.`,
+          description: `Successfully extracted ${data.data.entriesStored} pieces of information and updated your profile.`,
         });
       } else {
         throw new Error(data.error || 'Analysis failed');
@@ -297,16 +296,11 @@ const DealerProfile = () => {
     }
   };
 
-  const handleViewKnowledge = () => {
-    navigate('/daive/settings', { state: { tab: 'knowledge' } });
-  };
-
-  const handleApplyProfileUpdates = async () => {
-    if (!dealer?.id || !profileSuggestions) return;
+  // Helper function to apply profile updates directly during analysis
+  const applyProfileUpdatesDirectly = async (suggestions: any) => {
+    if (!dealer?.id) return;
 
     try {
-      setApplyingUpdates(true);
-      
       const authToken = localStorage.getItem('auth_token');
       const response = await fetch(buildApiUrl(`scraping/dealers/${dealer.id}/apply-profile-updates`), {
         method: 'POST',
@@ -315,45 +309,49 @@ const DealerProfile = () => {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          description: profileSuggestions.description,
-          established_year: profileSuggestions.established_year
+          description: suggestions.description,
+          established_year: suggestions.established_year
         })
       });
 
       const data = await response.json();
 
       if (response.ok && data.success) {
-        // Update local dealer state
+        // Update local dealer state with new data
         setDealer(prev => prev ? {
           ...prev,
           description: data.data.description || prev.description,
           established_year: data.data.established_year || prev.established_year
         } : prev);
+
+        // Show what was updated
+        const updates = [];
+        if (suggestions.description) updates.push('Business Description');
+        if (suggestions.established_year) updates.push('Established Year (' + suggestions.established_year + ')');
         
-        setProfileSuggestions(null); // Clear suggestions after applying
-        
+        // Show a detailed success message
         toast({
-          title: "Profile Updated",
-          description: "Your dealer profile has been updated with information from your website.",
+          title: "Profile Updated Automatically",
+          description: `Updated: ${updates.join(', ')}`,
         });
-      } else {
-        throw new Error(data.error || 'Failed to update profile');
+        
+        console.log(`✅ Profile auto-updated:`, suggestions);
       }
-    } catch (error: any) {
-      console.error('Error applying profile updates:', error);
+    } catch (error) {
+      console.error('Error auto-applying profile updates:', error);
+      // Show warning but don't fail the analysis
       toast({
-        title: "Update Failed",
-        description: error.message || "Failed to update profile. Please try again.",
+        title: "Profile Update Skipped",
+        description: "Analysis succeeded but profile update failed. You can edit profile manually.",
         variant: "destructive",
       });
-    } finally {
-      setApplyingUpdates(false);
     }
   };
 
-  const handleDismissSuggestions = () => {
-    setProfileSuggestions(null);
+  const handleViewKnowledge = () => {
+    navigate('/daive/settings', { state: { tab: 'knowledge' } });
   };
+
 
   const getInitials = (businessName: string) => {
     return businessName
@@ -597,77 +595,7 @@ const DealerProfile = () => {
                       </div>
                     )}
 
-                    {/* Profile Suggestions */}
-                    {profileSuggestions && (profileSuggestions.description || profileSuggestions.established_year) && (
-                      <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                        <div className="flex items-start gap-3">
-                          <Sparkles className="h-5 w-5 text-purple-600 mt-0.5" />
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between mb-2">
-                              <p className="font-medium text-purple-800">Profile Updates Available</p>
-                              <button
-                                onClick={handleDismissSuggestions}
-                                className="text-purple-400 hover:text-purple-600"
-                              >
-                                <X className="h-4 w-4" />
-                              </button>
-                            </div>
-                            <p className="text-sm text-purple-700 mb-3">
-                              We found information that can enhance your profile:
-                            </p>
-                            
-                            <div className="space-y-3">
-                              {profileSuggestions.description && (
-                                <div className="bg-white/50 rounded p-3">
-                                  <p className="text-xs font-semibold text-purple-900 mb-1">Business Description:</p>
-                                  <p className="text-sm text-gray-700 line-clamp-3">
-                                    {profileSuggestions.description}
-                                  </p>
-                                </div>
-                              )}
-                              
-                              {profileSuggestions.established_year && (
-                                <div className="bg-white/50 rounded p-3">
-                                  <p className="text-xs font-semibold text-purple-900 mb-1">Established Year:</p>
-                                  <p className="text-sm text-gray-700">
-                                    {profileSuggestions.established_year}
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="flex gap-2 mt-4">
-                              <Button
-                                onClick={handleApplyProfileUpdates}
-                                disabled={applyingUpdates}
-                                size="sm"
-                                className="bg-purple-600 hover:bg-purple-700 text-white"
-                              >
-                                {applyingUpdates ? (
-                                  <>
-                                    <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
-                                    Applying...
-                                  </>
-                                ) : (
-                                  <>
-                                    <CheckCircle className="h-3 w-3 mr-1" />
-                                    Apply Updates
-                                  </>
-                                )}
-                              </Button>
-                              <Button
-                                onClick={handleDismissSuggestions}
-                                variant="outline"
-                                size="sm"
-                                className="border-purple-200 text-purple-700 hover:bg-purple-50"
-                              >
-                                Dismiss
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                    {/* Profile updates are now applied automatically during analysis */}
 
                     {/* What Will Be Extracted */}
                     {!analysisResults && (
