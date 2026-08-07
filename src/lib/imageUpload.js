@@ -58,9 +58,10 @@ export const upload = multer({
  * Upload image to Cloudinary after multer processes it
  * @param {string} localPath - Local file path
  * @param {string} vehicleId - Vehicle ID for organization
+ * @param {string} dealerId - Dealer ID for folder organization
  * @returns {Promise<string>} Cloudinary URL
  */
-export const uploadToCloudinary = async (localPath, vehicleId = 'temp') => {
+export const uploadToCloudinary = async (localPath, vehicleId = 'temp', dealerId = null) => {
   try {
     if (!USE_CLOUDINARY) {
       // Return local URL if Cloudinary is disabled
@@ -73,7 +74,8 @@ export const uploadToCloudinary = async (localPath, vehicleId = 'temp') => {
       'vehicle-images',
       { 
         public_id: `vehicle-${vehicleId}-${Date.now()}`,
-        deleteLocal: true // Delete local file after upload
+        deleteLocal: true, // Delete local file after upload
+        dealerId: dealerId // Organize by dealer folder
       }
     );
 

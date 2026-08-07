@@ -54,12 +54,12 @@ const Auth = () => {
         <img
           src={AUTH_HERO_IMAGE}
           alt=""
-          className="absolute inset-0 h-full w-full object-cover"
+          className="absolute inset-0 h-full w-full object-cover blur-sm"
           loading="lazy"
         />
         {/* Overlay for better form visibility */}
         <div
-          className="absolute inset-0 bg-gradient-to-br from-dealer-navy/85 via-dealer-navy/70 to-dealer-navy/85"
+          className="absolute inset-0 bg-gradient-to-br from-dealer-navy/90 via-dealer-navy/75 to-dealer-navy/90"
           aria-hidden
         />
       </div>

@@ -692,7 +692,8 @@ router.post('/:staffId/photo', (req, res, next) => {
           'staff-photos',
           { 
             public_id: `staff-${staffId}-${Date.now()}`,
-            deleteLocal: true // Delete local file after upload
+            deleteLocal: true, // Delete local file after upload
+            dealerId: dealerId // Organize by dealer folder
           }
         );
         photoUrl = result.url;

@@ -109,6 +109,11 @@ export const buildAssetUrl = (path: string) => {
 
 // Helper function to build backend asset URLs (for files served from backend)
 export const buildBackendAssetUrl = (path: string) => {
+  // If path is already an absolute URL (Cloudinary, S3, etc.), return as-is
+  if (path.startsWith('http://') || path.startsWith('https://')) {
+    return path;
+  }
+  
   // Remove leading slash if present to avoid double slashes
   const cleanPath = path.startsWith('/') ? path.slice(1) : path;
   
@@ -124,6 +129,7 @@ export const buildBackendAssetUrl = (path: string) => {
 
 /** Download a backend-hosted file (works cross-origin; avoids <a download> opening a new tab). */
 export const downloadBackendAsset = async (path: string, filename: string): Promise<void> => {
+  // Build the URL (handles both relative and absolute paths)
   const url = buildBackendAssetUrl(path);
   const response = await fetch(url);
   if (!response.ok) {

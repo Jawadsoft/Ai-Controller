@@ -18,12 +18,14 @@ export default cloudinary;
 
 /**
  * Cloudinary folder structure:
- * - vehicle-images/
- * - staff-photos/
- * - qr-codes/
- * - deal-sheets/
- * - credit-applications/
- * - carfax-pdfs/
- * - etl-documents/
- * - daive-audio/
+ * - dealer-{dealerId}/vehicle-images/
+ * - dealer-{dealerId}/staff-photos/
+ * - dealer-{dealerId}/qr-codes/
+ * - dealer-{dealerId}/deal-sheets/
+ * - dealer-{dealerId}/credit-applications/
+ * - dealer-{dealerId}/carfax-pdfs/
+ * - dealer-{dealerId}/etl-documents/
+ * - dealer-{dealerId}/daive-audio/
+ * 
+ * Each dealership gets its own organized folder structure
  */

@@ -734,7 +734,7 @@ router.post('/:id/images', upload.array('images', 10), async (req, res) => {
     // Upload to Cloudinary and get URLs
     console.log(`📤 Uploading ${req.files.length} images to Cloudinary for vehicle ${vehicleId}...`);
     const uploadPromises = req.files.map(file => 
-      uploadToCloudinary(file.path, vehicleId)
+      uploadToCloudinary(file.path, vehicleId, req.user.dealer_id)
     );
     const uploadedImages = await Promise.all(uploadPromises);
     

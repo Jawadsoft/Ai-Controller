@@ -184,7 +184,8 @@ export const generateVehicleQRCodeWithURL = async (vehicleId, frontendBaseURL, v
           'qr-codes',
           { 
             public_id: `vehicle-${vehicleHash}-qr`,
-            deleteLocal: true // Delete local file after upload
+            deleteLocal: true, // Delete local file after upload
+            dealerId: dealerId // Organize by dealer folder
           }
         );
         console.log(`✅ QR code uploaded to Cloudinary: ${result.url}`);
@@ -326,7 +327,8 @@ export const generateDealerProfileQRCode = async (dealerId, frontendBaseURL, sto
           'qr-codes',
           { 
             public_id: `dealer-${dealerHash}-qr`,
-            deleteLocal: true // Delete local file after upload
+            deleteLocal: true, // Delete local file after upload
+            dealerId: dealerId // Organize by dealer folder
           }
         );
         console.log(`✅ Dealer QR code uploaded to Cloudinary: ${result.url}`);

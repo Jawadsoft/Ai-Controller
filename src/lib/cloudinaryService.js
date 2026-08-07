@@ -18,8 +18,13 @@ class CloudinaryService {
    */
   async uploadImage(filePath, folder = 'uploads', options = {}) {
     try {
+      // If dealerId is provided, organize by dealer folder
+      const finalFolder = options.dealerId 
+        ? `dealer-${options.dealerId}/${folder}` 
+        : folder;
+
       const result = await cloudinary.uploader.upload(filePath, {
-        folder: folder,
+        folder: finalFolder,
         resource_type: 'image',
         ...options
       });
@@ -58,8 +63,13 @@ class CloudinaryService {
    */
   async uploadFile(filePath, folder = 'documents', options = {}) {
     try {
+      // If dealerId is provided, organize by dealer folder
+      const finalFolder = options.dealerId 
+        ? `dealer-${options.dealerId}/${folder}` 
+        : folder;
+
       const result = await cloudinary.uploader.upload(filePath, {
-        folder: folder,
+        folder: finalFolder,
         resource_type: 'raw', // For non-image files
         ...options
       });
