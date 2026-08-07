@@ -5,7 +5,7 @@
  * - Shows 16-step client journey progress during conversations
  * - Can be easily hidden when going live by setting localStorage 'daive_show_journey_tracker' to 'false'
  * - Or by clicking the "Hide Tracker" button in the header
- * - The journey tracker helps developers monitor conversation flow and step progression
+ * - The journey tracker helps developers monitoccr conversation flow and step progression
  */
 import React, { useState, useRef, useEffect } from 'react';
 import { useParams, useSearchParams, useLocation, useNavigate } from 'react-router-dom';

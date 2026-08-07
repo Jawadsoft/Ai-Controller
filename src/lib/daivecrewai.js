@@ -31,7 +31,7 @@ const DEBUG_VEHICLE_THUMBNAIL =
 
 // =====================================================
 // FOLLOW-UP ENROLLMENT TRIGGER
-// Called at every journey step completion inside processConversationWithOptimizedCrew.
+// Called at every journedfdy step completion inside processConversationWithOptimizedCrew.
 // Fires-and-forgets (caller uses .catch) so it never breaks the conversation.
 // =====================================================
 
