@@ -44,6 +44,25 @@ router.put('/profile', authenticateToken, [
       zip_code, website, description, license_number, established_year, opening_hours
     } = req.body;
     
+    // If email is being updated, update it in both dealers and users tables
+    if (email) {
+      // Check if email is already taken by another user
+      const emailCheck = await query(
+        'SELECT id FROM users WHERE email = $1 AND id != $2',
+        [email, userId]
+      );
+      
+      if (emailCheck.rows.length > 0) {
+        return res.status(400).json({ error: 'Email is already in use by another account' });
+      }
+      
+      // Update user's email in users table
+      await query(
+        'UPDATE users SET email = $1, updated_at = NOW() WHERE id = $2',
+        [email, userId]
+      );
+    }
+    
     const result = await query(
       `UPDATE dealers SET 
        business_name = COALESCE($1, business_name),

@@ -2,12 +2,29 @@ import React, { useState, useEffect } from 'react';
 import ImportConfiguration from '../components/import/ImportConfiguration';
 import CSVUploadWithMapping from '../components/import/CSVUploadWithMapping';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Upload, Settings, Database, Loader2, RefreshCw } from 'lucide-react';
+import { Upload, Settings, Database, Loader2, RefreshCw, CheckCircle, XCircle, Clock, FileText } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { buildApiUrl } from '../lib/config';
+
+// Interface for file information
+interface FileInfo {
+  filename: string;
+  size: number;
+  last_modified: string;
+  last_imported?: string;
+  import_count?: number;
+}
+
+// Interface for sync status
+interface SyncStatus {
+  status: 'idle' | 'running' | 'success' | 'error';
+  message?: string;
+  last_sync?: string;
+  records_imported?: number;
+}
 
 // Interface for the API response (snake_case)
 interface ImportConfigResponse {
@@ -23,6 +40,11 @@ interface ImportConfigResponse {
   username: string;
   remote_directory: string;
   file_pattern: string;
+  file_match_keyword?: string;
+  selected_files?: string[];
+  available_files?: string[];
+  last_file_scan?: string;
+  tracked_files?: FileInfo[];
   file_type: 'csv' | 'xml' | 'json';
   delimiter: string;
   has_header: boolean;
@@ -59,6 +81,8 @@ const Import: React.FC = () => {
   const [configs, setConfigs] = useState<ImportConfigResponse[]>([]);
   const [isLoadingConfigs, setIsLoadingConfigs] = useState(false);
   const [selectedConfig, setSelectedConfig] = useState<ImportConfigResponse | null>(null);
+  const [syncStatuses, setSyncStatuses] = useState<Map<number, SyncStatus>>(new Map());
+  const [testingConnection, setTestingConnection] = useState<Set<number>>(new Set());
 
   // Load configurations when FTP/SFTP tab is active
   const loadConfigs = async () => {
@@ -164,6 +188,186 @@ const Import: React.FC = () => {
     setActiveTab("ftp-sftp"); // Stay on FTP/SFTP tab to show the loaded configuration
   };
 
+  // Test connection and list files
+  const handleTestConnection = async (configId: number) => {
+    try {
+      setTestingConnection(prev => new Set(prev).add(configId));
+      
+      const response = await fetch(buildApiUrl(`import/configs/${configId}/test-connection`), {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Connection test failed');
+      }
+
+      const result = await response.json();
+      
+      toast({
+        title: "Connection Successful",
+        description: `Connected to ${result.host || 'server'}. ${result.files_found || 0} files found.`
+      });
+
+      // Reload configs to get updated file list
+      await loadConfigs();
+    } catch (error) {
+      console.error('Connection test error:', error);
+      toast({
+        title: "Connection Failed",
+        description: error instanceof Error ? error.message : "Could not connect to remote server",
+        variant: "destructive"
+      });
+    } finally {
+      setTestingConnection(prev => {
+        const next = new Set(prev);
+        next.delete(configId);
+        return next;
+      });
+    }
+  };
+
+  // List remote files
+  const handleListFiles = async (configId: number) => {
+    try {
+      const response = await fetch(buildApiUrl(`import/configs/${configId}/list-files`), {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to list files');
+      }
+
+      const result = await response.json();
+      return result.data || [];
+    } catch (error) {
+      console.error('List files error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to list remote files",
+        variant: "destructive"
+      });
+      return [];
+    }
+  };
+
+  // Quick sync function
+  const handleQuickSync = async (configId: number) => {
+    try {
+      // Update sync status to running
+      setSyncStatuses(prev => new Map(prev).set(configId, {
+        status: 'running',
+        message: 'Starting import...'
+      }));
+
+      // Find the config to get selected files
+      const config = configs.find(c => c.id === configId);
+      const selectedFiles = config?.selected_files || [];
+
+      const response = await fetch(buildApiUrl(`import/configs/${configId}/sync`), {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          selectedFiles: selectedFiles.length > 0 ? selectedFiles : undefined
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Sync failed');
+      }
+
+      const result = await response.json();
+      
+      // Check if file selection is needed
+      if (result.needsFileSelection) {
+        setSyncStatuses(prev => new Map(prev).set(configId, {
+          status: 'error',
+          message: `Multiple files found (${result.matchingFiles?.length || 0}). Please select specific files in the configuration.`
+        }));
+
+        toast({
+          title: "File Selection Needed",
+          description: `Found ${result.matchingFiles?.length || 0} files: ${result.matchingFiles?.slice(0, 2).join(', ')}${result.matchingFiles?.length > 2 ? '...' : ''}. Please edit the configuration and select which file(s) to import.`,
+          variant: "destructive"
+        });
+
+        // Clear status after 8 seconds
+        setTimeout(() => {
+          setSyncStatuses(prev => {
+            const next = new Map(prev);
+            const status = next.get(configId);
+            if (status?.status === 'error' && status.message.includes('Multiple files')) {
+              next.set(configId, { ...status, status: 'idle' });
+            }
+            return next;
+          });
+        }, 8000);
+        
+        return;
+      }
+      
+      // Update sync status to success
+      setSyncStatuses(prev => new Map(prev).set(configId, {
+        status: 'success',
+        message: result.message || 'Import completed successfully',
+        last_sync: new Date().toISOString(),
+        records_imported: result.records_imported || 0
+      }));
+
+      toast({
+        title: "Sync Successful",
+        description: `Imported ${result.records_imported || 0} records successfully`
+      });
+
+      // Clear success status after 5 seconds
+      setTimeout(() => {
+        setSyncStatuses(prev => {
+          const next = new Map(prev);
+          const status = next.get(configId);
+          if (status?.status === 'success') {
+            next.set(configId, { ...status, status: 'idle' });
+          }
+          return next;
+        });
+      }, 5000);
+    } catch (error) {
+      console.error('Sync error:', error);
+      
+      // Update sync status to error
+      setSyncStatuses(prev => new Map(prev).set(configId, {
+        status: 'error',
+        message: error instanceof Error ? error.message : 'Sync failed'
+      }));
+
+      toast({
+        title: "Sync Failed",
+        description: error instanceof Error ? error.message : "Could not complete the import",
+        variant: "destructive"
+      });
+
+      // Clear error status after 5 seconds
+      setTimeout(() => {
+        setSyncStatuses(prev => {
+          const next = new Map(prev);
+          const status = next.get(configId);
+          if (status?.status === 'error') {
+            next.set(configId, { ...status, status: 'idle' });
+          }
+          return next;
+        });
+      }, 5000);
+    }
+  };
+
   // Render configuration list for FTP/SFTP tab
   const renderConfigurationList = () => {
     if (isLoadingConfigs) {
@@ -238,6 +442,48 @@ const Import: React.FC = () => {
                   <span className="font-medium">Duplicates:</span> {config.duplicate_handling}
                 </div>
               </div>
+
+              {/* File Match Keyword Display */}
+              {config.file_match_keyword && (
+                <div className="rounded-lg border border-green-200 bg-green-50 p-3">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <div className="flex-1">
+                      <span className="text-xs font-medium text-green-900 sm:text-sm">Smart File Matching Active</span>
+                      <p className="text-[11px] text-green-700 mt-1">
+                        Automatically uses latest file containing: <strong>"{config.file_match_keyword}"</strong>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Available Files Section */}
+              {config.selected_files && config.selected_files.length > 0 && (
+                <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <FileText className="h-3.5 w-3.5 text-blue-600 sm:h-4 sm:w-4" />
+                    <span className="text-xs font-medium text-blue-900 sm:text-sm">Selected Files</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {config.selected_files.slice(0, 3).map((file, index) => (
+                      <Badge key={index} variant="outline" className="text-xs bg-white">
+                        {file}
+                      </Badge>
+                    ))}
+                    {config.selected_files.length > 3 && (
+                      <Badge variant="outline" className="text-xs bg-white">
+                        +{config.selected_files.length - 3} more
+                      </Badge>
+                    )}
+                  </div>
+                  {config.last_file_scan && (
+                    <div className="mt-1 text-[11px] text-blue-700">
+                      Last scanned: {new Date(config.last_file_scan).toLocaleString()}
+                    </div>
+                  )}
+                </div>
+              )}
               
               {/* Field Mappings Status */}
               <div className="rounded-lg border p-3 sm:mt-0">
@@ -296,6 +542,73 @@ const Import: React.FC = () => {
                     </p>
                   </div>
                 )}
+              </div>
+
+              {/* Sync Status */}
+              {syncStatuses.get(config.id) && syncStatuses.get(config.id)?.status !== 'idle' && (
+                <div className={`rounded-lg border p-3 ${
+                  syncStatuses.get(config.id)?.status === 'success' ? 'border-green-200 bg-green-50' :
+                  syncStatuses.get(config.id)?.status === 'error' ? 'border-red-200 bg-red-50' :
+                  'border-blue-200 bg-blue-50'
+                }`}>
+                  <div className="flex items-center gap-2">
+                    {syncStatuses.get(config.id)?.status === 'running' && <Loader2 className="h-4 w-4 animate-spin text-blue-600" />}
+                    {syncStatuses.get(config.id)?.status === 'success' && <CheckCircle className="h-4 w-4 text-green-600" />}
+                    {syncStatuses.get(config.id)?.status === 'error' && <XCircle className="h-4 w-4 text-red-600" />}
+                    <span className="text-xs font-medium">{syncStatuses.get(config.id)?.message}</span>
+                  </div>
+                  {syncStatuses.get(config.id)?.records_imported !== undefined && (
+                    <div className="mt-1 text-[11px] text-gray-600">
+                      Records imported: {syncStatuses.get(config.id)?.records_imported}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Quick Action Buttons */}
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleQuickSync(config.id);
+                  }}
+                  disabled={!config.fieldMappings || config.fieldMappings.length === 0 || syncStatuses.get(config.id)?.status === 'running'}
+                  className="flex-1"
+                >
+                  {syncStatuses.get(config.id)?.status === 'running' ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Syncing...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      Sync Now
+                    </>
+                  )}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleTestConnection(config.id);
+                  }}
+                  disabled={testingConnection.has(config.id)}
+                >
+                  {testingConnection.has(config.id) ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Testing...
+                    </>
+                  ) : (
+                    <>
+                      <Database className="mr-2 h-4 w-4" />
+                      Test Connection
+                    </>
+                  )}
+                </Button>
               </div>
             </CardContent>
           </Card>

@@ -200,6 +200,10 @@ const ImportConfiguration: React.FC<ImportConfigurationProps> = ({ onEditConfig,
   const [isEditing, setIsEditing] = useState(false);
   const [currentTabIndex, setCurrentTabIndex] = useState(0);
   const [remoteFilePick, setRemoteFilePick] = useState<RemoteFilePickState | null>(null);
+  const [availableFiles, setAvailableFiles] = useState<string[]>([]);
+  const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
+  const [isLoadingFiles, setIsLoadingFiles] = useState(false);
+  const [fileMatchKeyword, setFileMatchKeyword] = useState<string>('');
 
   // Tab order as requested: Connection, Test, Field Mappings, Processing, Schedule, File Settings
   const tabOrder = ['connection', 'test', 'mappings', 'processing', 'schedule', 'file'];
@@ -682,11 +686,25 @@ const ImportConfiguration: React.FC<ImportConfigurationProps> = ({ onEditConfig,
       setCurrentConfig(formConfig);
       setIsEditing(true);
       
+      // Load available files and selected files if they exist
+      if (preloadedConfig.available_files) {
+        setAvailableFiles(preloadedConfig.available_files);
+      }
+      if (preloadedConfig.selected_files) {
+        setSelectedFiles(preloadedConfig.selected_files);
+      }
+      if (preloadedConfig.file_match_keyword) {
+        setFileMatchKeyword(preloadedConfig.file_match_keyword);
+      }
+      
       console.log('=== END PRELOADED CONFIG SETUP ===');
     } else if (!preloadedConfig) {
       // Reset to default when no preloaded config
       setCurrentConfig(createNewConfig());
       setIsEditing(false);
+      setAvailableFiles([]);
+      setSelectedFiles([]);
+      setFileMatchKeyword('');
     }
   }, [preloadedConfig]);
 
@@ -740,6 +758,10 @@ const ImportConfiguration: React.FC<ImportConfigurationProps> = ({ onEditConfig,
           ...rest,
           is_required: isRequired,
         })),
+        selectedFiles: selectedFiles.length > 0 ? selectedFiles : undefined,
+        availableFiles: availableFiles.length > 0 ? availableFiles : undefined,
+        lastFileScan: availableFiles.length > 0 ? new Date().toISOString() : undefined,
+        fileMatchKeyword: fileMatchKeyword || undefined
       };
 
       console.log('Sending config data:', mappedConfig);
@@ -761,6 +783,9 @@ const ImportConfiguration: React.FC<ImportConfigurationProps> = ({ onEditConfig,
         loadConfigs();
         setCurrentConfig(createNewConfig());
         setIsEditing(false);
+        // Clear file selections after save
+        setSelectedFiles([]);
+        setAvailableFiles([]);
       } else {
         const error = await response.json();
         console.error('Save config error response:', error);
@@ -861,6 +886,69 @@ const ImportConfiguration: React.FC<ImportConfigurationProps> = ({ onEditConfig,
       });
     } finally {
       setIsTestingConnection(false);
+    }
+  };
+
+  // List files from remote directory
+  const listRemoteFiles = async () => {
+    if (!currentConfig?.connection) return;
+
+    // Validate required fields
+    if (!currentConfig.connection.hostUrl || !currentConfig.connection.username || !currentConfig.connection.password) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in connection details first",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      setIsLoadingFiles(true);
+      
+      const connectionData = {
+        connectionType: currentConfig.connection.type,
+        hostUrl: currentConfig.connection.hostUrl,
+        port: currentConfig.connection.port,
+        username: currentConfig.connection.username,
+        password: currentConfig.connection.password,
+        remoteDirectory: currentConfig.connection.remoteDirectory,
+        filePattern: currentConfig.connection.filePattern
+      };
+      
+      const response = await fetch(buildApiUrl('import/list-files'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        },
+        body: JSON.stringify(connectionData)
+      });
+
+      const result = await response.json();
+      
+      if (result.success && result.files) {
+        setAvailableFiles(result.files);
+        toast({
+          title: "Files Retrieved",
+          description: `Found ${result.files.length} file(s) matching the pattern`
+        });
+      } else {
+        toast({
+          title: "Failed to List Files",
+          description: result.error || "Could not retrieve file list",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Error listing files:', error);
+      toast({
+        title: "Error",
+        description: "Failed to list remote files",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoadingFiles(false);
     }
   };
 
@@ -2279,6 +2367,122 @@ const ImportConfiguration: React.FC<ImportConfigurationProps> = ({ onEditConfig,
                       placeholder="*.csv"
                     />
                   </div>
+                </div>
+
+                {/* File Selection Section */}
+                <div className="space-y-3 rounded-lg border border-blue-200 bg-blue-50 p-4">
+                  <div>
+                    <Label className="text-base font-semibold text-blue-900">Smart File Matching</Label>
+                    <p className="text-xs text-blue-700 mt-1">
+                      Set a keyword to automatically find files even when names change daily
+                    </p>
+                  </div>
+
+                  {/* Keyword Pattern Input */}
+                  <div className="space-y-2">
+                    <Label htmlFor="fileMatchKeyword" className="text-sm text-blue-900">
+                      File Match Keyword (e.g., "claycooleyhyundaisherman")
+                    </Label>
+                    <Input
+                      id="fileMatchKeyword"
+                      value={fileMatchKeyword}
+                      onChange={(e) => setFileMatchKeyword(e.target.value)}
+                      placeholder="Enter keyword to match files automatically"
+                      className="bg-white"
+                    />
+                    {fileMatchKeyword && (
+                      <div className="rounded border border-green-200 bg-green-50 p-2">
+                        <p className="text-xs text-green-800">
+                          ✓ Will automatically use the latest file containing "{fileMatchKeyword}"
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="border-t border-blue-300 my-3"></div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-sm font-semibold text-blue-900">Or Select Specific Files</Label>
+                      <p className="text-xs text-blue-700 mt-1">
+                        Manually scan and select exact files (optional if keyword is set)
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={listRemoteFiles}
+                      disabled={isLoadingFiles || !currentConfig.connection.hostUrl || !currentConfig.connection.username || !currentConfig.connection.password}
+                      className="bg-white"
+                    >
+                      {isLoadingFiles ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Scanning...
+                        </>
+                      ) : (
+                        <>
+                          <Database className="mr-2 h-4 w-4" />
+                          Scan Files
+                        </>
+                      )}
+                    </Button>
+                  </div>
+
+                  {availableFiles.length > 0 && (
+                    <div className="space-y-2">
+                      <Label className="text-sm text-blue-900">Available Files ({availableFiles.length})</Label>
+                      <div className="max-h-48 overflow-y-auto space-y-1 rounded border bg-white p-2">
+                        {availableFiles.map((file, index) => (
+                          <div key={index} className="flex items-center space-x-2 p-2 hover:bg-blue-50 rounded">
+                            <Checkbox
+                              id={`file-${index}`}
+                              checked={selectedFiles.includes(file)}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setSelectedFiles([...selectedFiles, file]);
+                                } else {
+                                  setSelectedFiles(selectedFiles.filter(f => f !== file));
+                                }
+                              }}
+                            />
+                            <label
+                              htmlFor={`file-${index}`}
+                              className="text-sm cursor-pointer flex-1"
+                            >
+                              {file}
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                      
+                      {selectedFiles.length > 0 && (
+                        <div className="flex items-center justify-between p-2 bg-white rounded border border-blue-300">
+                          <span className="text-sm font-medium text-blue-900">
+                            {selectedFiles.length} file(s) selected
+                          </span>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setSelectedFiles([])}
+                            className="h-7 text-xs"
+                          >
+                            Clear Selection
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {availableFiles.length === 0 && !isLoadingFiles && (
+                    <div className="text-center py-4 text-sm text-blue-700">
+                      {fileMatchKeyword 
+                        ? `Keyword pattern "${fileMatchKeyword}" will be used automatically during sync` 
+                        : 'Set a keyword pattern above or scan files to select specific ones'}
+                    </div>
+                  )}
                 </div>
                 
                 <TabNavigation />

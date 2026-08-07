@@ -13,7 +13,7 @@ const __dirname = dirname(__filename);
 class ImportService {
   constructor() {
     this.pool = new Pool({
-      connectionString: process.env.DATABASE_URL || process.env.DATABASE_CONNECTION_STRING || 'postgresql://postgres:password@localhost:5432/vehicle_management'
+      connectionString: 'postgresql://postgres:Dealeriq@localhost:5432/vehicle_management'
     });
   }
 
@@ -57,11 +57,18 @@ class ImportService {
 
       // Create connection settings
       if (configData.connection) {
+        // Prepare selected files and available files
+        const selectedFiles = configData.selectedFiles || [];
+        const availableFiles = configData.availableFiles || [];
+        const lastFileScan = configData.lastFileScan || null;
+        const fileMatchKeyword = configData.fileMatchKeyword || null;
+
         await client.query(`
           INSERT INTO import_connection_settings (
             import_config_id, connection_type, host_url, port, username, 
-            password_encrypted, remote_directory, file_pattern
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            password_encrypted, remote_directory, file_pattern,
+            selected_files, available_files, last_file_scan, file_match_keyword
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
         `, [
           importConfigId,
           configData.connection.type,
@@ -70,7 +77,11 @@ class ImportService {
           configData.connection.username,
           this.encryptPassword(configData.connection.password),
           configData.connection.remoteDirectory || '/',
-          configData.connection.filePattern || '*'
+          configData.connection.filePattern || '*',
+          selectedFiles.length > 0 ? selectedFiles : null,
+          availableFiles.length > 0 ? availableFiles : null,
+          lastFileScan,
+          fileMatchKeyword
         ]);
       }
 
@@ -220,6 +231,7 @@ class ImportService {
         SELECT 
           ic.*,
           ics.connection_type, ics.host_url, ics.port, ics.username, ics.remote_directory, ics.file_pattern,
+          ics.selected_files, ics.available_files, ics.last_file_scan, ics.file_match_keyword,
           ifs.file_type, ifs.delimiter, ifs.has_header, ifs.encoding, ifs.date_format,
           iss.frequency, iss.time_hour, iss.time_minute, iss.day_of_week, iss.day_of_month,
           ips.duplicate_handling, ips.batch_size, ips.max_errors, ips.validate_data
@@ -335,6 +347,10 @@ class ImportService {
         password: decryptedPassword, // Decrypted password for execution
         remote_directory: connectionResult.rows[0]?.remote_directory,
         file_pattern: connectionResult.rows[0]?.file_pattern,
+        file_match_keyword: connectionResult.rows[0]?.file_match_keyword,
+        selected_files: connectionResult.rows[0]?.selected_files || [],
+        available_files: connectionResult.rows[0]?.available_files || [],
+        last_file_scan: connectionResult.rows[0]?.last_file_scan,
         file_type: fileSettingsResult.rows[0]?.file_type,
         delimiter: fileSettingsResult.rows[0]?.delimiter,
         has_header: fileSettingsResult.rows[0]?.has_header,
@@ -382,13 +398,19 @@ class ImportService {
         );
 
         if (connectionCheck.rows.length > 0) {
+          // Prepare selected files and available files
+          const selectedFiles = configData.selectedFiles || [];
+          const availableFiles = configData.availableFiles || [];
+          const lastFileScan = configData.lastFileScan || null;
+
           if (configData.connection.password) {
             // Update with password
             await client.query(`
               UPDATE import_connection_settings 
               SET connection_type = $1, host_url = $2, port = $3, username = $4, 
-                  password_encrypted = $5, remote_directory = $6, file_pattern = $7
-              WHERE import_config_id = $8
+                  password_encrypted = $5, remote_directory = $6, file_pattern = $7,
+                  selected_files = $8, available_files = $9, last_file_scan = $10
+              WHERE import_config_id = $11
             `, [
               configData.connection.type,
               configData.connection.hostUrl,
@@ -397,6 +419,9 @@ class ImportService {
               this.encryptPassword(configData.connection.password),
               configData.connection.remoteDirectory || '/',
               configData.connection.filePattern || '*',
+              selectedFiles.length > 0 ? selectedFiles : null,
+              availableFiles.length > 0 ? availableFiles : null,
+              lastFileScan,
               importConfigId
             ]);
           } else {
@@ -404,8 +429,9 @@ class ImportService {
             await client.query(`
               UPDATE import_connection_settings 
               SET connection_type = $1, host_url = $2, port = $3, username = $4, 
-                  remote_directory = $5, file_pattern = $6
-              WHERE import_config_id = $7
+                  remote_directory = $5, file_pattern = $6,
+                  selected_files = $7, available_files = $8, last_file_scan = $9
+              WHERE import_config_id = $10
             `, [
               configData.connection.type,
               configData.connection.hostUrl,
@@ -413,16 +439,25 @@ class ImportService {
               configData.connection.username,
               configData.connection.remoteDirectory || '/',
               configData.connection.filePattern || '*',
+              selectedFiles.length > 0 ? selectedFiles : null,
+              availableFiles.length > 0 ? availableFiles : null,
+              lastFileScan,
               importConfigId
             ]);
           }
         } else {
           // Create new connection settings
+          const selectedFiles = configData.selectedFiles || [];
+          const availableFiles = configData.availableFiles || [];
+          const lastFileScan = configData.lastFileScan || null;
+          const fileMatchKeyword = configData.fileMatchKeyword || null;
+
           await client.query(`
             INSERT INTO import_connection_settings (
               import_config_id, connection_type, host_url, port, username, 
-              password_encrypted, remote_directory, file_pattern
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+              password_encrypted, remote_directory, file_pattern,
+              selected_files, available_files, last_file_scan, file_match_keyword
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
           `, [
             importConfigId,
             configData.connection.type,
@@ -431,7 +466,11 @@ class ImportService {
             configData.connection.username,
             this.encryptPassword(configData.connection.password || ''),
             configData.connection.remoteDirectory || '/',
-            configData.connection.filePattern || '*'
+            configData.connection.filePattern || '*',
+            selectedFiles.length > 0 ? selectedFiles : null,
+            availableFiles.length > 0 ? availableFiles : null,
+            lastFileScan,
+            fileMatchKeyword
           ]);
         }
       }
@@ -859,20 +898,33 @@ class ImportService {
     return new Promise((resolve, reject) => {
       const results = [];
       const hasHeader = config.has_header !== false;
-      let headers = null;
+      
+      // When CSV has headers, DON'T pass headers option to csv-parser
+      // This lets csv-parser automatically detect and use the first row as headers
+      const csvOptions = {
+        separator: config.delimiter || ','
+      };
+      
+      // Only specify headers if we need custom column names (no header row)
+      if (!hasHeader && config.fieldMappings && config.fieldMappings.length > 0) {
+        csvOptions.headers = config.fieldMappings.map(m => m.source_field);
+        console.log(`📋 Using custom headers from field mappings (${csvOptions.headers.length} columns):`, csvOptions.headers);
+      }
       
       fs.createReadStream(filePath)
-        .pipe(csv({
-          separator: config.delimiter || ',',
-          headers: hasHeader
-        }))
+        .pipe(csv(csvOptions))
         .on('data', (data) => {
-          if (!hasHeader && !headers) {
-            headers = Object.keys(data);
-          }
           results.push(data);
         })
         .on('end', () => {
+          console.log(`✅ CSV parsing complete: ${results.length} records`);
+          if (results.length > 0) {
+            console.log('📝 First record keys:', Object.keys(results[0]).slice(0, 10));
+            console.log('📝 Sample values:', {
+              key1: Object.keys(results[0])[0] + ' = ' + results[0][Object.keys(results[0])[0]],
+              key2: Object.keys(results[0])[1] + ' = ' + results[0][Object.keys(results[0])[1]]
+            });
+          }
           resolve(results);
         })
         .on('error', (error) => {
@@ -970,6 +1022,17 @@ class ImportService {
           
           // Transform record based on field mappings
           let transformedRecord = this.transformRecordWithValidation(record, config.fieldMappings);
+          
+          // Add dealer_id from config (required field not in CSV)
+          transformedRecord.dealer_id = config.dealer_id;
+          
+          // Set default values for nullable/optional fields if missing
+          if (!transformedRecord.certified) {
+            transformedRecord.certified = '';
+          }
+          if (!transformedRecord.other_price && transformedRecord.other_price !== 0) {
+            transformedRecord.other_price = 0;
+          }
           
           console.log('Transformed record:', JSON.stringify(transformedRecord, null, 2));
           
@@ -2200,7 +2263,9 @@ class ImportService {
 
   // Main Import Execution
   async executeImport(importConfigId, options = {}) {
-    const { selectedRows = [], fieldMappings = [], transformedData = null, remoteFileName } = options;
+    const { selectedRows = [], fieldMappings = [], transformedData = null, remoteFileName: providedFileName } = options;
+    let selectedFileName = providedFileName; // Use mutable variable
+    
     const config = await this.getImportConfig(importConfigId);
     if (!config) {
       throw new Error('Import configuration not found');
@@ -2222,11 +2287,31 @@ class ImportService {
     if (!transformedData || transformedData.length === 0) {
       const names = await this.getMatchingRemoteFilenames(config);
       if (names !== null) {
-        if (names.length > 1 && !remoteFileName) {
-          return { needsFileSelection: true, matchingFiles: names };
-        }
         if (names.length === 0) {
           throw new Error(`No files found matching pattern: ${config.file_pattern || '*.csv'}`);
+        }
+        
+        // Auto-select file if keyword pattern is configured
+        if (names.length > 1 && !selectedFileName && config.file_match_keyword) {
+          console.log(`🔍 Multiple files found, using keyword pattern: ${config.file_match_keyword}`);
+          const keyword = config.file_match_keyword.toLowerCase();
+          const matchingFiles = names.filter(name => name.toLowerCase().includes(keyword));
+          
+          if (matchingFiles.length === 0) {
+            throw new Error(`No files matching keyword "${config.file_match_keyword}" found among: ${names.join(', ')}`);
+          }
+          
+          if (matchingFiles.length === 1) {
+            selectedFileName = matchingFiles[0];
+            console.log(`✅ Auto-selected file: ${selectedFileName}`);
+          } else {
+            // Multiple matches - sort and pick the latest (assuming timestamp in filename)
+            matchingFiles.sort();
+            selectedFileName = matchingFiles[matchingFiles.length - 1];
+            console.log(`✅ Auto-selected latest file: ${selectedFileName} from ${matchingFiles.length} matches`);
+          }
+        } else if (names.length > 1 && !selectedFileName) {
+          return { needsFileSelection: true, matchingFiles: names };
         }
       }
     }
@@ -2258,7 +2343,7 @@ class ImportService {
           fileStats = { size: JSON.stringify(transformedData).length };
         } else {
           // Download file
-          const downloadResult = await this.downloadFile(config, { remoteFileName });
+          const downloadResult = await this.downloadFile(config, { remoteFileName: selectedFileName });
           fileName = downloadResult.fileName;
           localPath = downloadResult.localPath;
           
@@ -2331,7 +2416,7 @@ class ImportService {
           WHERE id = $3
         `, [fileName, fileStats.size, historyId]);
         
-        // Archive or clean up local file if it exists
+        // Clean up local file
         if (localPath && fs.existsSync(localPath)) {
           if (config.processing?.archive_processed_files) {
             const archivePath = path.join(__dirname, '../../uploads/imports/processed', fileName);
@@ -2352,6 +2437,15 @@ class ImportService {
             fs.unlinkSync(localPath);
             console.log('Temporary file deleted:', localPath);
           }
+        }
+        
+        // Post-import processing: Update trims and generate QR codes
+        console.log('\n=== POST-IMPORT PROCESSING ===');
+        try {
+          await this.postImportProcessing(config.dealer_id, config.id, client);
+        } catch (error) {
+          console.error('⚠️ Post-import processing failed (non-critical):', error.message);
+          // Don't throw - this is non-critical and shouldn't fail the import
         }
         
         return { 
@@ -2687,6 +2781,72 @@ class ImportService {
     
     console.log(`Converted "${value}" to number: ${numValue}`);
     return numValue;
+  }
+
+  // Post-import processing: Update trims and generate QR codes
+  async postImportProcessing(dealerId, importConfigId, client) {
+    try {
+      console.log(`🔄 Starting post-import processing for dealer ${dealerId}, import config ${importConfigId}`);
+      
+      // Step 1: Find vehicles from this import that need QR codes
+      const vehiclesNeedingQR = await client.query(`
+        SELECT id, vin, dealer_id, make, model, year
+        FROM vehicles
+        WHERE dealer_id = $1
+          AND import_config_id = $2
+          AND (qr_code_url IS NULL OR qr_code_url = '')
+          AND inventory_status = 'available'
+        LIMIT 100
+      `, [dealerId, importConfigId]);
+      
+      console.log(`📊 Found ${vehiclesNeedingQR.rows.length} vehicles needing QR codes`);
+      
+      // Step 2: Generate QR codes
+      if (vehiclesNeedingQR.rows.length > 0) {
+        const { generateVehicleQRCodeWithURL } = await import('./qrCodeGenerator.js');
+        const frontendBaseURL = process.env.FRONTEND_URL || 'https://app.dealeriq.co';
+        
+        let qrGenerated = 0;
+        for (const vehicle of vehiclesNeedingQR.rows) {
+          try {
+            const qrCodeUrl = await generateVehicleQRCodeWithURL(
+              vehicle.id,
+              frontendBaseURL,
+              vehicle
+            );
+            
+            await client.query(`
+              UPDATE vehicles
+              SET qr_code_url = $1, 
+                  sticker_generation_status = 'generated',
+                  updated_at = NOW()
+              WHERE id = $2
+            `, [qrCodeUrl, vehicle.id]);
+            
+            qrGenerated++;
+            if (qrGenerated <= 5) {
+              console.log(`✅ Generated QR code for ${vehicle.make} ${vehicle.model} (${vehicle.vin})`);
+            }
+          } catch (error) {
+            console.error(`❌ Failed to generate QR for vehicle ${vehicle.id}:`, error.message);
+          }
+        }
+        
+        if (qrGenerated > 5) {
+          console.log(`✅ Generated ${qrGenerated} QR codes total`);
+        }
+      }
+      
+      // Step 3: Update trim information (you can implement trim API calls here)
+      // For now, we'll just log that this step would happen
+      console.log('📝 Trim update check complete (implement trim API if needed)');
+      
+      console.log('✅ Post-import processing completed');
+      
+    } catch (error) {
+      console.error('❌ Post-import processing error:', error);
+      throw error;
+    }
   }
 
   // Method to mark vehicles as sold if they're not in the new inventory
