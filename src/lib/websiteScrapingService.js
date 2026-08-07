@@ -37,17 +37,58 @@ class WebsiteScrapingService {
         throw new Error('Invalid website URL');
       }
 
-      // Launch browser
-      browser = await puppeteer.launch({
+      // Launch browser with production-ready configuration
+      const launchOptions = {
         headless: true,
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
           '--disable-dev-shm-usage',
           '--disable-accelerated-2d-canvas',
-          '--disable-gpu'
+          '--disable-gpu',
+          '--disable-extensions',
+          '--disable-background-timer-throttling',
+          '--disable-backgrounding-occluded-windows',
+          '--disable-renderer-backgrounding'
         ]
-      });
+      };
+
+      // For production/Render: use system Chrome if available
+      if (process.env.NODE_ENV === 'production' || process.env.RENDER) {
+        // Common Chrome/Chromium paths on Linux servers
+        const chromePaths = [
+          '/usr/bin/google-chrome-stable',
+          '/usr/bin/google-chrome',
+          '/usr/bin/chromium-browser',
+          '/usr/bin/chromium',
+          process.env.CHROME_BIN,
+          process.env.PUPPETEER_EXECUTABLE_PATH
+        ].filter(Boolean);
+
+        // Try to find Chrome
+        for (const chromePath of chromePaths) {
+          try {
+            const fs = await import('fs');
+            if (fs.existsSync(chromePath)) {
+              launchOptions.executablePath = chromePath;
+              console.log(`✅ Using Chrome at: ${chromePath}`);
+              break;
+            }
+          } catch (err) {
+            // Continue to next path
+          }
+        }
+
+        // If no Chrome found, throw helpful error
+        if (!launchOptions.executablePath) {
+          throw new Error(
+            'Chrome/Chromium not found. Please install Chrome or set PUPPETEER_EXECUTABLE_PATH environment variable. ' +
+            'For Render: Add Chrome buildpack or use puppeteer-core with custom executable.'
+          );
+        }
+      }
+
+      browser = await puppeteer.launch(launchOptions);
 
       const page = await browser.newPage();
       await page.setUserAgent(this.userAgent);
