@@ -2379,7 +2379,12 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
     // Add customer name to greeting if available
     const customerName = customer?.name && customer.name !== 'Guest User' ? customer.name : '';
     const firstName = customerName ? customerName.split(' ')[0] : '';
-    let personalizedGreeting = greeting || 'WELCOME to **Clay Cooley Hyundai**! How can I help you today? I\'m here to help you find the **perfect vehicle**. What type of car are you looking for today? 🚗';
+    
+    // Get dynamic dealership name from dealer profile
+    const dealershipName = dealerInfo?.business_name || dealerInfo?.name || 'our dealership';
+    
+    // Use dynamic dealership name in fallback greeting
+    let personalizedGreeting = greeting || `WELCOME to **${dealershipName}**! How can I help you today? I'm here to help you find the **perfect vehicle**. What type of car are you looking for today? 🚗`;
     
     // Debug greeting personalization
     console.log('🎯 Greeting Personalization Debug:', {
