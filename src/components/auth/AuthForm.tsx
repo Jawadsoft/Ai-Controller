@@ -177,8 +177,8 @@ export const AuthForm = ({ mode, onModeChange }: AuthFormProps) => {
   };
 
   return (
-    <Card className="mx-auto w-full max-w-md border-0 bg-transparent shadow-none">
-      <CardHeader className="space-y-6 p-0 text-center sm:text-left">
+    <Card className="mx-auto w-full max-w-md bg-white/95 backdrop-blur-md shadow-2xl border border-white/20">
+      <CardHeader className="space-y-6 text-center sm:text-left">
         <div className="mx-auto flex flex-col items-center gap-3 sm:mx-0 sm:flex-row sm:items-center">
           <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-primary shadow-sm">
             <Car className="h-8 w-8 text-primary-foreground" />
@@ -203,7 +203,7 @@ export const AuthForm = ({ mode, onModeChange }: AuthFormProps) => {
           </CardDescription>
         </div>
       </CardHeader>
-      <CardContent className="p-0">
+      <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Error Message Display */}
           {errorMessage && (

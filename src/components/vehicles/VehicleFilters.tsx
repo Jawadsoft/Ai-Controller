@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Search, Filter, X, RotateCcw, CheckCircle } from "lucide-react";
+import { Search, Filter, X, RotateCcw, CheckCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { parseVehicleSearch, isCombinedVehicleSearch } from "@/lib/smartSearchParser";
 
@@ -22,6 +22,7 @@ interface Filters {
   feature_search: string;
   min_price: string;
   max_price: string;
+  import_source: string;
   sort_by: string;
   sort_order: string;
 }
@@ -37,6 +38,9 @@ interface VehicleFiltersProps {
 
 export const VehicleFilters = ({ filters, onFiltersChange, onFilterBlur, onClearFilters, totalCount, loading = false }: VehicleFiltersProps) => {
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
+  const [makes, setMakes] = useState<string[]>([]);
+  const [models, setModels] = useState<string[]>([]);
+  const [years, setYears] = useState<string[]>([]);
   const [parsedFields, setParsedFields] = useState<{
     make: string;
     model: string;
@@ -49,6 +53,31 @@ export const VehicleFilters = ({ filters, onFiltersChange, onFilterBlur, onClear
     stock_number: ''
   });
   const [showParsedFields, setShowParsedFields] = useState(false);
+
+  // Fetch makes on mount
+  useEffect(() => {
+    fetch('/api/vehicles/makes')
+      .then(res => res.json())
+      .then(data => setMakes(data.makes || []))
+      .catch(err => console.error('Failed to fetch makes:', err));
+  }, []);
+
+  // Fetch models when make changes
+  useEffect(() => {
+    const makeParam = filters.make ? `?make=${encodeURIComponent(filters.make)}` : '';
+    fetch(`/api/vehicles/models${makeParam}`)
+      .then(res => res.json())
+      .then(data => setModels(data.models || []))
+      .catch(err => console.error('Failed to fetch models:', err));
+  }, [filters.make]);
+
+  // Fetch years on mount
+  useEffect(() => {
+    fetch('/api/vehicles/years')
+      .then(res => res.json())
+      .then(data => setYears(data.years || []))
+      .catch(err => console.error('Failed to fetch years:', err));
+  }, []);
 
   const updateFilter = (key: keyof Filters, value: any) => {
     onFiltersChange({ [key]: value });
@@ -226,36 +255,59 @@ export const VehicleFilters = ({ filters, onFiltersChange, onFilterBlur, onClear
 
           <div>
             <Label htmlFor="make">Make</Label>
-            <Input
-              id="make"
-              placeholder="Make"
-              value={filters.make}
-              onChange={(e) => updateFilter('make', e.target.value)}
-              onBlur={onFilterBlur}
-            />
+            <Select value={filters.make || '__none__'} onValueChange={(value) => {
+              const resolved = value === '__none__' ? '' : value;
+              onFiltersChange({ make: resolved, model: '' }); // Reset model when make changes
+              onFilterBlur();
+            }}>
+              <SelectTrigger>
+                <SelectValue placeholder="All Makes" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">All Makes</SelectItem>
+                {makes.map(make => (
+                  <SelectItem key={make} value={make}>{make}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div>
             <Label htmlFor="model">Model</Label>
-            <Input
-              id="model"
-              placeholder="Model"
-              value={filters.model}
-              onChange={(e) => updateFilter('model', e.target.value)}
-              onBlur={onFilterBlur}
-            />
+            <Select value={filters.model || '__none__'} onValueChange={(value) => {
+              const resolved = value === '__none__' ? '' : value;
+              onFiltersChange({ model: resolved });
+              onFilterBlur();
+            }}>
+              <SelectTrigger>
+                <SelectValue placeholder="All Models" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">All Models</SelectItem>
+                {models.map(model => (
+                  <SelectItem key={model} value={model}>{model}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div>
             <Label htmlFor="year">Year</Label>
-            <Input
-              id="year"
-              type="number"
-              placeholder="Year"
-              value={filters.year}
-              onChange={(e) => updateFilter('year', e.target.value)}
-              onBlur={onFilterBlur}
-            />
+            <Select value={filters.year || '__none__'} onValueChange={(value) => {
+              const resolved = value === '__none__' ? '' : value;
+              onFiltersChange({ year: resolved });
+              onFilterBlur();
+            }}>
+              <SelectTrigger>
+                <SelectValue placeholder="All Years" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">All Years</SelectItem>
+                {years.map(year => (
+                  <SelectItem key={year} value={year}>{year}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div>
@@ -281,19 +333,34 @@ export const VehicleFilters = ({ filters, onFiltersChange, onFilterBlur, onClear
           </div>
         </div>
 
-        {/* Advanced Filters */}
+        {/* Advanced Filters - Collapsible with Better Button */}
         <Collapsible open={isAdvancedOpen} onOpenChange={setIsAdvancedOpen}>
-          <CollapsibleTrigger asChild>
-            <Button variant="ghost" className="p-0 h-auto">
-              Advanced Filters
-            </Button>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="space-y-4 pt-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="flex items-center justify-between pt-2 border-t">
+            <Label className="text-sm font-semibold text-muted-foreground">Advanced Filters</Label>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 px-3">
+                {isAdvancedOpen ? (
+                  <>
+                    <ChevronUp className="h-4 w-4 mr-1" />
+                    Hide
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="h-4 w-4 mr-1" />
+                    Show
+                  </>
+                )}
+              </Button>
+            </CollapsibleTrigger>
+          </div>
+          
+          <CollapsibleContent className="space-y-3 pt-3">
+            {/* Row 1: Status Filters */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
-                <Label htmlFor="inventory_status">Inventory Status</Label>
+                <Label htmlFor="inventory_status" className="text-xs">Inventory Status</Label>
                 <Select value={toSelectValue(filters.inventory_status)} onValueChange={(value) => updateFilterAndSearch('inventory_status', value)}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-9">
                     <SelectValue placeholder="All Status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -306,9 +373,26 @@ export const VehicleFilters = ({ filters, onFiltersChange, onFilterBlur, onClear
               </div>
 
               <div>
-                <Label htmlFor="new_used">New/Used</Label>
+                <Label htmlFor="import_source" className="text-xs">Import Source</Label>
+                <Select value={toSelectValue(filters.import_source)} onValueChange={(value) => updateFilterAndSearch('import_source', value)}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="All Sources" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={ALL_VALUE}>All Sources</SelectItem>
+                    <SelectItem value="manual">Manual</SelectItem>
+                    <SelectItem value="vauto">vAuto</SelectItem>
+                    <SelectItem value="dealersync">DealerSync</SelectItem>
+                    <SelectItem value="carsforsale">CarsForSale</SelectItem>
+                    <SelectItem value="homenet">HomeNet</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="new_used" className="text-xs">New/Used</Label>
                 <Select value={toSelectValue(filters.new_used)} onValueChange={(value) => updateFilterAndSearch('new_used', value)}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-9">
                     <SelectValue placeholder="All" />
                   </SelectTrigger>
                   <SelectContent>
@@ -318,11 +402,14 @@ export const VehicleFilters = ({ filters, onFiltersChange, onFilterBlur, onClear
                   </SelectContent>
                 </Select>
               </div>
+            </div>
 
+            {/* Row 2: Type and Sort */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
-                <Label htmlFor="vehicle_type">Vehicle Type</Label>
+                <Label htmlFor="vehicle_type" className="text-xs">Vehicle Type</Label>
                 <Select value={toSelectValue(filters.vehicle_type)} onValueChange={(value) => updateFilterAndSearch('vehicle_type', value)}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-9">
                     <SelectValue placeholder="All Types" />
                   </SelectTrigger>
                   <SelectContent>
@@ -343,9 +430,9 @@ export const VehicleFilters = ({ filters, onFiltersChange, onFilterBlur, onClear
               </div>
 
               <div>
-                <Label htmlFor="sort_by">Sort By</Label>
+                <Label htmlFor="sort_by" className="text-xs">Sort By</Label>
                 <Select value={filters.sort_by} onValueChange={(value) => updateFilterAndSearch('sort_by', value)}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-9">
                     <SelectValue placeholder="Sort By" />
                   </SelectTrigger>
                   <SelectContent>
@@ -358,12 +445,25 @@ export const VehicleFilters = ({ filters, onFiltersChange, onFilterBlur, onClear
                   </SelectContent>
                 </Select>
               </div>
+
+              <div>
+                <Label htmlFor="sort_order" className="text-xs">Sort Order</Label>
+                <Select value={filters.sort_order} onValueChange={(value) => updateFilterAndSearch('sort_order', value)}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Sort Order" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="DESC">Descending</SelectItem>
+                    <SelectItem value="ASC">Ascending</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
-            {/* Price Range */}
+            {/* Row 3: Price Range */}
             <div>
-              <Label>Price Range ($)</Label>
-              <div className="grid grid-cols-2 gap-2">
+              <Label className="text-xs">Price Range ($)</Label>
+              <div className="grid grid-cols-2 gap-3">
                 <Input
                   type="number"
                   placeholder="Min Price"
@@ -371,6 +471,7 @@ export const VehicleFilters = ({ filters, onFiltersChange, onFilterBlur, onClear
                   value={filters.min_price}
                   onChange={(e) => updateFilter('min_price', e.target.value)}
                   onBlur={onFilterBlur}
+                  className="h-9"
                 />
                 <Input
                   type="number"
@@ -379,22 +480,9 @@ export const VehicleFilters = ({ filters, onFiltersChange, onFilterBlur, onClear
                   value={filters.max_price}
                   onChange={(e) => updateFilter('max_price', e.target.value)}
                   onBlur={onFilterBlur}
+                  className="h-9"
                 />
               </div>
-            </div>
-
-            {/* Sort Order */}
-            <div>
-              <Label htmlFor="sort_order">Sort Order</Label>
-              <Select value={filters.sort_order} onValueChange={(value) => updateFilterAndSearch('sort_order', value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Sort Order" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="DESC">Descending</SelectItem>
-                  <SelectItem value="ASC">Ascending</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
           </CollapsibleContent>
         </Collapsible>

@@ -17,5 +17,7 @@ export interface Vehicle {
   status: string;
   qr_code_url?: string;
   dealer_name?: string;
+  import_source?: string; // Import config name (e.g., "vauto", "dealersync")
+  last_sync?: string; // Last successful sync timestamp for this import source
   created_at: string;
 }

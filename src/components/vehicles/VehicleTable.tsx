@@ -54,6 +54,22 @@ export const VehicleTable = ({ vehicles, selectedVehicles, onSelectionChange, on
     return new Date(dateString).toLocaleDateString();
   };
 
+  const formatDateTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    
+    return date.toLocaleDateString();
+  };
+
   const getSerialNumber = (index: number) => {
     if (!pagination) return index + 1;
     
@@ -197,7 +213,7 @@ export const VehicleTable = ({ vehicles, selectedVehicles, onSelectionChange, on
         </div>
       </div>
       
-      <div className="border rounded-lg">
+      <div className="border rounded-lg overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow>
@@ -208,32 +224,33 @@ export const VehicleTable = ({ vehicles, selectedVehicles, onSelectionChange, on
               />
             </TableHead>
             <TableHead className="w-16">SNO</TableHead>
-            <TableHead>
+            <TableHead className="min-w-[180px]">
               <SortButton field="make">Vehicle</SortButton>
             </TableHead>
-            <TableHead>
+            <TableHead className="w-20">
               <SortButton field="year">Year</SortButton>
             </TableHead>
-            <TableHead>Stock #</TableHead>
-            <TableHead>VIN</TableHead>
-            <TableHead>Dealer</TableHead>
-            <TableHead>
+            <TableHead className="w-28">Stock #</TableHead>
+            <TableHead className="w-44">VIN</TableHead>
+            <TableHead className="w-32">Dealer</TableHead>
+            <TableHead className="w-24">Source</TableHead>
+            <TableHead className="w-24">Last Sync</TableHead>
+            <TableHead className="w-24">
               <SortButton field="status">Status</SortButton>
             </TableHead>
-            <TableHead>Sticker</TableHead>
-            <TableHead>
+            <TableHead className="w-28">Sticker</TableHead>
+            <TableHead className="w-32">
               <SortButton field="price">Price</SortButton>
             </TableHead>
-            <TableHead>
+            <TableHead className="w-28">
               <SortButton field="mileage">Mileage</SortButton>
             </TableHead>
-            <TableHead>Color</TableHead>
-            <TableHead>Type</TableHead>
-            <TableHead>Features</TableHead>
-            <TableHead>
+            <TableHead className="w-24">Color</TableHead>
+            <TableHead className="w-32">Type</TableHead>
+            <TableHead className="w-24">
               <SortButton field="created_at">Added</SortButton>
             </TableHead>
-            <TableHead className="text-right">Actions</TableHead>
+            <TableHead className="text-right w-32">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -248,7 +265,7 @@ export const VehicleTable = ({ vehicles, selectedVehicles, onSelectionChange, on
               <TableCell className="font-medium text-primary">
                 {getSerialNumber(index)}
               </TableCell>
-              <TableCell>
+              <TableCell className="min-w-[180px]">
                 <div>
                   <div className="font-medium">
                     {vehicle.make} {vehicle.model}
@@ -258,23 +275,41 @@ export const VehicleTable = ({ vehicles, selectedVehicles, onSelectionChange, on
                   )}
                 </div>
               </TableCell>
-              <TableCell>{vehicle.year}</TableCell>
-              <TableCell>
+              <TableCell className="w-20">{vehicle.year}</TableCell>
+              <TableCell className="w-28">
                 <span className="font-semibold text-primary">
                   {vehicle.stock_number || "Not assigned"}
                 </span>
               </TableCell>
-              <TableCell>
-                <code className="text-xs bg-muted px-1 py-0.5 rounded">
+              <TableCell className="w-44">
+                <code className="text-xs bg-muted px-1 py-0.5 rounded whitespace-nowrap">
                   {vehicle.vin}
                 </code>
               </TableCell>
-              <TableCell>
-                <span className="text-sm">
+              <TableCell className="w-32">
+                <span className="text-sm truncate block" title={vehicle.dealer_name || "Not assigned"}>
                   {vehicle.dealer_name || "Not assigned"}
                 </span>
               </TableCell>
-              <TableCell>
+              <TableCell className="w-24">
+                {vehicle.import_source ? (
+                  <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200 whitespace-nowrap">
+                    {vehicle.import_source}
+                  </Badge>
+                ) : (
+                  <span className="text-xs text-muted-foreground">Manual</span>
+                )}
+              </TableCell>
+              <TableCell className="w-24">
+                {vehicle.last_sync ? (
+                  <span className="text-xs text-muted-foreground whitespace-nowrap" title={new Date(vehicle.last_sync).toLocaleString()}>
+                    {formatDateTime(vehicle.last_sync)}
+                  </span>
+                ) : (
+                  <span className="text-xs text-muted-foreground">N/A</span>
+                )}
+              </TableCell>
+              <TableCell className="w-24">
                 <Badge
                   variant={
                     vehicle.status === "available"
@@ -287,7 +322,7 @@ export const VehicleTable = ({ vehicles, selectedVehicles, onSelectionChange, on
                   {vehicle.status}
                 </Badge>
               </TableCell>
-              <TableCell>
+              <TableCell className="w-28">
                 <div className="flex flex-col gap-1">
                   {vehicle.sticker_generation_status === 'printed' && (
                     <Badge variant="default" className="text-xs bg-green-600 hover:bg-green-700">
@@ -317,34 +352,16 @@ export const VehicleTable = ({ vehicles, selectedVehicles, onSelectionChange, on
                   )}
                 </div>
               </TableCell>
-              <TableCell className="font-medium">
+              <TableCell className="font-medium w-32">
                 {formatPrice(vehicle.price)}
               </TableCell>
-              <TableCell>{formatMileage(vehicle.mileage)}</TableCell>
-              <TableCell>{vehicle.color || "Not specified"}</TableCell>
-              <TableCell>{vehicle.vehicle_type || "Not specified"}</TableCell>
-              <TableCell>
-                {vehicle.features && vehicle.features.length > 0 ? (
-                  <div className="flex flex-wrap gap-1">
-                    {vehicle.features.slice(0, 2).map((feature, index) => (
-                      <Badge key={index} variant="outline" className="text-xs">
-                        {feature}
-                      </Badge>
-                    ))}
-                    {vehicle.features.length > 2 && (
-                      <Badge variant="outline" className="text-xs">
-                        +{vehicle.features.length - 2}
-                      </Badge>
-                    )}
-                  </div>
-                ) : (
-                  <span className="text-muted-foreground text-sm">None</span>
-                )}
-              </TableCell>
-              <TableCell className="text-sm text-muted-foreground">
+              <TableCell className="w-28">{formatMileage(vehicle.mileage)}</TableCell>
+              <TableCell className="w-24">{vehicle.color || "Not specified"}</TableCell>
+              <TableCell className="w-32">{vehicle.vehicle_type || "Not specified"}</TableCell>
+              <TableCell className="text-sm text-muted-foreground w-24 whitespace-nowrap">
                 {formatDate(vehicle.created_at)}
               </TableCell>
-              <TableCell className="text-right">
+              <TableCell className="text-right w-32">
                 <div className="flex justify-end gap-1">
                   <Button
                     size="sm"

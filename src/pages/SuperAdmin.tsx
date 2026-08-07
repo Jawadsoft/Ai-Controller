@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
@@ -102,7 +103,7 @@ const SuperAdmin = () => {
   const [editingDealer, setEditingDealer] = useState<Dealer | null>(null);
   const [integrationSettings, setIntegrationSettings] = useState<Record<string, Record<string, IntegrationSetting>>>({});
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState("dealers");
   const [stats, setStats] = useState({
     totalDealers: 0,
     activeDealers: 0,
@@ -234,6 +235,10 @@ const SuperAdmin = () => {
     staff_role: 'sales' as 'admin' | 'sales' | 'finance' | 'service' | 'inventory',
     permissions: [] as string[]
   });
+
+  // Delete dealer state
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [dealerToDelete, setDealerToDelete] = useState<Dealer | null>(null);
 
   // Audit state
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
@@ -771,6 +776,19 @@ const SuperAdmin = () => {
       toast.error(`Failed to toggle Marbalism AI: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }, []);
+
+  const handleDeleteDealer = useCallback(async (dealerId: string) => {
+    try {
+      await superAdminAPI.deleteDealer(dealerId);
+      toast.success('Dealer deleted successfully');
+      setShowDeleteDialog(false);
+      setDealerToDelete(null);
+      fetchDealers();
+    } catch (error) {
+      console.error('Error deleting dealer:', error);
+      toast.error(`Failed to delete dealer: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }, [fetchDealers]);
 
   const createSoftwareLead = async (leadData: Partial<SoftwareLead>) => {
     try {
@@ -1806,6 +1824,17 @@ const SuperAdmin = () => {
                             >
                               <CreditCard className="h-4 w-4" />
                             </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => {
+                                setDealerToDelete(dealer);
+                                setShowDeleteDialog(true);
+                              }}
+                              title="Delete Dealer"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
                           </TableCell>
                         </TableRow>
@@ -1817,6 +1846,38 @@ const SuperAdmin = () => {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Delete Dealer Confirmation Dialog */}
+          <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Dealer Account?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete "{dealerToDelete?.business_name}"?
+                  <br /><br />
+                  This will permanently delete all associated data including:
+                  <ul className="list-disc list-inside mt-2 space-y-1">
+                    <li>All vehicles and inventory</li>
+                    <li>All leads and conversations</li>
+                    <li>All staff members and their accounts</li>
+                    <li>All analytics and history</li>
+                    <li>All credit applications and finance data</li>
+                  </ul>
+                  <br />
+                  <strong className="text-destructive">This action cannot be undone.</strong>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => dealerToDelete && handleDeleteDealer(dealerToDelete.id)}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Delete Permanently
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
 
           {/* Audit Tab */}
           <TabsContent value="audit" className="space-y-6">

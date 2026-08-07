@@ -744,7 +744,8 @@ const Dashboard = () => {
               </button>
             )}
 
-            {canAccessFeature("analytics_dashboard") && user.staffRole !== "sales" && (
+            {/* Hidden: AI settings - user request */}
+            {false && canAccessFeature("analytics_dashboard") && user.staffRole !== "sales" && (
               <button
                 type="button"
                 className="group flex items-center justify-between rounded-xl border border-border/70 bg-background px-3 py-2.5 text-left transition-colors hover:bg-muted/60"
@@ -801,7 +802,8 @@ const Dashboard = () => {
               </button>
             )}
 
-            {canAccessFeature("lead_management") && showAdminOperations && (
+            {/* Hidden: Conversation monitor - user request */}
+            {false && canAccessFeature("lead_management") && showAdminOperations && (
               <button
                 type="button"
                 className="group flex items-center justify-between rounded-xl border border-border/70 bg-background px-3 py-2.5 text-left transition-colors hover:bg-muted/60"

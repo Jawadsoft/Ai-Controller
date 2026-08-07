@@ -8,7 +8,7 @@ import { usePermissions } from "@/hooks/usePermissions";
  * Login hero image: add your file at `public/images/login-hero.jpg` (or .png / .webp).
  * It is served as `/images/login-hero.jpg`. Change the path below if you use another name.
  */
-const AUTH_HERO_IMAGE = "/images/login.jpg";
+const AUTH_HERO_IMAGE = "/images/dealership-showroom.jpg";
 
 const Auth = () => {
   const [mode, setMode] = useState<"login" | "signup">("login");
@@ -48,38 +48,36 @@ const Auth = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-white lg:flex-row">
-      {/* Form column */}
-      <div className="flex flex-1 flex-col justify-center px-6 py-10 sm:px-10 lg:px-16 xl:px-20">
-        <div className="mx-auto w-full max-w-md">
-          <AuthForm mode={mode} onModeChange={setMode} />
-    
-        </div>
-      </div>
-
-      {/* Visual column — desktop */}
-      <div className="relative hidden min-h-0 flex-[1.15] lg:block lg:min-h-screen">
+    <div className="relative min-h-screen flex items-center justify-center">
+      {/* Full-screen background image */}
+      <div className="absolute inset-0">
         <img
           src={AUTH_HERO_IMAGE}
           alt=""
           className="absolute inset-0 h-full w-full object-cover"
           loading="lazy"
         />
-        {/* DealerIQ-style deep navy veil for contrast */}
+        {/* Overlay for better form visibility */}
         <div
-          className="absolute inset-0 bg-gradient-to-t from-dealer-navy/90 via-dealer-navy/55 to-dealer-navy/35"
+          className="absolute inset-0 bg-gradient-to-br from-dealer-navy/85 via-dealer-navy/70 to-dealer-navy/85"
           aria-hidden
         />
-        <div className="absolute bottom-10 left-10 right-10 text-white/90">
-          <p className="text-sm font-medium uppercase tracking-[0.2em] text-primary">
-            DealerIQ
-          </p>
-          <p className="mt-2 max-w-md text-lg font-semibold leading-snug">
-            AI-driven tools for smarter showroom sales and lead capture.
-          </p>
-        </div>
       </div>
 
+      {/* Centered form */}
+      <div className="relative z-10 w-full max-w-md px-6 py-10">
+        <AuthForm mode={mode} onModeChange={setMode} />
+      </div>
+
+      {/* DealerIQ branding - bottom corner */}
+      <div className="absolute bottom-8 left-8 right-8 text-white/90 z-10">
+        <p className="text-sm font-medium uppercase tracking-[0.2em] text-primary">
+          DealerIQ
+        </p>
+        <p className="mt-2 max-w-md text-base font-semibold leading-snug">
+          AI-driven tools for smarter showroom sales and lead capture.
+        </p>
+      </div>
     </div>
   );
 };

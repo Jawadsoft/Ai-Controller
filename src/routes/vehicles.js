@@ -30,6 +30,7 @@ router.get('/', async (req, res) => {
     const featureSearch = req.query.feature_search || '';
     const minPrice = req.query.min_price || '';
     const maxPrice = req.query.max_price || '';
+    const importSource = req.query.import_source || '';
     const sortBy = req.query.sort_by || 'created_at';
     const sortOrder = req.query.sort_order || 'DESC';
     
@@ -166,6 +167,18 @@ router.get('/', async (req, res) => {
       paramIndex++;
     }
     
+    if (importSource) {
+      if (importSource.toLowerCase() === 'manual') {
+        // Manual vehicles have no import_config_id
+        whereConditions.push(`v.import_config_id IS NULL`);
+      } else {
+        // Filter by import config name
+        whereConditions.push(`ic.config_name ILIKE $${paramIndex}`);
+        params.push(importSource);
+        paramIndex++;
+      }
+    }
+    
     // Build the WHERE clause
     const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
     
@@ -176,9 +189,21 @@ router.get('/', async (req, res) => {
     
     // Build main query
     const baseQuery = `
-      SELECT v.*, d.business_name as dealer_name 
+      SELECT v.*, 
+             d.business_name as dealer_name, 
+             ic.config_name as import_source,
+             ih.completed_at as last_sync
       FROM vehicles v 
       LEFT JOIN dealers d ON v.dealer_id = d.id 
+      LEFT JOIN import_configs ic ON v.import_config_id = ic.id
+      LEFT JOIN LATERAL (
+        SELECT completed_at 
+        FROM import_history 
+        WHERE import_config_id = v.import_config_id 
+          AND import_status = 'completed'
+        ORDER BY completed_at DESC 
+        LIMIT 1
+      ) ih ON true
       ${whereClause}
     `;
     
@@ -207,6 +232,15 @@ router.get('/', async (req, res) => {
     
     const result = await query(dataQuery, params);
     
+    // Debug: Log first vehicle to check data structure
+    if (result.rows.length > 0) {
+      console.log('Sample vehicle data:', {
+        import_source: result.rows[0].import_source,
+        last_sync: result.rows[0].last_sync,
+        import_config_id: result.rows[0].import_config_id
+      });
+    }
+    
     // Calculate pagination info
     const totalPages = limit === -1 ? 1 : Math.ceil(total / limit);
     const hasNextPage = limit === -1 ? false : page < totalPages;
@@ -232,6 +266,7 @@ router.get('/', async (req, res) => {
         sticker_status: stickerStatus,
         new_used: newUsed,
         stock_number: stockNumber,
+        import_source: importSource,
         min_price: minPrice,
         max_price: maxPrice,
         sort_by: validSortBy,
@@ -1376,6 +1411,90 @@ router.post('/generate-sticker-pdf', async (req, res) => {
   } catch (error) {
     console.error('Error generating sticker PDF:', error);
     res.status(500).json({ error: 'Failed to generate PDF', details: error.message });
+  }
+});
+
+// Get unique makes for filter dropdown
+router.get('/makes', async (req, res) => {
+  try {
+    const dealerId = req.user.dealer_id;
+    
+    if (!dealerId) {
+      return res.json({ makes: [] });
+    }
+
+    const result = await query(`
+      SELECT DISTINCT make 
+      FROM vehicles 
+      WHERE dealer_id = $1 
+        AND make IS NOT NULL 
+        AND make != ''
+      ORDER BY make ASC
+    `, [dealerId]);
+
+    res.json({ makes: result.rows.map(row => row.make) });
+  } catch (error) {
+    console.error('Get makes error:', error);
+    res.status(500).json({ error: 'Failed to fetch makes' });
+  }
+});
+
+// Get unique models for filter dropdown (optionally filtered by make)
+router.get('/models', async (req, res) => {
+  try {
+    const dealerId = req.user.dealer_id;
+    const make = req.query.make || '';
+    
+    if (!dealerId) {
+      return res.json({ models: [] });
+    }
+
+    let queryText = `
+      SELECT DISTINCT model 
+      FROM vehicles 
+      WHERE dealer_id = $1 
+        AND model IS NOT NULL 
+        AND model != ''
+    `;
+    const params = [dealerId];
+
+    if (make) {
+      queryText += ` AND make = $2`;
+      params.push(make);
+    }
+
+    queryText += ` ORDER BY model ASC`;
+
+    const result = await query(queryText, params);
+
+    res.json({ models: result.rows.map(row => row.model) });
+  } catch (error) {
+    console.error('Get models error:', error);
+    res.status(500).json({ error: 'Failed to fetch models' });
+  }
+});
+
+// Get unique years for filter dropdown
+router.get('/years', async (req, res) => {
+  try {
+    const dealerId = req.user.dealer_id;
+    
+    if (!dealerId) {
+      return res.json({ years: [] });
+    }
+
+    const result = await query(`
+      SELECT DISTINCT year 
+      FROM vehicles 
+      WHERE dealer_id = $1 
+        AND year IS NOT NULL
+      ORDER BY year DESC
+    `, [dealerId]);
+
+    res.json({ years: result.rows.map(row => row.year.toString()) });
+  } catch (error) {
+    console.error('Get years error:', error);
+    res.status(500).json({ error: 'Failed to fetch years' });
   }
 });
 

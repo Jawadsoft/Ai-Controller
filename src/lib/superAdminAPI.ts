@@ -271,6 +271,20 @@ export const superAdminAPI = {
     return response.json();
   },
 
+  async deleteDealer(dealerId: string) {
+    const response = await fetch(`${API_BASE}/dealers/${dealerId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    });
+    
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || error.error || 'Failed to delete dealer');
+    }
+    
+    return response.json();
+  },
+
   // Stripe Subscription Management
   async createStripeCustomer(dealerId: string) {
     const response = await fetch(`${API_BASE}/stripe/customers/${dealerId}`, {

@@ -548,18 +548,19 @@ const TopNavigation = () => {
         </div>
 
         {/* Main Navigation */}
-        <NavigationMenu className="hidden lg:flex flex-shrink min-w-0" delayDuration={0}>
-          <NavigationMenuList className="gap-0.5 lg:gap-1">
+        <NavigationMenu className="hidden lg:flex flex-1 min-w-0" delayDuration={0}>
+          <NavigationMenuList className="gap-0.5"
+>
             {/* Dashboard */}
             <NavigationMenuItem>
               <NavigationMenuLink
-                className={cn(
-                  navigationMenuTriggerStyle(),
-                  'h-9 cursor-pointer bg-transparent px-2 lg:px-3 text-sm font-medium text-white/90 hover:bg-white/10 hover:text-white focus:bg-white/10 focus:text-white data-[active]:bg-white/15 data-[state=open]:bg-white/15'
-                )}
-                onClick={() => handleNavigation('/dashboard')}
-              >
-                <LayoutDashboard className="h-4 w-4 mr-1 lg:mr-1.5" />
+                  className={cn(
+                    navigationMenuTriggerStyle(),
+                    'h-9 cursor-pointer bg-transparent px-2 text-sm font-medium text-white/90 hover:bg-white/10 hover:text-white focus:bg-white/10 focus:text-white data-[active]:bg-white/15 data-[state=open]:bg-white/15'
+                  )}
+                  onClick={() => handleNavigation('/dashboard')}
+                >
+                  <LayoutDashboard className="h-4 w-4 mr-1" />
                 Dashboard
               </NavigationMenuLink>
             </NavigationMenuItem>
@@ -571,13 +572,13 @@ const TopNavigation = () => {
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="ghost"
-                      className="h-9 px-2 lg:px-3 text-sm font-medium text-white/90 hover:bg-white/10 hover:text-white"
+                      className="h-9 px-2 text-sm font-medium text-white/90 hover:bg-white/10 hover:text-white"
                       onMouseEnter={() => setVehiclesDropdownOpen(true)}
                       onMouseLeave={() => setVehiclesDropdownOpen(false)}
                     >
-                      <Car className="h-4 w-4 mr-1 lg:mr-1.5" />
+                      <Car className="h-4 w-4 mr-1" />
                       Vehicles
-                      <ChevronDown className="ml-0.5 lg:ml-1 h-3 w-3 text-white/70" />
+                      <ChevronDown className="ml-0.5 h-3 w-3 text-white/70" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent 
@@ -617,13 +618,13 @@ const TopNavigation = () => {
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="ghost"
-                      className="h-9 px-2 lg:px-3 text-sm font-medium text-white/90 hover:bg-white/10 hover:text-white"
+                      className="h-9 px-2 text-sm font-medium text-white/90 hover:bg-white/10 hover:text-white"
                       onMouseEnter={() => setLeadsDropdownOpen(true)}
                       onMouseLeave={() => setLeadsDropdownOpen(false)}
                     >
-                      <Users className="h-4 w-4 mr-1 lg:mr-1.5" />
+                      <Users className="h-4 w-4 mr-1" />
                       Leads
-                      <ChevronDown className="ml-0.5 lg:ml-1 h-3 w-3 text-white/70" />
+                      <ChevronDown className="ml-0.5 h-3 w-3 text-white/70" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent 
@@ -670,13 +671,13 @@ const TopNavigation = () => {
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="ghost"
-                      className="h-9 px-2 lg:px-3 text-sm font-medium text-white/90 hover:bg-white/10 hover:text-white"
+                      className="h-9 px-2 text-sm font-medium text-white/90 hover:bg-white/10 hover:text-white"
                       onMouseEnter={() => setCreditApplicationsDropdownOpen(true)}
                       onMouseLeave={() => setCreditApplicationsDropdownOpen(false)}
                     >
-                      <CreditCard className="h-4 w-4 mr-1 lg:mr-1.5" />
+                      <CreditCard className="h-4 w-4 mr-1" />
                       Finance
-                      <ChevronDown className="ml-0.5 lg:ml-1 h-3 w-3 text-white/70" />
+                      <ChevronDown className="ml-0.5 h-3 w-3 text-white/70" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent 
@@ -734,13 +735,13 @@ const TopNavigation = () => {
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="ghost"
-                      className="h-9 px-2 lg:px-3 text-sm font-medium text-white/90 hover:bg-white/10 hover:text-white"
+                      className="h-9 px-2 text-sm font-medium text-white/90 hover:bg-white/10 hover:text-white"
                       onMouseEnter={() => setAnalyticsDropdownOpen(true)}
                       onMouseLeave={() => setAnalyticsDropdownOpen(false)}
                     >
-                      <BarChart3 className="h-4 w-4 mr-1 lg:mr-1.5" />
+                      <BarChart3 className="h-4 w-4 mr-1" />
                       Analytics
-                      <ChevronDown className="ml-0.5 lg:ml-1 h-3 w-3 text-white/70" />
+                      <ChevronDown className="ml-0.5 h-3 w-3 text-white/70" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent 
@@ -796,13 +797,13 @@ const TopNavigation = () => {
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="ghost"
-                      className="h-9 px-2 lg:px-3 text-sm font-medium text-white/90 hover:bg-white/10 hover:text-white"
+                      className="h-9 px-2 text-sm font-medium text-white/90 hover:bg-white/10 hover:text-white"
                       onMouseEnter={() => setAdminDropdownOpen(true)}
                       onMouseLeave={() => setAdminDropdownOpen(false)}
                     >
-                      <Settings className="h-4 w-4 mr-1 lg:mr-1.5" />
+                      <Settings className="h-4 w-4 mr-1" />
                       Admin
-                      <ChevronDown className="ml-0.5 lg:ml-1 h-3 w-3 text-white/70" />
+                      <ChevronDown className="ml-0.5 h-3 w-3 text-white/70" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent 
@@ -867,14 +868,14 @@ const TopNavigation = () => {
         </NavigationMenu>
 
         {/* Right Section */}
-        <div className="ml-auto flex items-center gap-1.5 sm:gap-2 md:gap-3 flex-shrink-0">
+        <div className="ml-auto flex items-center gap-1.5 sm:gap-2 flex-shrink-0 pl-2">
           {/* Search Bar - hidden on mobile, visible md+ */}
           <div className="relative hidden md:block flex-shrink-0">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
             <Input
               type="search"
               placeholder="Search now"
-              className="h-9 w-[160px] lg:w-[220px] xl:w-[280px] border-white/25 bg-white/15 pl-9 pr-4 text-white placeholder:text-white/45 focus-visible:bg-white/20 focus-visible:ring-white/25"
+              className="h-9 w-[140px] lg:w-[180px] xl:w-[240px] border-white/25 bg-white/15 pl-9 pr-4 text-white placeholder:text-white/45 focus-visible:bg-white/20 focus-visible:ring-white/25"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => {

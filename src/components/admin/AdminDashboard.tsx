@@ -318,11 +318,11 @@ const AdminDashboard = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="dealers">Dealers</TabsTrigger>
-            <TabsTrigger value="subscriptions">Subscriptions</TabsTrigger>
-            <TabsTrigger value="audit">Audit Log</TabsTrigger>
+          <TabsList className="inline-flex h-10 items-center justify-start rounded-lg bg-muted p-1 gap-1">
+            <TabsTrigger value="overview" className="px-4 py-2">Overview</TabsTrigger>
+            <TabsTrigger value="dealers" className="px-4 py-2">Dealers</TabsTrigger>
+            <TabsTrigger value="subscriptions" className="px-4 py-2">Subscriptions</TabsTrigger>
+            <TabsTrigger value="audit" className="px-4 py-2">Audit Log</TabsTrigger>
           </TabsList>
 
           {/* Overview Tab */}
@@ -406,47 +406,49 @@ const AdminDashboard = () => {
 
             {/* Recent Dealers */}
             <Card>
-              <CardHeader>
+              <CardHeader className="pb-4">
                 <CardTitle>Recent Dealers</CardTitle>
                 <CardDescription>Latest dealership registrations</CardDescription>
               </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Business Name</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Plan</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Vehicles</TableHead>
-                      <TableHead>Leads</TableHead>
-                      <TableHead>Joined</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {stats?.recentDealers.map((dealer) => (
-                      <TableRow key={dealer.id}>
-                        <TableCell className="font-medium">{dealer.business_name}</TableCell>
-                        <TableCell>{dealer.email}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="capitalize">
-                            {dealer.subscription_status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={dealer.subscription_status === 'active' ? 'default' : 'secondary'}>
-                            {dealer.subscription_status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{dealer.vehicle_count}</TableCell>
-                        <TableCell>{dealer.lead_count}</TableCell>
-                        <TableCell>
-                          {format(new Date(dealer.created_at), 'MMM dd, yyyy')}
-                        </TableCell>
+              <CardContent className="px-6 pb-6">
+                <div className="rounded-lg border overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead className="py-3 px-4 font-semibold">Business Name</TableHead>
+                        <TableHead className="py-3 px-4 font-semibold">Email</TableHead>
+                        <TableHead className="py-3 px-4 font-semibold">Plan</TableHead>
+                        <TableHead className="py-3 px-4 font-semibold">Status</TableHead>
+                        <TableHead className="py-3 px-4 font-semibold text-center">Vehicles</TableHead>
+                        <TableHead className="py-3 px-4 font-semibold text-center">Leads</TableHead>
+                        <TableHead className="py-3 px-4 font-semibold">Joined</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {stats?.recentDealers.map((dealer) => (
+                        <TableRow key={dealer.id} className="hover:bg-muted/30">
+                          <TableCell className="py-4 px-4 font-medium">{dealer.business_name}</TableCell>
+                          <TableCell className="py-4 px-4">{dealer.email}</TableCell>
+                          <TableCell className="py-4 px-4">
+                            <Badge variant="outline" className="capitalize">
+                              {dealer.subscription_status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="py-4 px-4">
+                            <Badge variant={dealer.subscription_status === 'active' ? 'default' : 'secondary'}>
+                              {dealer.subscription_status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="py-4 px-4 text-center font-medium">{dealer.vehicle_count}</TableCell>
+                          <TableCell className="py-4 px-4 text-center font-medium">{dealer.lead_count}</TableCell>
+                          <TableCell className="py-4 px-4">
+                            {format(new Date(dealer.created_at), 'MMM dd, yyyy')}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -454,89 +456,110 @@ const AdminDashboard = () => {
           {/* Dealers Tab */}
           <TabsContent value="dealers" className="space-y-6">
             <Card>
-              <CardHeader>
-                <CardTitle>Dealer Management</CardTitle>
-                <CardDescription>Manage dealer accounts and subscriptions</CardDescription>
+              <CardHeader className="pb-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-xl">Dealer Management</CardTitle>
+                    <CardDescription className="mt-1">Manage dealer accounts and subscription plans</CardDescription>
+                  </div>
+                  <Button variant="default" size="sm">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Dealer
+                  </Button>
+                </div>
               </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Business</TableHead>
-                      <TableHead>Contact</TableHead>
-                      <TableHead>Plan</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Vehicles</TableHead>
-                      <TableHead>Leads</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {dealers.map((dealer) => (
-                      <TableRow key={dealer.id}>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">{dealer.business_name}</div>
-                            <div className="text-sm text-muted-foreground">{dealer.email}</div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">{dealer.contact_name}</div>
-                            {dealer.phone && (
-                              <div className="text-sm text-muted-foreground">{dealer.phone}</div>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Select
-                            value={dealer.subscription_plan}
-                            onValueChange={(value) => 
-                              handleUpdateDealerSubscription(dealer.id, value, dealer.subscription_status)
-                            }
-                          >
-                            <SelectTrigger className="w-32">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="basic">Basic</SelectItem>
-                              <SelectItem value="premium">Premium</SelectItem>
-                              <SelectItem value="enterprise">Enterprise</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </TableCell>
-                        <TableCell>
-                          <Select
-                            value={dealer.subscription_status}
-                            onValueChange={(value) => 
-                              handleUpdateDealerSubscription(dealer.id, dealer.subscription_plan, value)
-                            }
-                          >
-                            <SelectTrigger className="w-32">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="active">Active</SelectItem>
-                              <SelectItem value="inactive">Inactive</SelectItem>
-                              <SelectItem value="suspended">Suspended</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </TableCell>
-                        <TableCell>{dealer.vehicle_count}</TableCell>
-                        <TableCell>{dealer.lead_count}</TableCell>
-                        <TableCell>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => openDealerDialog(dealer)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
+              <CardContent className="px-6 pb-6">
+                <div className="rounded-lg border overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead className="py-3 px-4 font-semibold">Business Name</TableHead>
+                        <TableHead className="py-3 px-4 font-semibold">Contact</TableHead>
+                        <TableHead className="py-3 px-4 font-semibold">Plan</TableHead>
+                        <TableHead className="py-3 px-4 font-semibold">Status</TableHead>
+                        <TableHead className="py-3 px-4 font-semibold text-center">Vehicles</TableHead>
+                        <TableHead className="py-3 px-4 font-semibold text-center">Leads</TableHead>
+                        <TableHead className="py-3 px-4 font-semibold text-center">Actions</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {dealers.map((dealer) => (
+                        <TableRow key={dealer.id} className="hover:bg-muted/30">
+                          <TableCell className="py-4 px-4">
+                            <div>
+                              <div className="font-medium text-sm">{dealer.business_name}</div>
+                              <div className="text-xs text-muted-foreground mt-0.5">{dealer.email}</div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="py-4 px-4">
+                            <div>
+                              <div className="font-medium text-sm">{dealer.contact_name}</div>
+                              {dealer.phone && (
+                                <div className="text-xs text-muted-foreground mt-0.5">{dealer.phone}</div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="py-4 px-4">
+                            <Select
+                              value={dealer.subscription_plan}
+                              onValueChange={(value) => 
+                                handleUpdateDealerSubscription(dealer.id, value, dealer.subscription_status)
+                              }
+                            >
+                              <SelectTrigger className="w-32 h-8">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="basic">Basic</SelectItem>
+                                <SelectItem value="premium">Premium</SelectItem>
+                                <SelectItem value="enterprise">Enterprise</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell className="py-4 px-4">
+                            <Select
+                              value={dealer.subscription_status}
+                              onValueChange={(value) => 
+                                handleUpdateDealerSubscription(dealer.id, dealer.subscription_plan, value)
+                              }
+                            >
+                              <SelectTrigger className="w-32 h-8">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="active">Active</SelectItem>
+                                <SelectItem value="inactive">Inactive</SelectItem>
+                                <SelectItem value="suspended">Suspended</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell className="py-4 px-4 text-center font-medium">{dealer.vehicle_count}</TableCell>
+                          <TableCell className="py-4 px-4 text-center font-medium">{dealer.lead_count}</TableCell>
+                          <TableCell className="py-4 px-4">
+                            <div className="flex items-center justify-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openDealerDialog(dealer)}
+                                className="h-8 px-3"
+                              >
+                                <Edit className="h-3.5 w-3.5 mr-1.5" />
+                                Edit
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 px-3 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -600,19 +623,19 @@ const AdminDashboard = () => {
           {/* Audit Log Tab */}
           <TabsContent value="audit" className="space-y-6">
             <Card>
-              <CardHeader>
+              <CardHeader className="pb-4">
                 <CardTitle>Audit Log</CardTitle>
                 <CardDescription>Track all admin actions and changes</CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="flex items-center space-x-4 mb-4">
-                  <div className="flex items-center space-x-2">
-                    <Label htmlFor="dealer-filter">Dealer</Label>
+              <CardContent className="px-6 pb-6">
+                <div className="flex items-center gap-4 mb-6 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="dealer-filter" className="whitespace-nowrap">Dealer</Label>
                     <Select
                       value={auditFilters.dealer_id}
                       onValueChange={(value) => setAuditFilters({ ...auditFilters, dealer_id: value })}
                     >
-                      <SelectTrigger className="w-48">
+                      <SelectTrigger className="w-48 h-9">
                         <SelectValue placeholder="All dealers" />
                       </SelectTrigger>
                       <SelectContent>
@@ -625,13 +648,13 @@ const AdminDashboard = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <Label htmlFor="action-filter">Action</Label>
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="action-filter" className="whitespace-nowrap">Action</Label>
                     <Select
                       value={auditFilters.action}
                       onValueChange={(value) => setAuditFilters({ ...auditFilters, action: value })}
                     >
-                      <SelectTrigger className="w-48">
+                      <SelectTrigger className="w-48 h-9">
                         <SelectValue placeholder="All actions" />
                       </SelectTrigger>
                       <SelectContent>
@@ -644,46 +667,48 @@ const AdminDashboard = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  <Button onClick={fetchAuditLogs}>
+                  <Button onClick={fetchAuditLogs} size="sm" className="h-9">
                     <Search className="h-4 w-4 mr-2" />
                     Filter
                   </Button>
                 </div>
 
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Action</TableHead>
-                      <TableHead>Dealer</TableHead>
-                      <TableHead>Admin</TableHead>
-                      <TableHead>Details</TableHead>
-                      <TableHead>IP Address</TableHead>
-                      <TableHead>Date</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {auditLogs.map((log) => (
-                      <TableRow key={log.id}>
-                        <TableCell>
-                          <Badge variant="outline">{log.action}</Badge>
-                        </TableCell>
-                        <TableCell>{log.business_name || "N/A"}</TableCell>
-                        <TableCell>{log.user_email || "N/A"}</TableCell>
-                        <TableCell>
-                          {log.new_values && (
-                            <div className="text-sm text-muted-foreground">
-                              {JSON.stringify(log.new_values, null, 2).substring(0, 100)}...
-                            </div>
-                          )}
-                        </TableCell>
-                        <TableCell>{log.ip_address || "N/A"}</TableCell>
-                        <TableCell>
-                          {format(new Date(log.created_at), 'MMM dd, yyyy HH:mm')}
-                        </TableCell>
+                <div className="rounded-lg border overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead className="py-3 px-4 font-semibold">Action</TableHead>
+                        <TableHead className="py-3 px-4 font-semibold">Dealer</TableHead>
+                        <TableHead className="py-3 px-4 font-semibold">Admin</TableHead>
+                        <TableHead className="py-3 px-4 font-semibold">Details</TableHead>
+                        <TableHead className="py-3 px-4 font-semibold">IP Address</TableHead>
+                        <TableHead className="py-3 px-4 font-semibold">Date</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {auditLogs.map((log) => (
+                        <TableRow key={log.id} className="hover:bg-muted/30">
+                          <TableCell className="py-4 px-4">
+                            <Badge variant="outline">{log.action}</Badge>
+                          </TableCell>
+                          <TableCell className="py-4 px-4">{log.business_name || "N/A"}</TableCell>
+                          <TableCell className="py-4 px-4">{log.user_email || "N/A"}</TableCell>
+                          <TableCell className="py-4 px-4">
+                            {log.new_values && (
+                              <div className="text-sm text-muted-foreground truncate max-w-xs">
+                                {JSON.stringify(log.new_values, null, 2).substring(0, 100)}...
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell className="py-4 px-4">{log.ip_address || "N/A"}</TableCell>
+                          <TableCell className="py-4 px-4 whitespace-nowrap">
+                            {format(new Date(log.created_at), 'MMM dd, yyyy HH:mm')}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

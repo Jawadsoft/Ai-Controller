@@ -136,15 +136,37 @@ class SettingsManager {
     return settings[settingType];
   }
 
-  // Get API keys
+  // Get API keys with fallback to global/superadmin keys
   async getAPIKeys(dealerId = null) {
     const settings = await this.getAllSettings(dealerId);
-    return {
+    
+    const dealerKeys = {
       openai: settings.openai_key,
       elevenlabs: settings.elevenlabs_key,
       deepgram: settings.deepgram_key,
       azure: settings.azure_speech_key
     };
+    
+    // If dealer has no API keys configured, fallback to global/superadmin keys
+    if (dealerId && (!dealerKeys.openai || !dealerKeys.elevenlabs)) {
+      console.log(`⚠️ Dealer ${dealerId} missing API keys, falling back to global/superadmin keys`);
+      
+      try {
+        const globalSettings = await this.getAllSettings(null); // null = global/superadmin settings
+        
+        return {
+          openai: dealerKeys.openai || globalSettings.openai_key,
+          elevenlabs: dealerKeys.elevenlabs || globalSettings.elevenlabs_key,
+          deepgram: dealerKeys.deepgram || globalSettings.deepgram_key,
+          azure: dealerKeys.azure || globalSettings.azure_speech_key
+        };
+      } catch (error) {
+        console.error('❌ Failed to load global API keys:', error);
+        return dealerKeys; // Return dealer keys even if empty
+      }
+    }
+    
+    return dealerKeys;
   }
 
   // Get available API keys from any dealer (useful for fallback scenarios)
