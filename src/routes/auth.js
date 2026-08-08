@@ -61,7 +61,7 @@ router.post('/register', [
         [userId, 'dealer']
       );
 
-      // Create dealer profile with default values
+      // Create dealer profile with pending approval status
       await query(
         `INSERT INTO dealers (
           user_id, 
@@ -84,7 +84,7 @@ router.post('/register', [
           contactName, 
           email, 
           'basic', 
-          'active',
+          'pending_approval', // Set to pending approval instead of active
           '', // phone - empty by default
           '', // address - empty by default
           '', // city - empty by default
@@ -107,12 +107,13 @@ router.post('/register', [
       );
 
       res.status(201).json({
-        message: 'User and dealer profile created successfully',
-        token,
+        message: 'Registration successful! Your account is pending approval by our admin team. You will receive an email once your account is approved.',
+        requiresApproval: true,
         user: { 
           id: userId, 
           email, 
           role: 'dealer',
+          subscription_status: 'pending_approval',
           dealerProfile: dealerResult.rows[0]
         }
       });
@@ -199,6 +200,52 @@ router.post('/login', [
     // Check if staff member is active
     if (user.staff_id && !user.staff_active) {
       return res.status(403).json({ error: 'Account is inactive' });
+    }
+
+    // Check if dealer account is approved (for dealer role only)
+    if (user.role === 'dealer' && user.dealer_id) {
+      const dealerStatusResult = await query(
+        'SELECT subscription_status, business_name FROM dealers WHERE id = $1',
+        [user.dealer_id]
+      );
+      
+      if (dealerStatusResult.rows.length > 0) {
+        const dealerStatus = dealerStatusResult.rows[0].subscription_status;
+        
+        if (dealerStatus === 'pending_approval') {
+          return res.status(403).json({ 
+            error: 'Account Pending Approval',
+            message: 'Your account is awaiting approval from our admin team. You will receive an email once approved.',
+            code: 'PENDING_APPROVAL',
+            requiresApproval: true
+          });
+        }
+        
+        if (dealerStatus === 'rejected') {
+          return res.status(403).json({ 
+            error: 'Account Not Approved',
+            message: 'Your account application was not approved. Please contact support for more information.',
+            code: 'ACCOUNT_REJECTED'
+          });
+        }
+        
+        if (dealerStatus === 'suspended') {
+          return res.status(403).json({ 
+            error: 'Account Suspended',
+            message: 'Your account has been suspended. Please contact support.',
+            code: 'ACCOUNT_SUSPENDED'
+          });
+        }
+        
+        // Only 'active' status can proceed
+        if (dealerStatus !== 'active') {
+          return res.status(403).json({ 
+            error: 'Account Inactive',
+            message: 'Your account is not active. Please contact support.',
+            code: 'ACCOUNT_INACTIVE'
+          });
+        }
+      }
     }
 
     try {

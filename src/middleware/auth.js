@@ -5,7 +5,9 @@ const authenticateToken = async (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
-  if (!token) {
+  if (!token || token.trim() === '') {
+    console.log('🔍 Auth Debug - No token provided');
+    console.log('- Authorization header:', authHeader ? 'present' : 'missing');
     return res.status(401).json({ error: 'Access token required' });
   }
 
@@ -55,14 +57,17 @@ const authenticateToken = async (req, res, next) => {
     next();
   } catch (error) {
     console.log('🔍 Auth Debug Info:');
-    console.log('- Token:', token ? token.substring(0, 20) + '...' : 'No token');
+    console.log('- Token:', token ? (token.length > 20 ? token.substring(0, 20) + '...' : token) : 'null');
+    console.log('- Token length:', token ? token.length : 0);
     console.log('- Error:', error.message);
     console.log('- Error type:', error.name);
+    console.log('- Request path:', req.path);
+    console.log('- Request origin:', req.headers.origin || 'no origin');
     
     if (error.name === 'TokenExpiredError') {
       return res.status(401).json({ error: 'Token expired', expiredAt: error.expiredAt });
     } else if (error.name === 'JsonWebTokenError') {
-      return res.status(401).json({ error: 'Invalid token format' });
+      return res.status(401).json({ error: 'Invalid token format', message: 'Please log in again' });
     } else {
       return res.status(403).json({ error: 'Invalid token', details: error.message });
     }

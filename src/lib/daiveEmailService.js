@@ -36,12 +36,18 @@ class DAIVEEmailService {
         console.log(`✅ D.A.I.V.E. Email Service configured with SMTP (from .env)`);
         console.log(`   📧 Server: ${process.env.SMTP_HOST}:${process.env.SMTP_PORT || 587}`);
         console.log(`   📧 Sender: ${process.env.SMTP_USER}`);
+        console.log(`   🔧 Secure: ${process.env.SMTP_SECURE === 'true'}`);
+        
+        // Test the connection
+        this.testConnection();
         return;
       }
 
       // PRIORITY 2: Try Gmail as fallback
       if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
         console.log('🔍 Attempting Gmail configuration from environment variables...');
+        console.log(`   📧 User: ${process.env.GMAIL_USER}`);
+        console.log(`   🔑 Password length: ${process.env.GMAIL_APP_PASSWORD.length} characters`);
         this.transporter = nodemailer.createTransport({
           service: 'gmail',
           auth: {
@@ -51,6 +57,9 @@ class DAIVEEmailService {
         });
         console.log('✅ D.A.I.V.E. Email Service configured with Gmail (from .env)');
         console.log(`   📧 Sender: ${process.env.GMAIL_USER}`);
+        
+        // Test the connection
+        this.testConnection();
         return;
       }
 
@@ -94,6 +103,35 @@ class DAIVEEmailService {
     } catch (error) {
       console.error('❌ Error initializing email transporter:', error);
       console.error('   Error details:', error.message);
+    }
+  }
+
+  /**
+   * Test email connection
+   */
+  async testConnection() {
+    if (!this.transporter) {
+      console.log('⚠️ No email transporter to test');
+      return false;
+    }
+
+    try {
+      console.log('🔍 Testing email connection...');
+      await this.transporter.verify();
+      console.log('✅ Email connection verified successfully!');
+      return true;
+    } catch (error) {
+      console.error('❌ Email connection test failed:', error.message);
+      console.error('   Code:', error.code);
+      console.error('   Command:', error.command);
+      
+      if (error.code === 'EAUTH') {
+        console.error('   🔑 Authentication failed - check your email credentials');
+      } else if (error.code === 'ETIMEDOUT' || error.code === 'ECONNREFUSED') {
+        console.error('   🌐 Connection failed - check your network/firewall settings');
+      }
+      
+      return false;
     }
   }
 

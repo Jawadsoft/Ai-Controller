@@ -5402,4 +5402,278 @@ router.post(
 
 // ─── END CONVERSATION MONITOR ─────────────────────────────────────────────────
 
+// ─── DEALER APPROVAL MANAGEMENT ───────────────────────────────────────────────
+
+// Get all pending dealers
+router.get('/dealers/pending', 
+  authenticateToken, 
+  requireSuperAdmin, 
+  async (req, res) => {
+    try {
+      const result = await query(
+        `SELECT 
+          d.id, 
+          d.user_id, 
+          d.business_name, 
+          d.contact_name, 
+          d.email, 
+          d.phone, 
+          d.city, 
+          d.state,
+          d.subscription_status,
+          d.created_at,
+          u.email as user_email
+        FROM dealers d
+        INNER JOIN users u ON d.user_id = u.id
+        WHERE d.subscription_status = 'pending_approval'
+        ORDER BY d.created_at DESC`
+      );
+
+      res.json({
+        success: true,
+        dealers: result.rows
+      });
+    } catch (error) {
+      console.error('Error fetching pending dealers:', error);
+      res.status(500).json({ error: 'Failed to fetch pending dealers' });
+    }
+  }
+);
+
+// Approve a dealer
+router.post('/dealers/:dealerId/approve',
+  authenticateToken,
+  requireSuperAdmin,
+  superAdminAuditMiddleware('dealer_approval'),
+  async (req, res) => {
+    try {
+      const { dealerId } = req.params;
+
+      // Get dealer info
+      const dealerResult = await query(
+        `SELECT d.*, u.email as user_email 
+         FROM dealers d 
+         INNER JOIN users u ON d.user_id = u.id
+         WHERE d.id = $1`,
+        [dealerId]
+      );
+
+      if (dealerResult.rows.length === 0) {
+        return res.status(404).json({ error: 'Dealer not found' });
+      }
+
+      const dealer = dealerResult.rows[0];
+
+      if (dealer.subscription_status === 'active') {
+        return res.status(400).json({ error: 'Dealer is already approved' });
+      }
+
+      // Update dealer status to active
+      await query(
+        `UPDATE dealers 
+         SET subscription_status = 'active', 
+             updated_at = NOW() 
+         WHERE id = $1`,
+        [dealerId]
+      );
+
+      // Send approval email
+      try {
+        const daiveEmailService = await import('../lib/daiveEmailService.js');
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8080';
+        
+        const subject = '✅ Your DealerIQ Account Has Been Approved!';
+        const htmlContent = `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Account Approved</title>
+            <style>
+              body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 20px; background-color: #f4f4f4; }
+              .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 0 20px rgba(0,0,0,0.1); }
+              .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px 10px 0 0; margin: -30px -30px 30px -30px; }
+              .header h1 { margin: 0; font-size: 24px; }
+              .button { display: inline-block; background: #667eea; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; font-size: 16px; font-weight: bold; }
+              .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; color: #666; font-size: 14px; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="header">
+                <h1>✅ Account Approved!</h1>
+                <p>Welcome to DealerIQ</p>
+              </div>
+              
+              <p>Hi ${dealer.contact_name},</p>
+              
+              <p>Great news! Your DealerIQ account for <strong>${dealer.business_name}</strong> has been approved by our admin team.</p>
+              
+              <p>You can now log in and start using all the features:</p>
+              <ul>
+                <li>AI-powered vehicle information assistant (D.A.I.V.E.)</li>
+                <li>QR code generation for vehicles</li>
+                <li>Customer engagement tracking</li>
+                <li>Lead management</li>
+                <li>And much more!</li>
+              </ul>
+              
+              <div style="text-align: center;">
+                <a href="${frontendUrl}" class="button">Log In to DealerIQ</a>
+              </div>
+              
+              <p>If you have any questions or need assistance getting started, please don't hesitate to reach out to our support team.</p>
+              
+              <div class="footer">
+                <p>This email was sent by DealerIQ.</p>
+                <p>Need help? Contact us at ${process.env.SMTP_USER || 'support@dealeriq.co'}</p>
+              </div>
+            </div>
+          </body>
+          </html>
+        `;
+
+        await daiveEmailService.default.transporter.sendMail({
+          from: `DealerIQ <${process.env.SMTP_USER || process.env.GMAIL_USER}>`,
+          to: dealer.user_email,
+          subject: subject,
+          html: htmlContent
+        });
+
+        console.log(`✅ Approval email sent to ${dealer.user_email}`);
+      } catch (emailError) {
+        console.error('❌ Failed to send approval email:', emailError);
+        // Don't fail the approval if email fails
+      }
+
+      res.json({
+        success: true,
+        message: 'Dealer approved successfully',
+        dealer: {
+          id: dealer.id,
+          business_name: dealer.business_name,
+          email: dealer.user_email
+        }
+      });
+    } catch (error) {
+      console.error('Error approving dealer:', error);
+      res.status(500).json({ error: 'Failed to approve dealer' });
+    }
+  }
+);
+
+// Reject a dealer
+router.post('/dealers/:dealerId/reject',
+  authenticateToken,
+  requireSuperAdmin,
+  superAdminAuditMiddleware('dealer_rejection'),
+  [
+    body('reason').optional().isString()
+  ],
+  async (req, res) => {
+    try {
+      const { dealerId } = req.params;
+      const { reason } = req.body;
+
+      // Get dealer info
+      const dealerResult = await query(
+        `SELECT d.*, u.email as user_email 
+         FROM dealers d 
+         INNER JOIN users u ON d.user_id = u.id
+         WHERE d.id = $1`,
+        [dealerId]
+      );
+
+      if (dealerResult.rows.length === 0) {
+        return res.status(404).json({ error: 'Dealer not found' });
+      }
+
+      const dealer = dealerResult.rows[0];
+
+      // Update dealer status to rejected
+      await query(
+        `UPDATE dealers 
+         SET subscription_status = 'rejected', 
+             updated_at = NOW() 
+         WHERE id = $1`,
+        [dealerId]
+      );
+
+      // Send rejection email
+      try {
+        const daiveEmailService = await import('../lib/daiveEmailService.js');
+        
+        const subject = 'DealerIQ Account Application Update';
+        const htmlContent = `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Account Application Update</title>
+            <style>
+              body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 20px; background-color: #f4f4f4; }
+              .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 0 20px rgba(0,0,0,0.1); }
+              .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px 10px 0 0; margin: -30px -30px 30px -30px; }
+              .header h1 { margin: 0; font-size: 24px; }
+              .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; color: #666; font-size: 14px; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="header">
+                <h1>Account Application Update</h1>
+              </div>
+              
+              <p>Hi ${dealer.contact_name},</p>
+              
+              <p>Thank you for your interest in DealerIQ for <strong>${dealer.business_name}</strong>.</p>
+              
+              <p>After reviewing your application, we are unable to approve your account at this time.</p>
+              
+              ${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ''}
+              
+              <p>If you have any questions or would like to discuss this decision, please contact our support team.</p>
+              
+              <div class="footer">
+                <p>This email was sent by DealerIQ.</p>
+                <p>Need help? Contact us at ${process.env.SMTP_USER || 'support@dealeriq.co'}</p>
+              </div>
+            </div>
+          </body>
+          </html>
+        `;
+
+        await daiveEmailService.default.transporter.sendMail({
+          from: `DealerIQ <${process.env.SMTP_USER || process.env.GMAIL_USER}>`,
+          to: dealer.user_email,
+          subject: subject,
+          html: htmlContent
+        });
+
+        console.log(`📧 Rejection email sent to ${dealer.user_email}`);
+      } catch (emailError) {
+        console.error('❌ Failed to send rejection email:', emailError);
+        // Don't fail the rejection if email fails
+      }
+
+      res.json({
+        success: true,
+        message: 'Dealer rejected',
+        dealer: {
+          id: dealer.id,
+          business_name: dealer.business_name,
+          email: dealer.user_email
+        }
+      });
+    } catch (error) {
+      console.error('Error rejecting dealer:', error);
+      res.status(500).json({ error: 'Failed to reject dealer' });
+    }
+  }
+);
+
+// ─── END DEALER APPROVAL MANAGEMENT ───────────────────────────────────────────
+
 export default router;

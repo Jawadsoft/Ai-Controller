@@ -13,11 +13,18 @@ import { v4 as uuidv4 } from 'uuid';
 import financeNotificationService from '../lib/financeNotificationService.js';
 
 /** Ignore missing table/column so partial DBs still work */
-async function runOptionalSql(client, sql, params) {
+async function runOptionalSql(client, sql, params, description = 'query') {
   try {
     await client.query(sql, params);
   } catch (e) {
-    if (e.code !== '42P01' && e.code !== '42703') throw e;
+    // 42P01 = undefined table, 42703 = undefined column - these are expected
+    if (e.code === '42P01' || e.code === '42703') {
+      console.log(`⚠️ Optional SQL ${description} skipped: ${e.code} - ${e.message}`);
+      return;
+    }
+    // Any other error should be logged and re-thrown
+    console.error(`❌ Error in ${description}:`, e.code, e.message);
+    throw e;
   }
 }
 
@@ -27,36 +34,54 @@ async function runOptionalSql(client, sql, params) {
 async function deleteCustomerWithReferenceCleanup(poolConn, customerId) {
   const client = await poolConn.connect();
   try {
+    console.log(`🗑️ Starting customer deletion for ID: ${customerId}`);
     await client.query('BEGIN');
+    
     await runOptionalSql(
       client,
       'UPDATE credit_applications SET customer_id = NULL WHERE customer_id = $1',
-      [customerId]
+      [customerId],
+      'clear credit_applications FK'
     );
     await runOptionalSql(
       client,
       'UPDATE daive_conversations SET customer_id = NULL WHERE customer_id = $1',
-      [customerId]
+      [customerId],
+      'clear daive_conversations FK'
     );
     await runOptionalSql(
       client,
       'UPDATE customer_sessions SET customer_id = NULL WHERE customer_id = $1',
-      [customerId]
+      [customerId],
+      'clear customer_sessions FK'
     );
     await runOptionalSql(
       client,
       'UPDATE customer_leads SET customer_id = NULL WHERE customer_id = $1',
-      [customerId]
+      [customerId],
+      'clear customer_leads FK'
     );
-    await runOptionalSql(client, 'DELETE FROM application_links WHERE customer_id = $1', [customerId]);
+    await runOptionalSql(
+      client, 
+      'DELETE FROM application_links WHERE customer_id = $1', 
+      [customerId],
+      'delete application_links'
+    );
+    
+    console.log(`🗑️ Deleting customer record: ${customerId}`);
     const del = await client.query('DELETE FROM customers WHERE id = $1 RETURNING id', [customerId]);
+    
     await client.query('COMMIT');
+    console.log(`✅ Customer deleted successfully: ${customerId}`);
     return del;
   } catch (e) {
+    console.error(`❌ Error during customer deletion transaction for ${customerId}:`, e);
+    console.error(`Error details - Code: ${e.code}, Message: ${e.message}`);
     try {
       await client.query('ROLLBACK');
-    } catch (_) {
-      /* ignore */
+      console.log(`🔄 Transaction rolled back for customer ${customerId}`);
+    } catch (rollbackError) {
+      console.error(`❌ Error during rollback:`, rollbackError);
     }
     throw e;
   } finally {
@@ -221,6 +246,8 @@ router.delete(
       res.json({ success: true, message: 'Customer deleted', data: { id: del.rows[0].id } });
     } catch (error) {
       console.error('Error deleting customer:', error);
+      console.error('Error stack:', error.stack);
+      
       if (error.code === '23503') {
         return res.status(409).json({
           success: false,
@@ -230,10 +257,20 @@ router.delete(
           constraint: error.constraint || null,
         });
       }
+      
+      if (error.code === '25P02') {
+        return res.status(500).json({
+          success: false,
+          error: 'Database transaction error. Please try again.',
+          message: process.env.NODE_ENV === 'development' ? 'Transaction was aborted due to a previous error: ' + error.message : undefined,
+        });
+      }
+      
       res.status(500).json({
         success: false,
         error: 'Failed to delete customer',
         message: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        code: error.code
       });
     }
   }

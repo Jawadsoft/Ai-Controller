@@ -28,6 +28,7 @@ export const AuthForm = ({ mode, onModeChange }: AuthFormProps) => {
   const [contactName, setContactName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showVerificationMessage, setShowVerificationMessage] = useState(false);
+  const [verificationMessageType, setVerificationMessageType] = useState<'email' | 'approval'>('email');
   const [errorMessage, setErrorMessage] = useState("");
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -72,13 +73,25 @@ export const AuthForm = ({ mode, onModeChange }: AuthFormProps) => {
           contactName,
         });
 
-        if (response.requiresVerification) {
+        if (response.requiresApproval) {
+          toast({
+            title: "Registration Successful!",
+            description: "Your account is pending approval. You will receive an email once approved.",
+          });
+          
+          // Show approval pending message
+          setVerificationMessageType('approval');
+          setShowVerificationMessage(true);
+          setErrorMessage(""); // Clear any error messages
+          resetForm(); // Clear form fields
+        } else if (response.requiresVerification) {
           toast({
             title: "Account created successfully!",
             description: "Please check your email to verify your account before logging in.",
           });
           
           // Show verification message instead of redirecting
+          setVerificationMessageType('email');
           setShowVerificationMessage(true);
           setErrorMessage(""); // Clear any error messages
           resetForm(); // Clear form fields
@@ -125,6 +138,39 @@ export const AuthForm = ({ mode, onModeChange }: AuthFormProps) => {
           description: "Please check your email and verify your account before logging in.",
           variant: "destructive",
         });
+        return;
+      }
+
+      // Handle pending approval
+      if (error.requiresApproval || error.code === 'PENDING_APPROVAL') {
+        toast({
+          title: "Account Pending Approval",
+          description: error.message || "Your account is awaiting approval from our admin team. You will receive an email once approved.",
+          variant: "destructive",
+        });
+        setErrorMessage(error.message || "Your account is awaiting approval from our admin team. You will receive an email once approved.");
+        return;
+      }
+
+      // Handle account rejected
+      if (error.code === 'ACCOUNT_REJECTED') {
+        toast({
+          title: "Account Not Approved",
+          description: error.message || "Your account application was not approved. Please contact support for more information.",
+          variant: "destructive",
+        });
+        setErrorMessage(error.message || "Your account application was not approved. Please contact support.");
+        return;
+      }
+
+      // Handle account suspended
+      if (error.code === 'ACCOUNT_SUSPENDED') {
+        toast({
+          title: "Account Suspended",
+          description: error.message || "Your account has been suspended. Please contact support.",
+          variant: "destructive",
+        });
+        setErrorMessage(error.message || "Your account has been suspended. Please contact support.");
         return;
       }
       
@@ -335,31 +381,60 @@ export const AuthForm = ({ mode, onModeChange }: AuthFormProps) => {
         {showVerificationMessage && (
           <div className="mt-6 rounded-lg border border-primary/25 bg-primary/10 p-4">
             <div className="text-center">
-              <h3 className="mb-2 text-lg font-semibold text-primary">
-                Check your email
-              </h3>
-              <p className="mb-4 text-sm text-dealer-navy/90">
-                We've sent a verification email to <strong>{email}</strong>. 
-                Please click the link in the email to verify your account.
-              </p>
-              <div className="space-y-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowVerificationMessage(false)}
-                  className="w-full"
-                >
-                  Back to Sign Up
-                </Button>
-                <Button
-                  variant="link"
-                  size="sm"
-                  onClick={() => onModeChange("login")}
-                  className="w-full"
-                >
-                  Go to Login
-                </Button>
-              </div>
+              {verificationMessageType === 'approval' ? (
+                <>
+                  <h3 className="mb-2 text-lg font-semibold text-primary">
+                    Account Pending Approval
+                  </h3>
+                  <p className="mb-4 text-sm text-dealer-navy/90">
+                    Thank you for registering! Your account for <strong>{businessName}</strong> is now pending approval from our admin team.
+                  </p>
+                  <p className="mb-4 text-sm text-dealer-navy/90">
+                    You will receive an email at <strong>{email}</strong> once your account has been approved. This typically takes 1-2 business days.
+                  </p>
+                  <div className="space-y-2">
+                    <Button
+                      variant="link"
+                      size="sm"
+                      onClick={() => {
+                        setShowVerificationMessage(false);
+                        onModeChange("login");
+                      }}
+                      className="w-full"
+                    >
+                      Back to Login
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h3 className="mb-2 text-lg font-semibold text-primary">
+                    Check your email
+                  </h3>
+                  <p className="mb-4 text-sm text-dealer-navy/90">
+                    We've sent a verification email to <strong>{email}</strong>. 
+                    Please click the link in the email to verify your account.
+                  </p>
+                  <div className="space-y-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowVerificationMessage(false)}
+                      className="w-full"
+                    >
+                      Back to Sign Up
+                    </Button>
+                    <Button
+                      variant="link"
+                      size="sm"
+                      onClick={() => onModeChange("login")}
+                      className="w-full"
+                    >
+                      Go to Login
+                    </Button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         )}

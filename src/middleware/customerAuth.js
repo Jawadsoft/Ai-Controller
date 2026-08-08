@@ -296,12 +296,24 @@ Need help? Contact us at ${process.env.SMTP_USER || 'support@mitiesoft.com'}
     console.log(`✅ Verification email sent successfully to ${customer.email}`);
     console.log('   Message ID:', result.messageId);
     console.log('   Response:', result.response);
+    console.log('   Accepted:', result.accepted);
+    console.log('   Rejected:', result.rejected);
     
     return true;
   } catch (error) {
     console.error('❌ Error sending verification email:', error);
     console.error('   Error details:', error.message);
-    console.error('   Error stack:', error.stack);
+    console.error('   Error code:', error.code);
+    console.error('   Error command:', error.command);
+    
+    if (error.code === 'EAUTH') {
+      console.error('   🔑 Authentication failed - email credentials are invalid');
+    } else if (error.code === 'ETIMEDOUT' || error.code === 'ECONNREFUSED') {
+      console.error('   🌐 Connection failed - check network/firewall settings');
+    } else if (error.code === 'EENVELOPE') {
+      console.error('   📧 Invalid email address format');
+    }
+    
     throw error; // Re-throw to let caller know it failed
   }
 };
