@@ -790,8 +790,28 @@ router.post('/dealer-session', [
         return res.status(400).json({ error: 'First name and last name are required for registration' });
       }
       
+      const normalizedEmail = email.toLowerCase().trim();
+      const now = Date.now();
+      
+      // Check for duplicate registration (use same cache as /register)
+      if (recentRegistrations.has(normalizedEmail)) {
+        const lastRegistration = recentRegistrations.get(normalizedEmail);
+        const timeSince = now - lastRegistration;
+        
+        if (timeSince < REGISTRATION_COOLDOWN) {
+          console.log(`⚠️ Duplicate dealer-session registration blocked for: ${normalizedEmail}`);
+          return res.status(429).json({ 
+            error: 'Registration already in progress. Please wait.',
+            retryAfter: Math.ceil((REGISTRATION_COOLDOWN - timeSince) / 1000)
+          });
+        }
+      }
+      
+      recentRegistrations.set(normalizedEmail, now);
+      console.log(`📝 Processing dealer-session registration for: ${normalizedEmail}`);
+      
       customer = await registerCustomer({
-        email,
+        email: normalizedEmail,
         password,
         first_name,
         last_name,
@@ -799,6 +819,11 @@ router.post('/dealer-session', [
         terms_accepted: true, // Assume accepted for QR code access
         privacy_policy_accepted: true
       });
+      
+      // Clear lock after success
+      setTimeout(() => {
+        recentRegistrations.delete(normalizedEmail);
+      }, REGISTRATION_COOLDOWN);
     } else {
       // Login existing customer
       customer = await loginCustomer(email, password);
