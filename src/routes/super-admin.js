@@ -4603,21 +4603,39 @@ router.post('/reset-dealership-data', authenticateToken, requireSuperAdmin, asyn
         deletedCounts.chat_conversations = chatResult.rowCount || 0;
         console.log(`🗑️  Auto-deleted ${deletedCounts.chat_conversations} chat conversations`);
         
-        // 3. Delete application links
-        const appLinksResult = await query(
-          'DELETE FROM application_links WHERE vehicle_id IN (SELECT id FROM vehicles WHERE dealer_id = $1)',
-          [dealerId]
-        );
-        deletedCounts.application_links = appLinksResult.rowCount || 0;
-        console.log(`🗑️  Auto-deleted ${deletedCounts.application_links} application links`);
+        // 3. Delete application links (optional - skip if table doesn't exist)
+        try {
+          const appLinksResult = await query(
+            'DELETE FROM application_links WHERE vehicle_id IN (SELECT id FROM vehicles WHERE dealer_id = $1)',
+            [dealerId]
+          );
+          deletedCounts.application_links = appLinksResult.rowCount || 0;
+          console.log(`🗑️  Auto-deleted ${deletedCounts.application_links} application links`);
+        } catch (appLinksError) {
+          if (appLinksError.code === '42P01') {
+            console.log('⚠️  Skipping application_links deletion - table does not exist');
+            deletedCounts.application_links = 0;
+          } else {
+            throw appLinksError;
+          }
+        }
         
-        // 4. Delete customer leads
-        const customerLeadsResult = await query(
-          'DELETE FROM customer_leads WHERE vehicle_id IN (SELECT id FROM vehicles WHERE dealer_id = $1)',
-          [dealerId]
-        );
-        deletedCounts.customer_leads = customerLeadsResult.rowCount || 0;
-        console.log(`🗑️  Auto-deleted ${deletedCounts.customer_leads} customer leads`);
+        // 4. Delete customer leads (optional - skip if table doesn't exist)
+        try {
+          const customerLeadsResult = await query(
+            'DELETE FROM customer_leads WHERE vehicle_id IN (SELECT id FROM vehicles WHERE dealer_id = $1)',
+            [dealerId]
+          );
+          deletedCounts.customer_leads = customerLeadsResult.rowCount || 0;
+          console.log(`🗑️  Auto-deleted ${deletedCounts.customer_leads} customer leads`);
+        } catch (customerLeadsError) {
+          if (customerLeadsError.code === '42P01') {
+            console.log('⚠️  Skipping customer_leads deletion - table does not exist');
+            deletedCounts.customer_leads = 0;
+          } else {
+            throw customerLeadsError;
+          }
+        }
         
         // Note: leads, finance_deals, credit_applications, rebate_applications 
         // should be handled by their respective category deletions
@@ -4871,21 +4889,39 @@ router.post('/reset-dealership-data', authenticateToken, requireSuperAdmin, asyn
         deletedCounts.chat_conversations = chatResult.rowCount || 0;
         console.log(`🗑️  Auto-deleted ${deletedCounts.chat_conversations} chat conversations`);
         
-        // 3. Delete application links
-        const appLinksResult = await query(
-          'DELETE FROM application_links WHERE vehicle_id IN (SELECT id FROM vehicles WHERE dealer_id = $1)',
-          [dealerId]
-        );
-        deletedCounts.application_links = appLinksResult.rowCount || 0;
-        console.log(`🗑️  Auto-deleted ${deletedCounts.application_links} application links`);
+        // 3. Delete application links (optional - skip if table doesn't exist)
+        try {
+          const appLinksResult = await query(
+            'DELETE FROM application_links WHERE vehicle_id IN (SELECT id FROM vehicles WHERE dealer_id = $1)',
+            [dealerId]
+          );
+          deletedCounts.application_links = appLinksResult.rowCount || 0;
+          console.log(`🗑️  Auto-deleted ${deletedCounts.application_links} application links`);
+        } catch (appLinksError) {
+          if (appLinksError.code === '42P01') {
+            console.log('⚠️  Skipping application_links deletion - table does not exist');
+            deletedCounts.application_links = 0;
+          } else {
+            throw appLinksError;
+          }
+        }
         
-        // 4. Delete customer leads
-        const customerLeadsResult = await query(
-          'DELETE FROM customer_leads WHERE vehicle_id IN (SELECT id FROM vehicles WHERE dealer_id = $1)',
-          [dealerId]
-        );
-        deletedCounts.customer_leads = customerLeadsResult.rowCount || 0;
-        console.log(`🗑️  Auto-deleted ${deletedCounts.customer_leads} customer leads`);
+        // 4. Delete customer leads (optional - skip if table doesn't exist)
+        try {
+          const customerLeadsResult = await query(
+            'DELETE FROM customer_leads WHERE vehicle_id IN (SELECT id FROM vehicles WHERE dealer_id = $1)',
+            [dealerId]
+          );
+          deletedCounts.customer_leads = customerLeadsResult.rowCount || 0;
+          console.log(`🗑️  Auto-deleted ${deletedCounts.customer_leads} customer leads`);
+        } catch (customerLeadsError) {
+          if (customerLeadsError.code === '42P01') {
+            console.log('⚠️  Skipping customer_leads deletion - table does not exist');
+            deletedCounts.customer_leads = 0;
+          } else {
+            throw customerLeadsError;
+          }
+        }
         
         // Note: leads, finance_deals, credit_applications, rebate_applications 
         // should be handled by their respective category deletions

@@ -18266,6 +18266,8 @@ async generateBriefConversationalInventoryResponse(intentResult, userMessage, co
     // can answer questions like "what models do you have?" without re-querying.
     if (!conversationContext._dealerInventorySummary && this.inventoryService?.getDealerInventorySummary) {
       try {
+        // CRITICAL FIX: Initialize inventory BEFORE getting summary
+        await this.inventoryService.initialize(conversationContext.dealerId);
         conversationContext._dealerInventorySummary =
           this.inventoryService.getDealerInventorySummary(conversationContext.dealerId);
       } catch (e) {
@@ -18309,6 +18311,8 @@ async generateBriefConversationalInventoryResponse(intentResult, userMessage, co
     // Runs for both inventory_inquiry and inventory_count_query-like messages.
     if (this.inventoryService && !hasVehicle) {
       try {
+        // CRITICAL FIX: Initialize inventory BEFORE getting summary
+        await this.inventoryService.initialize(dealerId);
         const _pgSummary = this.inventoryService.getDealerInventorySummary(dealerId);
         const _pgStep1   = conversationContext?.Daivesteps?.[1] || {};
         const _pgMsgLow  = userMessage.toLowerCase();
@@ -22170,6 +22174,8 @@ Keep the total response to 2 sentences max. No markdown. No lists.`;
       : Infinity;
     if (_summaryAge > 5 * 60 * 1000 && this.inventoryService?.getDealerInventorySummary) {
       try {
+        // CRITICAL FIX: Initialize inventory BEFORE getting summary
+        await this.inventoryService.initialize(conversationContext.dealerId);
         conversationContext._dealerInventorySummary =
           this.inventoryService.getDealerInventorySummary(conversationContext.dealerId);
       } catch (_e) { /* non-fatal */ }

@@ -285,6 +285,35 @@ export const superAdminAPI = {
     return response.json();
   },
 
+  async approveDealer(dealerId: string) {
+    const response = await fetch(`${API_BASE}/dealers/${dealerId}/approve`, {
+      method: 'POST',
+      headers: getAuthHeaders()
+    });
+    
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || error.error || 'Failed to approve dealer');
+    }
+    
+    return response.json();
+  },
+
+  async rejectDealer(dealerId: string, reason?: string) {
+    const response = await fetch(`${API_BASE}/dealers/${dealerId}/reject`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ reason })
+    });
+    
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || error.error || 'Failed to reject dealer');
+    }
+    
+    return response.json();
+  },
+
   // Stripe Subscription Management
   async createStripeCustomer(dealerId: string) {
     const response = await fetch(`${API_BASE}/stripe/customers/${dealerId}`, {

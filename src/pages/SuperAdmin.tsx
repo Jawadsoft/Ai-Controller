@@ -23,7 +23,8 @@ import {
   Crown, Users, CreditCard, TrendingUp, ArrowLeft, UserCog, Building, 
   Settings, Mail, Plus, Search, Filter, Eye, Edit, Trash2, TestTube,
   Globe, Phone, Calendar, Tag, FileText, CheckCircle, XCircle, Bot,
-  CheckSquare, Square, Download, Upload, Play, RefreshCw, UserPlus, Shield, Activity
+  CheckSquare, Square, Download, Upload, Play, RefreshCw, UserPlus, Shield, Activity,
+  Check, X
 } from "lucide-react";
 import UserManagement from "@/components/admin/UserManagement";
 import RoleManagement from "@/components/admin/RoleManagement";
@@ -884,6 +885,28 @@ const SuperAdmin = () => {
     } catch (error) {
       console.error('Error updating dealer:', error);
       toast.error('Failed to update dealer');
+    }
+  };
+
+  const approveDealer = async (dealerId: string) => {
+    try {
+      await superAdminAPI.approveDealer(dealerId);
+      toast.success('Dealer approved successfully! Approval email sent.');
+      fetchDealers();
+    } catch (error) {
+      console.error('Error approving dealer:', error);
+      toast.error('Failed to approve dealer');
+    }
+  };
+
+  const rejectDealer = async (dealerId: string, reason?: string) => {
+    try {
+      await superAdminAPI.rejectDealer(dealerId, reason);
+      toast.success('Dealer rejected');
+      fetchDealers();
+    } catch (error) {
+      console.error('Error rejecting dealer:', error);
+      toast.error('Failed to reject dealer');
     }
   };
 
@@ -1814,6 +1837,27 @@ const SuperAdmin = () => {
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
+                            {dealer.subscription_status === 'pending_approval' && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="default"
+                                  className="bg-green-600 hover:bg-green-700"
+                                  onClick={() => approveDealer(dealer.id)}
+                                  title="Approve Dealer"
+                                >
+                                  <Check className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => rejectDealer(dealer.id)}
+                                  title="Reject Dealer"
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
                             <Button
                               size="sm"
                               variant="outline"

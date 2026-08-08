@@ -15,6 +15,9 @@ class InventoryService {
     this.searchCache = new Map(); // criteria hash -> { results, timestamp, ttl }
     this.cacheTTL = 5 * 60 * 1000; // 5 minutes
     
+    // PERFORMANCE OPTIMIZATION: Initialization caching (prevents redundant DB queries)
+    this._initCache = {}; // dealerId -> { timestamp }
+    
     // PERFORMANCE OPTIMIZATION: In-memory search indexes
     this.searchIndexes = {
       byMake: new Map(),      // make -> Set of vehicle IDs
@@ -876,6 +879,19 @@ class InventoryService {
    * Initialize inventory service with real database data
    */
   async initialize(dealerId = null) {
+    // PERFORMANCE: Check if already initialized for this dealer (with 5-minute TTL)
+    const cacheKey = dealerId || 'global';
+    const now = Date.now();
+    const cacheExpiry = 5 * 60 * 1000; // 5 minutes
+    
+    if (this._initCache && this._initCache[cacheKey]) {
+      const cacheAge = now - this._initCache[cacheKey].timestamp;
+      if (cacheAge < cacheExpiry && this.inventory && this.inventory.size > 0) {
+        console.log(`⚡ Using cached inventory for dealer: ${dealerId || 'global'} (age: ${Math.round(cacheAge/1000)}s)`);
+        return;
+      }
+    }
+    
     console.log('🗄️ Initializing Inventory Service...');
     
     try {
@@ -1042,6 +1058,10 @@ ORDER BY v.year ASC, v.price DESC
       
       // PERFORMANCE OPTIMIZATION: Build search indexes after loading inventory
       this.buildSearchIndexes();
+      
+      // Mark as cached for future calls
+      if (!this._initCache) this._initCache = {};
+      this._initCache[cacheKey] = { timestamp: now };
       
     } catch (error) {
       console.error('❌ Failed to load real inventory:', error);
