@@ -90,6 +90,67 @@ async function ensureLastLoginColumn() {
   }
 }
 
+// Auto-ensure credit_applications columns used by customer credit app submit/update
+async function ensureCreditApplicationColumns() {
+  try {
+    await pool.query(`
+      ALTER TABLE credit_applications
+        ADD COLUMN IF NOT EXISTS date_of_birth DATE,
+        ADD COLUMN IF NOT EXISTS street_address TEXT,
+        ADD COLUMN IF NOT EXISTS city TEXT,
+        ADD COLUMN IF NOT EXISTS state VARCHAR(2),
+        ADD COLUMN IF NOT EXISTS zip_code VARCHAR(10),
+        ADD COLUMN IF NOT EXISTS first_name TEXT,
+        ADD COLUMN IF NOT EXISTS last_name TEXT,
+        ADD COLUMN IF NOT EXISTS vehicle_id UUID,
+        ADD COLUMN IF NOT EXISTS vehicle_make TEXT,
+        ADD COLUMN IF NOT EXISTS vehicle_model TEXT,
+        ADD COLUMN IF NOT EXISTS vehicle_year INT,
+        ADD COLUMN IF NOT EXISTS vehicle_mileage INT,
+        ADD COLUMN IF NOT EXISTS vehicle_purchase_price DECIMAL(12,2),
+        ADD COLUMN IF NOT EXISTS vehicle_msrp DECIMAL(12,2),
+        ADD COLUMN IF NOT EXISTS deal_type VARCHAR(10) DEFAULT 'finance',
+        ADD COLUMN IF NOT EXISTS requested_loan_amount DECIMAL(12,2),
+        ADD COLUMN IF NOT EXISTS requested_term_months INT,
+        ADD COLUMN IF NOT EXISTS estimated_monthly_payment DECIMAL(10,2),
+        ADD COLUMN IF NOT EXISTS estimated_interest_rate DECIMAL(5,4),
+        ADD COLUMN IF NOT EXISTS down_payment DECIMAL(12,2) DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS trade_in_value DECIMAL(12,2) DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS rebate_amount DECIMAL(12,2) DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS acquisition_fee DECIMAL(10,2) DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS doc_fee DECIMAL(10,2) DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS residual_percentage DECIMAL(5,2),
+        ADD COLUMN IF NOT EXISTS money_factor DECIMAL(8,6),
+        ADD COLUMN IF NOT EXISTS sales_tax_rate DECIMAL(5,4) DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS annual_mileage INT DEFAULT 12000,
+        ADD COLUMN IF NOT EXISTS excess_mileage_rate DECIMAL(5,2) DEFAULT 0.25,
+        ADD COLUMN IF NOT EXISTS job_title TEXT,
+        ADD COLUMN IF NOT EXISTS work_address TEXT,
+        ADD COLUMN IF NOT EXISTS work_city TEXT,
+        ADD COLUMN IF NOT EXISTS work_state VARCHAR(2),
+        ADD COLUMN IF NOT EXISTS work_zip_code VARCHAR(10),
+        ADD COLUMN IF NOT EXISTS monthly_income DECIMAL(10,2),
+        ADD COLUMN IF NOT EXISTS annual_income DECIMAL(12,2),
+        ADD COLUMN IF NOT EXISTS employment_status TEXT,
+        ADD COLUMN IF NOT EXISTS employer_name TEXT,
+        ADD COLUMN IF NOT EXISTS years_employed DECIMAL(4,1),
+        ADD COLUMN IF NOT EXISTS signature_data TEXT,
+        ADD COLUMN IF NOT EXISTS signature_date TIMESTAMPTZ,
+        ADD COLUMN IF NOT EXISTS terms_accepted BOOLEAN DEFAULT FALSE,
+        ADD COLUMN IF NOT EXISTS terms_accepted_at TIMESTAMPTZ,
+        ADD COLUMN IF NOT EXISTS ip_address INET,
+        ADD COLUMN IF NOT EXISTS user_agent TEXT,
+        ADD COLUMN IF NOT EXISTS pdf_url TEXT,
+        ADD COLUMN IF NOT EXISTS pdf_generated_at TIMESTAMPTZ,
+        ADD COLUMN IF NOT EXISTS customer_id UUID,
+        ADD COLUMN IF NOT EXISTS application_source VARCHAR(50) DEFAULT 'customer_portal'
+    `);
+    console.log('✅ credit_applications columns ready');
+  } catch (error) {
+    console.error('⚠️ Could not ensure credit_applications columns:', error.message);
+  }
+}
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
@@ -1163,6 +1224,8 @@ wsServer.httpServer.listen(PORT, async () => {
   await ensureNotificationsTable();
   // Ensure last_login_at column exists (idempotent)
   await ensureLastLoginColumn();
+  // Ensure credit application employment/finance columns exist (idempotent)
+  await ensureCreditApplicationColumns();
   console.log(`General WebSocket endpoint: ws://localhost:${PORT} (development)`);
   console.log(`Streaming Voice WebSocket: ws://localhost:${PORT}/streaming-voice (development)`);
   console.log(`Production WebSocket endpoints will use environment-based URLs`);

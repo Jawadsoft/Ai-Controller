@@ -33,9 +33,12 @@ ALTER TABLE credit_applications
   ADD COLUMN IF NOT EXISTS work_state VARCHAR(2),
   ADD COLUMN IF NOT EXISTS work_zip_code VARCHAR(10),
   ADD COLUMN IF NOT EXISTS monthly_income DECIMAL(10,2),
+  ADD COLUMN IF NOT EXISTS annual_income DECIMAL(12,2),
   ADD COLUMN IF NOT EXISTS employment_status TEXT,
   ADD COLUMN IF NOT EXISTS employer_name TEXT,
   ADD COLUMN IF NOT EXISTS years_employed DECIMAL(4,1),
+  ADD COLUMN IF NOT EXISTS first_name TEXT,
+  ADD COLUMN IF NOT EXISTS last_name TEXT,
   
   -- Authorization & Signatures
   ADD COLUMN IF NOT EXISTS signature_data TEXT, -- Base64 encoded signature image

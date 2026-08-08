@@ -279,6 +279,90 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Get unique makes for filter dropdown (MUST be before /:id route)
+router.get('/makes', async (req, res) => {
+  try {
+    const dealerId = req.user.dealer_id;
+    
+    if (!dealerId) {
+      return res.json({ makes: [] });
+    }
+
+    const result = await query(`
+      SELECT DISTINCT make 
+      FROM vehicles 
+      WHERE dealer_id = $1 
+        AND make IS NOT NULL 
+        AND make != ''
+      ORDER BY make ASC
+    `, [dealerId]);
+
+    res.json({ makes: result.rows.map(row => row.make) });
+  } catch (error) {
+    console.error('Get makes error:', error);
+    res.status(500).json({ error: 'Failed to fetch makes' });
+  }
+});
+
+// Get unique models for filter dropdown (optionally filtered by make)
+router.get('/models', async (req, res) => {
+  try {
+    const dealerId = req.user.dealer_id;
+    const make = req.query.make || '';
+    
+    if (!dealerId) {
+      return res.json({ models: [] });
+    }
+
+    let queryText = `
+      SELECT DISTINCT model 
+      FROM vehicles 
+      WHERE dealer_id = $1 
+        AND model IS NOT NULL 
+        AND model != ''
+    `;
+    const params = [dealerId];
+
+    if (make) {
+      queryText += ` AND make = $2`;
+      params.push(make);
+    }
+
+    queryText += ` ORDER BY model ASC`;
+
+    const result = await query(queryText, params);
+
+    res.json({ models: result.rows.map(row => row.model) });
+  } catch (error) {
+    console.error('Get models error:', error);
+    res.status(500).json({ error: 'Failed to fetch models' });
+  }
+});
+
+// Get unique years for filter dropdown
+router.get('/years', async (req, res) => {
+  try {
+    const dealerId = req.user.dealer_id;
+    
+    if (!dealerId) {
+      return res.json({ years: [] });
+    }
+
+    const result = await query(`
+      SELECT DISTINCT year 
+      FROM vehicles 
+      WHERE dealer_id = $1 
+        AND year IS NOT NULL
+      ORDER BY year DESC
+    `, [dealerId]);
+
+    res.json({ years: result.rows.map(row => row.year.toString()) });
+  } catch (error) {
+    console.error('Get years error:', error);
+    res.status(500).json({ error: 'Failed to fetch years' });
+  }
+});
+
 // Get single vehicle
 router.get('/:id', async (req, res) => {
   try {
@@ -1369,87 +1453,4 @@ router.post('/generate-sticker-pdf', async (req, res) => {
 });
 
 // Get unique makes for filter dropdown
-router.get('/makes', async (req, res) => {
-  try {
-    const dealerId = req.user.dealer_id;
-    
-    if (!dealerId) {
-      return res.json({ makes: [] });
-    }
-
-    const result = await query(`
-      SELECT DISTINCT make 
-      FROM vehicles 
-      WHERE dealer_id = $1 
-        AND make IS NOT NULL 
-        AND make != ''
-      ORDER BY make ASC
-    `, [dealerId]);
-
-    res.json({ makes: result.rows.map(row => row.make) });
-  } catch (error) {
-    console.error('Get makes error:', error);
-    res.status(500).json({ error: 'Failed to fetch makes' });
-  }
-});
-
-// Get unique models for filter dropdown (optionally filtered by make)
-router.get('/models', async (req, res) => {
-  try {
-    const dealerId = req.user.dealer_id;
-    const make = req.query.make || '';
-    
-    if (!dealerId) {
-      return res.json({ models: [] });
-    }
-
-    let queryText = `
-      SELECT DISTINCT model 
-      FROM vehicles 
-      WHERE dealer_id = $1 
-        AND model IS NOT NULL 
-        AND model != ''
-    `;
-    const params = [dealerId];
-
-    if (make) {
-      queryText += ` AND make = $2`;
-      params.push(make);
-    }
-
-    queryText += ` ORDER BY model ASC`;
-
-    const result = await query(queryText, params);
-
-    res.json({ models: result.rows.map(row => row.model) });
-  } catch (error) {
-    console.error('Get models error:', error);
-    res.status(500).json({ error: 'Failed to fetch models' });
-  }
-});
-
-// Get unique years for filter dropdown
-router.get('/years', async (req, res) => {
-  try {
-    const dealerId = req.user.dealer_id;
-    
-    if (!dealerId) {
-      return res.json({ years: [] });
-    }
-
-    const result = await query(`
-      SELECT DISTINCT year 
-      FROM vehicles 
-      WHERE dealer_id = $1 
-        AND year IS NOT NULL
-      ORDER BY year DESC
-    `, [dealerId]);
-
-    res.json({ years: result.rows.map(row => row.year.toString()) });
-  } catch (error) {
-    console.error('Get years error:', error);
-    res.status(500).json({ error: 'Failed to fetch years' });
-  }
-});
-
 export default router;
