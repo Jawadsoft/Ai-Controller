@@ -19,6 +19,10 @@ import {
 
 const router = express.Router();
 
+// Prevent double-registration from double-clicks / duplicate requests
+const recentRegistrations = new Map();
+const REGISTRATION_COOLDOWN = 60000; // 60 seconds
+
 // Register new customer
 router.post('/register', [
   body('email').isEmail().normalizeEmail().withMessage('Valid email is required'),
@@ -36,10 +40,27 @@ router.post('/register', [
     }
 
     const { email, password, first_name, last_name, phone, terms_accepted, privacy_policy_accepted } = req.body;
+    const normalizedEmail = email.toLowerCase().trim();
+    const now = Date.now();
+
+    if (recentRegistrations.has(normalizedEmail)) {
+      const lastRegistration = recentRegistrations.get(normalizedEmail);
+      const timeSince = now - lastRegistration;
+      if (timeSince < REGISTRATION_COOLDOWN) {
+        console.log(`⚠️ Duplicate registration attempt blocked for: ${normalizedEmail}`);
+        return res.status(429).json({
+          error: 'Registration already in progress. Please check your email for the verification link.',
+          retryAfter: Math.ceil((REGISTRATION_COOLDOWN - timeSince) / 1000)
+        });
+      }
+    }
+
+    recentRegistrations.set(normalizedEmail, now);
+    console.log(`📝 Processing registration for: ${normalizedEmail}`);
 
     // Register customer
     const customer = await registerCustomer({
-      email,
+      email: normalizedEmail,
       password,
       first_name,
       last_name,
@@ -48,10 +69,16 @@ router.post('/register', [
       privacy_policy_accepted
     });
 
+    setTimeout(() => {
+      recentRegistrations.delete(normalizedEmail);
+      console.log(`🗑️ Cleared registration lock for: ${normalizedEmail}`);
+    }, REGISTRATION_COOLDOWN);
+
     res.json({
       success: true,
       message: 'Registration successful! Please check your email to verify your account.',
       emailSent: true,
+      requiresEmailVerification: true,
       customer: {
         id: customer.id,
         email: customer.email,
@@ -314,14 +341,20 @@ router.get('/verify-email/:token', async (req, res) => {
     const { token } = req.params;
     
     if (!token) {
-      return res.status(400).json({ error: 'Verification token is required' });
+      return res.status(400).json({
+        error: 'Verification token is required',
+        code: 'INVALID_TOKEN'
+      });
     }
     
     const result = await verifyEmailToken(token);
     
     res.json({
       success: true,
-      message: 'Email verified successfully! You can now log in.',
+      message: result.alreadyVerified
+        ? 'Email is already verified. You can log in.'
+        : 'Email verified successfully! You can now log in.',
+      alreadyVerified: !!result.alreadyVerified,
       customer: {
         email: result.customer.email,
         first_name: result.customer.first_name
@@ -329,8 +362,14 @@ router.get('/verify-email/:token', async (req, res) => {
     });
   } catch (error) {
     console.error('Error verifying email:', error);
+    const code = error.code || (
+      String(error.message || '').toLowerCase().includes('expired')
+        ? 'TOKEN_EXPIRED'
+        : 'INVALID_TOKEN'
+    );
     res.status(400).json({ 
       error: error.message || 'Failed to verify email',
+      code,
       message: 'The verification link may be invalid or expired. Please request a new one.'
     });
   }
@@ -650,10 +689,16 @@ router.post('/session-with-login', [
   } catch (error) {
     console.error('❌ Error creating session with login:', error);
     if (error?.code === 'EMAIL_NOT_VERIFIED') {
+      // Never rotate the verification token here. Registration already emailed
+      // a token; regenerating would invalidate that link and break verification.
+      let emailResent = false;
       try {
-        // Attempt to resend verification email (best-effort)
         const customerResult = await query(
-          'SELECT id, email, first_name, last_name, email_verified FROM customers WHERE email = $1',
+          `SELECT id, email, first_name, last_name, email_verified,
+                  verification_token, verification_token_expires,
+                  verification_token IS NOT NULL
+                    AND verification_token_expires > NOW() AS has_valid_token
+           FROM customers WHERE email = $1`,
           [req.body.email]
         );
 
@@ -661,25 +706,33 @@ router.post('/session-with-login', [
           const customer = customerResult.rows[0];
 
           if (!customer.email_verified) {
-            const verificationToken = generateVerificationToken();
-
-            await query(
-              'UPDATE customers SET verification_token = $1, verification_token_expires = NOW() + INTERVAL \'24 hours\', updated_at = NOW() WHERE id = $2',
-              [verificationToken, customer.id]
-            );
-
-            await sendVerificationEmail(customer, verificationToken);
+            if (customer.has_valid_token && customer.verification_token) {
+              // Keep the original token so the registration email link still works.
+              console.log('♻️ Valid verification token already exists — not rotating, not re-sending');
+            } else {
+              const verificationToken = generateVerificationToken();
+              await query(
+                'UPDATE customers SET verification_token = $1, verification_token_expires = NOW() + INTERVAL \'24 hours\', updated_at = NOW() WHERE id = $2',
+                [verificationToken, customer.id]
+              );
+              await sendVerificationEmail(customer, verificationToken);
+              emailResent = true;
+              console.log('🔐 Issued verification token (previous missing/expired) and sent email');
+            }
           }
         }
       } catch (resendError) {
-        console.error('❌ Failed to resend verification email during QR login:', resendError);
+        console.error('❌ Failed to ensure verification email during QR login:', resendError);
       }
 
       return res.status(403).json({
         error: error.message,
         code: 'EMAIL_NOT_VERIFIED',
-        message: 'Please verify your email address before logging in. We have re-sent a verification email if the account exists.',
-        next: 'verify_email_then_retry_login'
+        message: emailResent
+          ? 'Please verify your email address before logging in. A new verification email has been sent.'
+          : 'Please verify your email address before logging in. Check your inbox for the verification link.',
+        next: 'verify_email_then_retry_login',
+        emailResent
       });
     }
 

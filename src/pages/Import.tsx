@@ -2,12 +2,18 @@ import React, { useState, useEffect } from 'react';
 import ImportConfiguration from '../components/import/ImportConfiguration';
 import CSVUploadWithMapping from '../components/import/CSVUploadWithMapping';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Upload, Settings, Database, Loader2, RefreshCw, CheckCircle, XCircle, Clock, FileText } from 'lucide-react';
+import { Upload, Settings, Database, Loader2, RefreshCw, CheckCircle, XCircle, Clock, FileText, Eye, MoreVertical, Search, Globe, Plus } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { buildApiUrl } from '../lib/config';
+import { formatDistanceToNow } from 'date-fns';
 
 // Interface for file information
 interface FileInfo {
@@ -83,6 +89,16 @@ const Import: React.FC = () => {
   const [selectedConfig, setSelectedConfig] = useState<ImportConfigResponse | null>(null);
   const [syncStatuses, setSyncStatuses] = useState<Map<number, SyncStatus>>(new Map());
   const [testingConnection, setTestingConnection] = useState<Set<number>>(new Set());
+  
+  // New state for table features
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
+  const [viewDetailsConfig, setViewDetailsConfig] = useState<ImportConfigResponse | null>(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editModalConfig, setEditModalConfig] = useState<ImportConfigResponse | null>(null);
 
   // Load configurations when FTP/SFTP tab is active
   const loadConfigs = async () => {
@@ -153,6 +169,7 @@ const Import: React.FC = () => {
       
       setSelectedConfig(fullConfig);
       setEditConfigId(configId);
+      setEditModalConfig(fullConfig);
       
       toast({
         title: "Configuration Loaded",
@@ -185,7 +202,18 @@ const Import: React.FC = () => {
   // Handle configuration selection for editing
   const handleConfigEdit = async (config: ImportConfigResponse) => {
     await loadConfigurationForEdit(config.id);
-    setActiveTab("ftp-sftp"); // Stay on FTP/SFTP tab to show the loaded configuration
+    // Modal will open after config is loaded (editModalConfig is set in loadConfigurationForEdit)
+    setShowEditModal(true);
+  };
+
+  // Handle edit modal close
+  const handleEditModalClose = () => {
+    setShowEditModal(false);
+    setEditModalConfig(null);
+    setSelectedConfig(null);
+    setEditConfigId(undefined);
+    // Reload configurations to get updated data
+    loadConfigs();
   };
 
   // Test connection and list files
@@ -368,8 +396,133 @@ const Import: React.FC = () => {
     }
   };
 
+  // Helper function to get connection icon
+  const getConnectionIcon = (config: ImportConfigResponse) => {
+    const type = config.connection_type?.toLowerCase();
+    if (type === 'ftp' || type === 'sftp') {
+      return <Globe className="h-5 w-5" />;
+    }
+    return <Database className="h-5 w-5" />;
+  };
+
+  // Helper function to get status
+  const getConfigStatus = (config: ImportConfigResponse): {
+    status: 'active' | 'warning' | 'error' | 'paused';
+    label: string;
+    className: string;
+  } => {
+    const syncStatus = syncStatuses.get(config.id);
+    
+    // Check for errors
+    if (!config.fieldMappings || config.fieldMappings.length === 0) {
+      return {
+        status: 'error',
+        label: 'Error',
+        className: 'bg-red-500 hover:bg-red-600'
+      };
+    }
+    
+    // Check if paused/inactive
+    if (!config.is_active) {
+      return {
+        status: 'paused',
+        label: 'Paused',
+        className: 'bg-gray-400 hover:bg-gray-500'
+      };
+    }
+    
+    // Check for warnings (manual or no recent sync)
+    if (config.frequency === 'manual') {
+      return {
+        status: 'warning',
+        label: 'Warning',
+        className: 'bg-yellow-500 hover:bg-yellow-600'
+      };
+    }
+    
+    // Active
+    return {
+      status: 'active',
+      label: 'Active',
+      className: 'bg-green-500 hover:bg-green-600'
+    };
+  };
+
+  // Helper function to format sync frequency
+  const formatSyncFrequency = (frequency: string): string => {
+    if (frequency === 'manual') return 'Manual';
+    if (frequency === 'hourly') return 'Every 1 hour';
+    if (frequency === 'daily') return 'Daily';
+    if (frequency === 'weekly') return 'Weekly';
+    if (frequency === 'monthly') return 'Monthly';
+    return frequency;
+  };
+
+  // Helper function to format last sync time
+  const formatLastSync = (config: ImportConfigResponse): string => {
+    const syncStatus = syncStatuses.get(config.id);
+    if (syncStatus?.last_sync) {
+      return formatDistanceToNow(new Date(syncStatus.last_sync), { addSuffix: true });
+    }
+    if (config.updated_at) {
+      return formatDistanceToNow(new Date(config.updated_at), { addSuffix: true });
+    }
+    return 'Never';
+  };
+
+  // Filter configs based on search and filters
+  const getFilteredConfigs = () => {
+    return configs.filter(config => {
+      // Search filter
+      const matchesSearch = !searchQuery || 
+        config.config_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        config.host_url.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      // Status filter
+      const status = getConfigStatus(config).status;
+      const matchesStatus = statusFilter === 'all' || status === statusFilter;
+      
+      // Type filter
+      const matchesType = typeFilter === 'all' || config.connection_type === typeFilter;
+      
+      return matchesSearch && matchesStatus && matchesType;
+    });
+  };
+
+  // Handle row selection
+  const toggleRowSelection = (configId: number) => {
+    setSelectedRows(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(configId)) {
+        newSet.delete(configId);
+      } else {
+        newSet.add(configId);
+      }
+      return newSet;
+    });
+  };
+
+  // Handle select all
+  const toggleSelectAll = () => {
+    const filteredConfigs = getFilteredConfigs();
+    if (selectedRows.size === filteredConfigs.length && filteredConfigs.length > 0) {
+      setSelectedRows(new Set());
+    } else {
+      setSelectedRows(new Set(filteredConfigs.map(c => c.id)));
+    }
+  };
+
+  // Handle view details
+  const handleViewDetails = (config: ImportConfigResponse) => {
+    setViewDetailsConfig(config);
+    setShowDetailsModal(true);
+  };
+
   // Render configuration list for FTP/SFTP tab
   const renderConfigurationList = () => {
+    const filteredConfigs = getFilteredConfigs();
+    const allSelected = filteredConfigs.length > 0 && selectedRows.size === filteredConfigs.length;
+
     if (isLoadingConfigs) {
       return (
         <Card>
@@ -390,7 +543,10 @@ const Import: React.FC = () => {
             <p className="mb-4 max-w-md text-center text-sm text-muted-foreground sm:text-base">
               Create your first import configuration to start importing data from external systems.
             </p>
-            <Button onClick={() => setActiveTab('ftp-sftp')} className="w-full text-sm sm:w-auto sm:text-base">
+            <Button onClick={() => {
+              setEditModalConfig({} as ImportConfigResponse);
+              setShowEditModal(true);
+            }} className="w-full text-sm sm:w-auto sm:text-base">
               Create Configuration
             </Button>
           </CardContent>
@@ -399,220 +555,192 @@ const Import: React.FC = () => {
     }
 
     return (
-      <div className="grid gap-4">
-        {configs.map((config) => (
-          <Card key={config.id} className={`cursor-pointer transition-all hover:shadow-md ${selectedConfig?.id === config.id ? 'ring-2 ring-primary bg-primary/10' : ''}`}>
-            <CardHeader className="space-y-2 p-4 sm:p-6">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div className="min-w-0 flex-1">
-                  <CardTitle className="text-lg font-semibold leading-snug sm:text-xl">
-                    {config.config_name}
-                  </CardTitle>
-                  <CardDescription className="mt-1 text-xs sm:text-sm">
-                    {config.connection_type?.toUpperCase()} - {config.host_url}
-                  </CardDescription>
-                </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  <Badge variant={config.frequency === 'manual' ? 'secondary' : 'default'} className="text-xs">
-                    {config.frequency}
-                  </Badge>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 px-2 sm:h-9 sm:px-3"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleConfigEdit(config);
-                    }}
-                  >
-                    <Settings className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4 p-4 pt-0 sm:p-6 sm:pt-0">
-              <div className="grid grid-cols-1 gap-3 text-xs sm:grid-cols-3 sm:gap-4 sm:text-sm">
-                <div className="break-words">
-                  <span className="font-medium">File Type:</span> {config.file_type?.toUpperCase()}
-                </div>
-                <div className="break-all sm:break-words">
-                  <span className="font-medium">Pattern:</span> {config.file_pattern}
-                </div>
-                <div className="break-words">
-                  <span className="font-medium">Duplicates:</span> {config.duplicate_handling}
-                </div>
-              </div>
+      <div className="space-y-4">
+        {/* Search and Filters Bar */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="relative w-full sm:w-[280px]">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search connections..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full sm:w-[140px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Status: All</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="warning">Warning</SelectItem>
+                <SelectItem value="error">Error</SelectItem>
+                <SelectItem value="paused">Paused</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger className="w-full sm:w-[120px]">
+                <SelectValue placeholder="Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Type: All</SelectItem>
+                <SelectItem value="ftp">FTP</SelectItem>
+                <SelectItem value="sftp">SFTP</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-muted-foreground">
+              Selected ({selectedRows.size})
+            </span>
+            <Button variant="outline" size="sm" disabled={selectedRows.size === 0}>
+              Bulk Actions
+            </Button>
+            <Button size="sm" onClick={() => {
+              setEditModalConfig({} as ImportConfigResponse);
+              setShowEditModal(true);
+            }}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add New Connection
+            </Button>
+          </div>
+        </div>
 
-              {/* File Match Keyword Display */}
-              {config.file_match_keyword && (
-                <div className="rounded-lg border border-green-200 bg-green-50 p-3">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                    <div className="flex-1">
-                      <span className="text-xs font-medium text-green-900 sm:text-sm">Smart File Matching Active</span>
-                      <p className="text-[11px] text-green-700 mt-1">
-                        Automatically uses latest file containing: <strong>"{config.file_match_keyword}"</strong>
-                      </p>
+        {/* Table */}
+        <Card>
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/50">
+                <TableHead className="w-[50px]">
+                  <Checkbox
+                    checked={allSelected}
+                    onCheckedChange={toggleSelectAll}
+                  />
+                </TableHead>
+                <TableHead className="font-semibold">SOURCE NAME & TYPE</TableHead>
+                <TableHead className="font-semibold">STATUS</TableHead>
+                <TableHead className="font-semibold">SYNC FREQUENCY</TableHead>
+                <TableHead className="font-semibold">LAST SYNC</TableHead>
+                <TableHead className="font-semibold">TOTAL ITEMS</TableHead>
+                <TableHead className="font-semibold text-right">QUICK ACTIONS</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredConfigs.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="h-32 text-center">
+                    <div className="flex flex-col items-center justify-center text-muted-foreground">
+                      <Database className="mb-2 h-8 w-8" />
+                      <span>No configurations found</span>
                     </div>
-                  </div>
-                </div>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredConfigs.map((config) => {
+                  const status = getConfigStatus(config);
+                  const syncStatus = syncStatuses.get(config.id);
+                  const isRowSelected = selectedRows.has(config.id);
+                  const isSyncing = syncStatus?.status === 'running';
+
+                  return (
+                    <TableRow 
+                      key={config.id} 
+                      className={`hover:bg-muted/50 ${isRowSelected ? 'bg-muted/30' : ''}`}
+                    >
+                      <TableCell>
+                        <Checkbox
+                          checked={isRowSelected}
+                          onCheckedChange={() => toggleRowSelection(config.id)}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${
+                            status.status === 'active' ? 'bg-blue-50 text-blue-600' :
+                            status.status === 'warning' ? 'bg-yellow-50 text-yellow-600' :
+                            status.status === 'error' ? 'bg-red-50 text-red-600' :
+                            'bg-gray-100 text-gray-600'
+                          }`}>
+                            {getConnectionIcon(config)}
+                          </div>
+                          <div>
+                            <div className="font-semibold">{config.config_name}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {config.connection_type?.toUpperCase()} Connection
+                            </div>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={status.className}>
+                          <div className="mr-1.5 h-2 w-2 rounded-full bg-white" />
+                          {status.label}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {formatSyncFrequency(config.frequency)}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {formatLastSync(config)}
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-lg font-semibold">
+                          {syncStatus?.records_imported?.toLocaleString() || config.fieldMappings?.length || 0}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => handleConfigEdit(config)}
+                            title="Edit Configuration"
+                          >
+                            <Settings className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => handleViewDetails(config)}
+                            title="View Details"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => handleQuickSync(config.id)}
+                            disabled={!config.fieldMappings || config.fieldMappings.length === 0 || isSyncing}
+                            title="Sync Now"
+                          >
+                            {isSyncing ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <RefreshCw className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
+            </TableBody>
+          </Table>
+        </Card>
 
-              {/* Available Files Section */}
-              {config.selected_files && config.selected_files.length > 0 && (
-                <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
-                  <div className="flex items-center gap-2 mb-2">
-                    <FileText className="h-3.5 w-3.5 text-blue-600 sm:h-4 sm:w-4" />
-                    <span className="text-xs font-medium text-blue-900 sm:text-sm">Selected Files</span>
-                  </div>
-                  <div className="flex flex-wrap gap-1">
-                    {config.selected_files.slice(0, 3).map((file, index) => (
-                      <Badge key={index} variant="outline" className="text-xs bg-white">
-                        {file}
-                      </Badge>
-                    ))}
-                    {config.selected_files.length > 3 && (
-                      <Badge variant="outline" className="text-xs bg-white">
-                        +{config.selected_files.length - 3} more
-                      </Badge>
-                    )}
-                  </div>
-                  {config.last_file_scan && (
-                    <div className="mt-1 text-[11px] text-blue-700">
-                      Last scanned: {new Date(config.last_file_scan).toLocaleString()}
-                    </div>
-                  )}
-                </div>
-              )}
-              
-              {/* Field Mappings Status */}
-              <div className="rounded-lg border p-3 sm:mt-0">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex items-center gap-2">
-                    <Database className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
-                    <span className="text-xs font-medium sm:text-sm">Field Mappings</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    {config.fieldMappings && config.fieldMappings.length > 0 ? (
-                      <>
-                        <Badge variant="default" className="text-xs">
-                          {config.fieldMappings.length} mappings
-                        </Badge>
-                        <Badge variant="outline" className="text-xs text-green-600">
-                          Ready
-                        </Badge>
-                      </>
-                    ) : (
-                      <>
-                        <Badge variant="destructive" className="text-xs">
-                          No mappings
-                        </Badge>
-                        <Badge variant="outline" className="text-xs text-red-600">
-                          Not Ready
-                        </Badge>
-                      </>
-                    )}
-                  </div>
-                </div>
-                
-                {config.fieldMappings && config.fieldMappings.length > 0 && (
-                  <div className="mt-2">
-                    <div className="mb-1 text-[11px] text-gray-600 sm:text-xs">
-                      Required fields: {config.fieldMappings.filter(fm => fm.is_required).length} of {config.fieldMappings.length}
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      {config.fieldMappings.slice(0, 5).map((mapping, index) => (
-                        <Badge key={index} variant="secondary" className="text-xs">
-                          {mapping.source_field} → {mapping.target_field}
-                        </Badge>
-                      ))}
-                      {config.fieldMappings.length > 5 && (
-                        <Badge variant="outline" className="text-xs">
-                          +{config.fieldMappings.length - 5} more
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                )}
-                
-                {(!config.fieldMappings || config.fieldMappings.length === 0) && (
-                  <div className="mt-2 rounded border border-yellow-200 bg-yellow-50 p-2">
-                    <p className="text-[11px] leading-relaxed text-yellow-800 sm:text-xs">
-                      No field mappings configured. Edit this configuration to add field mappings before importing.
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Sync Status */}
-              {syncStatuses.get(config.id) && syncStatuses.get(config.id)?.status !== 'idle' && (
-                <div className={`rounded-lg border p-3 ${
-                  syncStatuses.get(config.id)?.status === 'success' ? 'border-green-200 bg-green-50' :
-                  syncStatuses.get(config.id)?.status === 'error' ? 'border-red-200 bg-red-50' :
-                  'border-blue-200 bg-blue-50'
-                }`}>
-                  <div className="flex items-center gap-2">
-                    {syncStatuses.get(config.id)?.status === 'running' && <Loader2 className="h-4 w-4 animate-spin text-blue-600" />}
-                    {syncStatuses.get(config.id)?.status === 'success' && <CheckCircle className="h-4 w-4 text-green-600" />}
-                    {syncStatuses.get(config.id)?.status === 'error' && <XCircle className="h-4 w-4 text-red-600" />}
-                    <span className="text-xs font-medium">{syncStatuses.get(config.id)?.message}</span>
-                  </div>
-                  {syncStatuses.get(config.id)?.records_imported !== undefined && (
-                    <div className="mt-1 text-[11px] text-gray-600">
-                      Records imported: {syncStatuses.get(config.id)?.records_imported}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Quick Action Buttons */}
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <Button
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleQuickSync(config.id);
-                  }}
-                  disabled={!config.fieldMappings || config.fieldMappings.length === 0 || syncStatuses.get(config.id)?.status === 'running'}
-                  className="flex-1"
-                >
-                  {syncStatuses.get(config.id)?.status === 'running' ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Syncing...
-                    </>
-                  ) : (
-                    <>
-                      <RefreshCw className="mr-2 h-4 w-4" />
-                      Sync Now
-                    </>
-                  )}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleTestConnection(config.id);
-                  }}
-                  disabled={testingConnection.has(config.id)}
-                >
-                  {testingConnection.has(config.id) ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Testing...
-                    </>
-                  ) : (
-                    <>
-                      <Database className="mr-2 h-4 w-4" />
-                      Test Connection
-                    </>
-                  )}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+        {/* Pagination */}
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <span>
+            Showing {filteredConfigs.length} of {configs.length} entries
+          </span>
+        </div>
       </div>
     );
   };
@@ -743,6 +871,259 @@ const Import: React.FC = () => {
             </div>
           </TabsContent>
         </Tabs>
+
+        {/* View Details Modal */}
+        <Dialog open={showDetailsModal} onOpenChange={setShowDetailsModal}>
+          <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Eye className="h-5 w-5" />
+                Connection Details
+              </DialogTitle>
+              <DialogDescription>
+                Detailed information about this import configuration
+              </DialogDescription>
+            </DialogHeader>
+
+            {viewDetailsConfig && (
+              <div className="space-y-6">
+                {/* Basic Info */}
+                <div>
+                  <h3 className="mb-3 font-semibold">Basic Information</h3>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Configuration Name:</span>
+                      <p className="font-medium">{viewDetailsConfig.config_name}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Status:</span>
+                      <div className="mt-1">
+                        <Badge className={getConfigStatus(viewDetailsConfig).className}>
+                          {getConfigStatus(viewDetailsConfig).label}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Connection Type:</span>
+                      <p className="font-medium">{viewDetailsConfig.connection_type?.toUpperCase()}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Sync Frequency:</span>
+                      <p className="font-medium">{formatSyncFrequency(viewDetailsConfig.frequency)}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Connection Details */}
+                <div>
+                  <h3 className="mb-3 font-semibold">Connection Settings</h3>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Host URL:</span>
+                      <p className="font-medium break-all">{viewDetailsConfig.host_url}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Port:</span>
+                      <p className="font-medium">{viewDetailsConfig.port}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Username:</span>
+                      <p className="font-medium">{viewDetailsConfig.username}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Remote Directory:</span>
+                      <p className="font-medium break-all">{viewDetailsConfig.remote_directory}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* File Settings */}
+                <div>
+                  <h3 className="mb-3 font-semibold">File Settings</h3>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">File Type:</span>
+                      <p className="font-medium">{viewDetailsConfig.file_type?.toUpperCase()}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">File Pattern:</span>
+                      <p className="font-medium">{viewDetailsConfig.file_pattern}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Delimiter:</span>
+                      <p className="font-medium">{viewDetailsConfig.delimiter === ',' ? 'Comma' : viewDetailsConfig.delimiter}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Has Header:</span>
+                      <p className="font-medium">{viewDetailsConfig.has_header ? 'Yes' : 'No'}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Encoding:</span>
+                      <p className="font-medium">{viewDetailsConfig.encoding}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Date Format:</span>
+                      <p className="font-medium">{viewDetailsConfig.date_format}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Selected Files */}
+                {viewDetailsConfig.selected_files && viewDetailsConfig.selected_files.length > 0 && (
+                  <div>
+                    <h3 className="mb-3 font-semibold">Selected Files</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {viewDetailsConfig.selected_files.map((file, index) => (
+                        <Badge key={index} variant="outline">
+                          {file}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Field Mappings */}
+                <div>
+                  <h3 className="mb-3 font-semibold">
+                    Field Mappings ({viewDetailsConfig.fieldMappings?.length || 0})
+                  </h3>
+                  {viewDetailsConfig.fieldMappings && viewDetailsConfig.fieldMappings.length > 0 ? (
+                    <div className="rounded-lg border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Source Field</TableHead>
+                            <TableHead>Target Field</TableHead>
+                            <TableHead>Type</TableHead>
+                            <TableHead>Required</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {viewDetailsConfig.fieldMappings.slice(0, 10).map((mapping, index) => (
+                            <TableRow key={index}>
+                              <TableCell className="font-medium">{mapping.source_field}</TableCell>
+                              <TableCell>{mapping.target_field}</TableCell>
+                              <TableCell>
+                                <Badge variant="secondary">{mapping.field_type}</Badge>
+                              </TableCell>
+                              <TableCell>
+                                {mapping.is_required ? (
+                                  <Badge variant="destructive">Required</Badge>
+                                ) : (
+                                  <Badge variant="outline">Optional</Badge>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                      {viewDetailsConfig.fieldMappings.length > 10 && (
+                        <div className="border-t p-2 text-center text-sm text-muted-foreground">
+                          +{viewDetailsConfig.fieldMappings.length - 10} more mappings
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No field mappings configured</p>
+                  )}
+                </div>
+
+                {/* Processing Settings */}
+                <div>
+                  <h3 className="mb-3 font-semibold">Processing Settings</h3>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Duplicate Handling:</span>
+                      <p className="font-medium capitalize">{viewDetailsConfig.duplicate_handling}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Batch Size:</span>
+                      <p className="font-medium">{viewDetailsConfig.batch_size}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Max Errors:</span>
+                      <p className="font-medium">{viewDetailsConfig.max_errors}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Validate Data:</span>
+                      <p className="font-medium">{viewDetailsConfig.validate_data ? 'Yes' : 'No'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Timestamps */}
+                <div className="rounded-lg border bg-muted/50 p-4">
+                  <div className="grid grid-cols-2 gap-4 text-xs">
+                    <div>
+                      <span className="text-muted-foreground">Created:</span>
+                      <p className="font-medium">{new Date(viewDetailsConfig.created_at).toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Last Updated:</span>
+                      <p className="font-medium">{new Date(viewDetailsConfig.updated_at).toLocaleString()}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={() => {
+                      setShowDetailsModal(false);
+                      handleConfigEdit(viewDetailsConfig);
+                    }}
+                    className="flex-1"
+                  >
+                    <Settings className="mr-2 h-4 w-4" />
+                    Edit Configuration
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    onClick={() => handleTestConnection(viewDetailsConfig.id)}
+                    disabled={testingConnection.has(viewDetailsConfig.id)}
+                  >
+                    {testingConnection.has(viewDetailsConfig.id) ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Testing...
+                      </>
+                    ) : (
+                      <>
+                        <Database className="mr-2 h-4 w-4" />
+                        Test Connection
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Configuration Modal */}
+        <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Settings className="h-5 w-5" />
+                {editModalConfig?.config_name ? `Edit: ${editModalConfig.config_name}` : 'New Configuration'}
+              </DialogTitle>
+              <DialogDescription>
+                Configure import settings, field mappings, and sync schedule
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="mt-4">
+              {editModalConfig && (
+                <ImportConfiguration 
+                  onEditConfig={handleEditConfig} 
+                  onCancel={handleEditModalClose}
+                  preloadedConfig={editModalConfig.config_name ? editModalConfig : null}
+                />
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

@@ -338,7 +338,14 @@ Need help? Contact us at ${process.env.SMTP_USER || 'support@mitiesoft.com'}
 // Verify email with token
 export const verifyEmailToken = async (token) => {
   try {
-    console.log('🔍 Verifying email token:', token);
+    const normalizedToken = String(token || '').trim();
+    console.log('🔍 Verifying email token:', normalizedToken);
+
+    if (!normalizedToken || normalizedToken.length < 32) {
+      const err = new Error('Invalid verification token');
+      err.code = 'INVALID_TOKEN';
+      throw err;
+    }
     
     // First, check if token exists at all with detailed timestamp info
     const tokenCheck = await query(
@@ -349,7 +356,7 @@ export const verifyEmailToken = async (token) => {
               EXTRACT(EPOCH FROM (verification_token_expires - NOW())) as seconds_until_expiry
        FROM customers 
        WHERE verification_token = $1`,
-      [token]
+      [normalizedToken]
     );
     
     if (tokenCheck.rows.length > 0) {
@@ -363,44 +370,56 @@ export const verifyEmailToken = async (token) => {
       console.log('   Seconds until expiry:', tokenInfo.seconds_until_expiry);
       
       if (tokenInfo.email_verified) {
-        throw new Error('Email is already verified');
+        // Already verified — treat as success so the email link still works if clicked again
+        console.log(`✅ Email already verified for customer: ${tokenInfo.email}`);
+        return {
+          success: true,
+          alreadyVerified: true,
+          customer: {
+            id: tokenInfo.id,
+            email: tokenInfo.email,
+            first_name: tokenInfo.first_name,
+            last_name: tokenInfo.last_name
+          }
+        };
       }
       
       // If token expired, provide helpful info
       if (!tokenInfo.is_valid || tokenInfo.seconds_until_expiry < 0) {
         const hoursAgo = Math.abs(tokenInfo.seconds_until_expiry) / 3600;
         console.error(`❌ Token expired ${hoursAgo.toFixed(2)} hours ago`);
-        throw new Error('Verification token has expired. Please request a new verification email.');
+        const err = new Error('Verification token has expired. Please request a new verification email.');
+        err.code = 'TOKEN_EXPIRED';
+        throw err;
       }
     } else {
       console.error('❌ Token not found in database');
-      throw new Error('Invalid verification token');
+      const err = new Error('Invalid verification token');
+      err.code = 'INVALID_TOKEN';
+      throw err;
     }
     
-    // Find customer with valid token
+    // Mark email as verified atomically while token is still valid
     const customerResult = await query(
-      `SELECT id, email, first_name, last_name FROM customers 
-       WHERE verification_token = $1 
-       AND email_verified = FALSE`,
-      [token]
+      `UPDATE customers
+       SET email_verified = TRUE,
+           verification_token = NULL,
+           verification_token_expires = NULL,
+           updated_at = NOW()
+       WHERE verification_token = $1
+         AND email_verified = FALSE
+         AND verification_token_expires > NOW()
+       RETURNING id, email, first_name, last_name`,
+      [normalizedToken]
     );
     
     if (customerResult.rows.length === 0) {
-      throw new Error('Invalid or expired verification token');
+      const err = new Error('Invalid or expired verification token');
+      err.code = 'INVALID_TOKEN';
+      throw err;
     }
     
     const customer = customerResult.rows[0];
-    
-    // Mark email as verified
-    await query(
-      `UPDATE customers 
-       SET email_verified = TRUE, 
-           verification_token = NULL, 
-           verification_token_expires = NULL,
-           updated_at = NOW() 
-       WHERE id = $1`,
-      [customer.id]
-    );
     
     console.log(`✅ Email verified for customer: ${customer.email}`);
     return { success: true, customer };

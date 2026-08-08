@@ -148,37 +148,17 @@ const QuickAuthModal: React.FC<QuickAuthModalProps> = ({
         throw new Error(registerData.error || 'Registration failed');
       }
 
-      // Then create session with login
-      const sessionResponse = await fetch(buildApiUrl('customer-auth/session-with-login'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          qr_hash: qrHash,
-          email: formData.email,
-          password: formData.password,
-        }),
-      });
-
-      const sessionData = await sessionResponse.json();
-
-      if (!sessionResponse.ok) {
-        throw new Error(sessionData.error || 'Failed to create session');
-      }
-
-      // Store customer token in localStorage
-      localStorage.setItem('customerToken', sessionData.session.token);
-      localStorage.setItem('customerSession', JSON.stringify(sessionData.session));
-
-      onSuccess(sessionData);
-      
+      // Do NOT call session-with-login here. Login requires a verified email, and
+      // that endpoint was regenerating the verification token — invalidating the
+      // email that register just sent.
       toast({
-        title: "Welcome!",
-        description: `Hello ${formData.first_name}, you're now registered and logged in`,
+        title: "Check your email",
+        description: `We sent a verification link to ${formData.email}. Verify your email, then log in.`,
       });
 
-      onClose();
+      // Switch to login step so they can continue after verifying
+      setStep('login');
+      setError('');
     } catch (error: any) {
       setError(error.message || 'Registration failed');
     } finally {
@@ -258,6 +238,15 @@ const QuickAuthModal: React.FC<QuickAuthModalProps> = ({
       const sessionData = await sessionResponse.json();
 
       if (!sessionResponse.ok) {
+        if (sessionData.code === 'EMAIL_NOT_VERIFIED') {
+          setError(sessionData.message || 'Please verify your email before logging in. Check your inbox for the verification link.');
+          toast({
+            title: "Email not verified",
+            description: "Open the verification link we sent, then log in again.",
+            variant: "destructive",
+          });
+          return;
+        }
         throw new Error(sessionData.error || 'Login failed');
       }
 
