@@ -1421,10 +1421,37 @@ router.post('/handoff/:id', authenticateToken, async (req, res) => {
       return res.status(500).json({ error: 'Failed to update conversation' });
     }
 
+    // Resolve vehicle for lead: conversation.vehicle_id, else latest interest
+    let resolvedVehicleId = conversation.vehicle_id || null;
+    if (!resolvedVehicleId) {
+      try {
+        const interestResult = await pool.query(
+          `SELECT vehicle_id
+           FROM daive_user_interests
+           WHERE conversation_id = $1 AND vehicle_id IS NOT NULL
+           ORDER BY interest_level DESC NULLS LAST, COALESCE(updated_at, created_at) DESC
+           LIMIT 1`,
+          [id]
+        );
+        resolvedVehicleId = interestResult.rows[0]?.vehicle_id || null;
+        if (resolvedVehicleId) {
+          await pool.query(
+            `UPDATE daive_conversations
+             SET vehicle_id = $1, updated_at = NOW()
+             WHERE id = $2 AND vehicle_id IS NULL`,
+            [resolvedVehicleId, id]
+          );
+          console.log(`✅ Backfilled conversation vehicle_id=${resolvedVehicleId} from interests`);
+        }
+      } catch (vehicleResolveErr) {
+        console.warn('⚠️ Could not resolve vehicle for lead:', vehicleResolveErr.message);
+      }
+    }
+
     // Create a lead record from the accepted handoff
     const leadData = {
       dealer_id: dealerId,
-      vehicle_id: conversation.vehicle_id,
+      vehicle_id: resolvedVehicleId,
       customer_name: conversation.customer_name || 'Anonymous',
       customer_email: conversation.customer_email || 'no-email@example.com',
       customer_phone: conversation.customer_phone,

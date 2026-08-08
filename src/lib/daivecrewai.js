@@ -5112,6 +5112,16 @@ Guidelines:
 
         // ? FIXED: Check if vehicle was just selected first
         const vehicleJustSelected = result.selectedVehicle || result.vehicleChanged || result.hasVehicleSelection;
+
+        // Safety net: when a vehicle was just selected this turn, persist to DB
+        // (Analytics / Leads read daive_conversations.vehicle_id)
+        if (vehicleJustSelected && conversation?.id && conversationContext) {
+          conversationContext.conversationId = conversationContext.conversationId || conversation.id;
+          const selectedForPersist = result.selectedVehicle || this.getSelectedVehicle(conversationContext);
+          if (selectedForPersist) {
+            void this._persistConversationVehicleId(conversationContext, selectedForPersist);
+          }
+        }
         
         // ?? NEW: Check if this is a QR pre-selected vehicle that's already been shown
         const isQRVehicleAlreadyShown = 
@@ -25792,6 +25802,74 @@ ${(() => {
       model: vehicle.model,
       color_tone: colorTone
     });
+
+    // Persist to daive_conversations so Analytics / Leads show the selected vehicle
+    void this._persistConversationVehicleId(conversationContext, vehicle);
+  }
+
+  /**
+   * Write selected vehicle onto daive_conversations.vehicle_id (and track interest).
+   * Fire-and-forget from storeSelectedVehicle — selection must not block on DB.
+   */
+  async _persistConversationVehicleId(conversationContext, vehicle) {
+    try {
+      const conversationId = conversationContext?.conversationId;
+      if (!conversationId || !vehicle) return;
+
+      let vehicleId = vehicle.id || vehicle.vehicle_id || null;
+      const stock = vehicle.stock_number || vehicle.stockNumber || null;
+      const dealerId = conversationContext.dealerId || conversationContext.dealer_id || null;
+
+      const { pool } = await import('../database/connection.js');
+
+      if (!vehicleId && stock) {
+        const resolved = dealerId
+          ? await pool.query(
+              'SELECT id FROM vehicles WHERE stock_number = $1 AND dealer_id = $2 LIMIT 1',
+              [stock, dealerId]
+            )
+          : await pool.query(
+              'SELECT id FROM vehicles WHERE stock_number = $1 LIMIT 1',
+              [stock]
+            );
+        vehicleId = resolved.rows[0]?.id || null;
+      }
+
+      if (!vehicleId) {
+        console.warn(
+          `⚠️ Cannot persist vehicle_id for conversation ${conversationId} — no vehicle UUID (stock=${stock || 'n/a'})`
+        );
+        return;
+      }
+
+      const update = await pool.query(
+        `UPDATE daive_conversations
+         SET vehicle_id = $1, updated_at = NOW()
+         WHERE id = $2
+           AND (vehicle_id IS NULL OR vehicle_id IS DISTINCT FROM $1)
+         RETURNING id`,
+        [vehicleId, conversationId]
+      );
+
+      if (update.rows.length > 0) {
+        console.log(`✅ Persisted vehicle_id=${vehicleId} on conversation ${conversationId}`);
+      } else {
+        console.log(`ℹ️ Conversation ${conversationId} already has vehicle_id=${vehicleId}`);
+      }
+
+      try {
+        await this.trackUserInterest(
+          conversationId,
+          vehicleId,
+          'selected',
+          `Selected ${vehicle.year || ''} ${vehicle.make || ''} ${vehicle.model || ''}`.trim()
+        );
+      } catch (interestErr) {
+        console.warn('⚠️ trackUserInterest after selection failed:', interestErr.message);
+      }
+    } catch (error) {
+      console.error('❌ Failed to persist conversation vehicle_id:', error.message);
+    }
   }
 
   // ? NEW: Check if user is requesting inventory
