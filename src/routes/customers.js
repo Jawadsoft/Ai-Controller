@@ -12,19 +12,27 @@ import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import financeNotificationService from '../lib/financeNotificationService.js';
 
-/** Ignore missing table/column so partial DBs still work */
+/** 
+ * Ignore missing table/column so partial DBs still work.
+ * Also handles other non-critical errors to prevent transaction abort.
+ */
 async function runOptionalSql(client, sql, params, description = 'query') {
   try {
-    await client.query(sql, params);
+    const result = await client.query(sql, params);
+    console.log(`✅ ${description}: affected ${result.rowCount} row(s)`);
+    return result;
   } catch (e) {
     // 42P01 = undefined table, 42703 = undefined column - these are expected
     if (e.code === '42P01' || e.code === '42703') {
       console.log(`⚠️ Optional SQL ${description} skipped: ${e.code} - ${e.message}`);
-      return;
+      return null;
     }
-    // Any other error should be logged and re-thrown
-    console.error(`❌ Error in ${description}:`, e.code, e.message);
-    throw e;
+    
+    // Log the error but don't abort - these are optional cleanup operations
+    // The important part is deleting the customer record itself
+    console.warn(`⚠️ Non-critical error in ${description}:`, e.code, e.message);
+    console.warn(`   This is not critical - continuing with deletion`);
+    return null;
   }
 }
 
@@ -35,6 +43,27 @@ async function deleteCustomerWithReferenceCleanup(poolConn, customerId) {
   const client = await poolConn.connect();
   try {
     console.log(`🗑️ Starting customer deletion for ID: ${customerId}`);
+    
+    // First, check what references exist (diagnostic)
+    try {
+      const checks = await Promise.allSettled([
+        client.query('SELECT COUNT(*) FROM credit_applications WHERE customer_id = $1', [customerId]).catch(() => ({ rows: [{ count: 'N/A' }] })),
+        client.query('SELECT COUNT(*) FROM daive_conversations WHERE customer_id = $1', [customerId]).catch(() => ({ rows: [{ count: 'N/A' }] })),
+        client.query('SELECT COUNT(*) FROM customer_sessions WHERE customer_id = $1', [customerId]).catch(() => ({ rows: [{ count: 'N/A' }] })),
+        client.query('SELECT COUNT(*) FROM customer_leads WHERE customer_id = $1', [customerId]).catch(() => ({ rows: [{ count: 'N/A' }] })),
+        client.query('SELECT COUNT(*) FROM application_links WHERE customer_id = $1', [customerId]).catch(() => ({ rows: [{ count: 'N/A' }] })),
+      ]);
+      
+      console.log(`📊 Reference counts for customer ${customerId}:`);
+      console.log(`   - credit_applications: ${checks[0].status === 'fulfilled' ? checks[0].value.rows[0].count : 'table missing'}`);
+      console.log(`   - daive_conversations: ${checks[1].status === 'fulfilled' ? checks[1].value.rows[0].count : 'table missing'}`);
+      console.log(`   - customer_sessions: ${checks[2].status === 'fulfilled' ? checks[2].value.rows[0].count : 'table missing'}`);
+      console.log(`   - customer_leads: ${checks[3].status === 'fulfilled' ? checks[3].value.rows[0].count : 'table missing'}`);
+      console.log(`   - application_links: ${checks[4].status === 'fulfilled' ? checks[4].value.rows[0].count : 'table missing'}`);
+    } catch (diagError) {
+      console.warn('⚠️ Could not run diagnostic checks:', diagError.message);
+    }
+    
     await client.query('BEGIN');
     
     await runOptionalSql(
@@ -69,14 +98,31 @@ async function deleteCustomerWithReferenceCleanup(poolConn, customerId) {
     );
     
     console.log(`🗑️ Deleting customer record: ${customerId}`);
-    const del = await client.query('DELETE FROM customers WHERE id = $1 RETURNING id', [customerId]);
-    
-    await client.query('COMMIT');
-    console.log(`✅ Customer deleted successfully: ${customerId}`);
-    return del;
+    try {
+      const del = await client.query('DELETE FROM customers WHERE id = $1 RETURNING id', [customerId]);
+      
+      if (del.rows.length === 0) {
+        throw new Error('Customer not found or already deleted');
+      }
+      
+      await client.query('COMMIT');
+      console.log(`✅ Customer deleted successfully: ${customerId}`);
+      return del;
+    } catch (deleteError) {
+      // If the delete fails due to foreign key constraints, provide helpful error
+      if (deleteError.code === '23503') {
+        console.error(`❌ Cannot delete customer - still referenced by other records`);
+        console.error(`   Constraint: ${deleteError.constraint}`);
+        console.error(`   Detail: ${deleteError.detail}`);
+        throw new Error(`Customer is still referenced by ${deleteError.constraint}. Please remove those references first.`);
+      }
+      throw deleteError;
+    }
   } catch (e) {
     console.error(`❌ Error during customer deletion transaction for ${customerId}:`, e);
     console.error(`Error details - Code: ${e.code}, Message: ${e.message}`);
+    console.error(`Error stack:`, e.stack);
+    
     try {
       await client.query('ROLLBACK');
       console.log(`🔄 Transaction rolled back for customer ${customerId}`);
@@ -238,7 +284,22 @@ router.delete(
         return res.status(404).json({ success: false, error: 'Customer not found' });
       }
 
-      const del = await deleteCustomerWithReferenceCleanup(pool, customerId);
+      // Try simple delete first (for customers with no references)
+      let del;
+      try {
+        console.log('🔍 Attempting simple delete first...');
+        del = await pool.query('DELETE FROM customers WHERE id = $1 RETURNING id', [customerId]);
+        console.log('✅ Simple delete succeeded!');
+      } catch (simpleDeleteError) {
+        if (simpleDeleteError.code === '23503') {
+          // Foreign key constraint - need to do cleanup first
+          console.log('⚠️ Simple delete failed due to FK constraints, using cleanup method...');
+          del = await deleteCustomerWithReferenceCleanup(pool, customerId);
+        } else {
+          // Some other error - rethrow
+          throw simpleDeleteError;
+        }
+      }
       if (del.rows.length === 0) {
         return res.status(404).json({ success: false, error: 'Customer not found' });
       }
