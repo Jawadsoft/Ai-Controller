@@ -1,19 +1,19 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { Card, CardContent } from '@/components/ui/card';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { CheckCircle, XCircle, Mail, AlertCircle } from 'lucide-react';
-import { buildApiUrl, API_BASE_URL } from '@/lib/config';
 
 export const EmailVerification = () => {
-  const [searchParams] = useSearchParams();
-  const { token: pathToken } = useParams();
-
-  // Try to get token from query params first, then from path params
-  const token = searchParams.get('token') || pathToken;
+  console.log('🚀 EmailVerification component loaded!');
+  console.log('📍 Current URL:', window.location.href);
+  console.log('📍 Current pathname:', window.location.pathname);
+  
+  const { token } = useParams();
+  console.log('🔑 Token from useParams:', token);
   
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -35,63 +35,40 @@ export const EmailVerification = () => {
     try {
       console.log('🔍 Starting email verification...');
       console.log('📍 Token:', verificationToken);
-      console.log('🌐 API base URL:', API_BASE_URL);
+      console.log('🌐 Backend URL:', import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000');
+      
+      const backendUrl = `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'}/api/auth/verify-email/${verificationToken}`;
+      console.log('🔗 Full API URL:', backendUrl);
+      
+      const response = await fetch(backendUrl, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
 
-      // Customer QR accounts verify via /api/customer-auth; dealer/staff users verify via /api/auth.
-      // Use buildApiUrl so production hits the real API host, not localhost.
-      const candidateUrls = [
-        buildApiUrl(`customer-auth/verify-email/${verificationToken}`),
-        buildApiUrl(`auth/verify-email/${verificationToken}`),
-      ];
+      console.log('📡 Response status:', response.status);
+      console.log('📡 Response headers:', response.headers);
 
-      let lastError: any = null;
+      const data = await response.json();
+      console.log('📄 Response data:', data);
 
-      for (const backendUrl of candidateUrls) {
-        console.log('🔗 Trying API URL:', backendUrl);
-
-        const response = await fetch(backendUrl, {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
+      if (response.ok) {
+        console.log('✅ Verification successful!');
+        setVerificationStatus('success');
+        toast({
+          title: 'Email Verified!',
+          description: 'Your account has been successfully verified. You can now log in.',
         });
-
-        console.log('📡 Response status:', response.status);
-
-        const data = await response.json().catch(() => ({}));
-        console.log('📄 Response data:', data);
-
-        if (response.ok) {
-          console.log('✅ Verification successful!');
-          setVerificationStatus('success');
-          toast({
-            title: 'Email Verified!',
-            description: data?.message || 'Your account has been successfully verified. You can now log in.',
-          });
-          return;
-        }
-
-        // If token is clearly invalid for this endpoint, try the next one.
-        const code = data?.code;
-        const errText = data?.error || data?.message || 'Verification failed';
-        lastError = { code, error: errText };
-
-        if (code === 'INVALID_TOKEN' || errText.toLowerCase().includes('invalid verification token')) {
-          continue;
-        }
-
-        if (code === 'TOKEN_EXPIRED' || errText.toLowerCase().includes('expired')) {
+      } else {
+        console.log('❌ Verification failed:', data.error);
+        if (data.error?.includes('expired')) {
           setVerificationStatus('expired');
-          setErrorMessage(errText);
-          return;
+        } else {
+          setVerificationStatus('error');
+          setErrorMessage(data.error || 'Verification failed');
         }
-
-        setVerificationStatus('error');
-        setErrorMessage(errText);
-        return;
       }
-
-      // Invalid for both endpoints — allow resend from the UI
-      setVerificationStatus('expired');
-      setErrorMessage(lastError?.error || 'Invalid or expired verification token');
     } catch (error) {
       console.error('💥 Verification error:', error);
       setVerificationStatus('error');
@@ -112,54 +89,37 @@ export const EmailVerification = () => {
     setIsResending(true);
     try {
       console.log('📧 Resending verification email to:', email);
-      console.log('🌐 API base URL:', API_BASE_URL);
-
-      const candidateUrls = [
-        buildApiUrl('customer-auth/resend-verification'),
-        buildApiUrl('auth/resend-verification'),
-      ];
-
-      let lastError: any = null;
-
-      for (const backendUrl of candidateUrls) {
-        console.log('🔗 Trying resend API URL:', backendUrl);
-
-        const response = await fetch(backendUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email }),
-        });
-
-        console.log('📡 Response status:', response.status);
-        const data = await response.json().catch(() => ({}));
-        console.log('📄 Response data:', data);
-
-        if (response.ok) {
-          console.log('✅ Resend successful!');
-
-          if (data.alreadyVerified) {
-            toast({
-              title: 'Already Verified',
-              description: data.message || 'Your email is already verified! You can log in now.',
-            });
-            setVerificationStatus('success');
-          } else {
-            toast({
-              title: 'Verification Email Sent',
-              description: data.message || 'A new verification email has been sent to your inbox.',
-            });
-          }
-          return;
-        }
-
-        lastError = data;
-      }
-
-      toast({
-        title: 'Failed to Resend',
-        description: lastError?.error || 'Failed to resend verification email',
-        variant: 'destructive',
+      console.log('🌐 Backend URL:', import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000');
+      
+      const backendUrl = `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'}/api/auth/resend-verification`;
+      console.log('🔗 Full API URL:', backendUrl);
+      
+      const response = await fetch(backendUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
       });
+
+      console.log('📡 Response status:', response.status);
+      const data = await response.json();
+      console.log('📄 Response data:', data);
+
+      if (response.ok) {
+        console.log('✅ Resend successful!');
+        toast({
+          title: 'Verification Email Sent',
+          description: 'A new verification email has been sent to your inbox.',
+        });
+      } else {
+        console.log('❌ Resend failed:', data.error);
+        toast({
+          title: 'Failed to Resend',
+          description: data.error || 'Failed to resend verification email',
+          variant: 'destructive',
+        });
+      }
     } catch (error) {
       console.error('💥 Resend error:', error);
       toast({
@@ -171,36 +131,6 @@ export const EmailVerification = () => {
       setIsResending(false);
     }
   };
-
-  const renderResendForm = (title: string, description: string) => (
-    <div className="text-center">
-      <AlertCircle className="h-16 w-16 text-orange-500 mx-auto mb-4" />
-      <h2 className="text-2xl font-bold text-orange-600 mb-2">{title}</h2>
-      <p className="text-muted-foreground mb-6">{description}</p>
-      <div className="space-y-4">
-        <div className="space-y-2 text-left">
-          <Label htmlFor="email">Email Address</Label>
-          <Input
-            id="email"
-            type="email"
-            placeholder="Enter your email address"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-        </div>
-        <Button
-          onClick={resendVerification}
-          disabled={isResending}
-          className="w-full"
-        >
-          {isResending ? 'Sending...' : 'Resend Verification Email'}
-        </Button>
-        <Button onClick={() => navigate('/')} variant="outline" className="w-full">
-          Back to Home
-        </Button>
-      </div>
-    </div>
-  );
 
   const renderContent = () => {
     switch (verificationStatus) {
@@ -218,10 +148,10 @@ export const EmailVerification = () => {
             <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-green-600 mb-2">Email Verified!</h2>
             <p className="text-muted-foreground mb-6">
-              Your account has been successfully verified. You can now log in via QR code to access vehicle information.
+              Your DealerIQ account has been successfully verified. You can now log in and start managing your vehicle inventory.
             </p>
-            <Button onClick={() => navigate('/')} className="w-full">
-              Continue to Website
+            <Button onClick={() => navigate('/auth')} className="w-full">
+              Go to Login
             </Button>
           </div>
         );
@@ -235,8 +165,8 @@ export const EmailVerification = () => {
               {errorMessage || 'There was an error verifying your email address.'}
             </p>
             <div className="space-y-4">
-              <Button onClick={() => navigate('/')} variant="outline" className="w-full">
-                Back to Home
+              <Button onClick={() => navigate('/auth')} variant="outline" className="w-full">
+                Back to Login
               </Button>
               <Button onClick={() => window.location.reload()} className="w-full">
                 Try Again
@@ -246,10 +176,36 @@ export const EmailVerification = () => {
         );
 
       case 'expired':
-        return renderResendForm(
-          'Verification Link Invalid or Expired',
-          errorMessage ||
-            'Your verification link is invalid or expired. Enter your email below to receive a new verification email.'
+        return (
+          <div className="text-center">
+            <AlertCircle className="h-16 w-16 text-orange-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-orange-600 mb-2">Verification Link Expired</h2>
+            <p className="text-muted-foreground mb-6">
+              Your verification link has expired. Please enter your email address below to receive a new verification email.
+            </p>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email Address</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="Enter your email address"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
+              <Button 
+                onClick={resendVerification} 
+                disabled={isResending}
+                className="w-full"
+              >
+                {isResending ? 'Sending...' : 'Resend Verification Email'}
+              </Button>
+              <Button onClick={() => navigate('/auth')} variant="outline" className="w-full">
+                Back to Login
+              </Button>
+            </div>
+          </div>
         );
 
       default:
@@ -260,6 +216,11 @@ export const EmailVerification = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
+        {/* Test Header - Remove this later */}
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          <strong>🧪 TEST:</strong> EmailVerification Component is Loading!
+        </div>
+        
         <div className="text-center">
           <div className="mx-auto h-12 w-12 flex items-center justify-center rounded-lg bg-primary">
             <Mail className="h-6 w-6 text-primary-foreground" />
@@ -275,6 +236,19 @@ export const EmailVerification = () => {
             {renderContent()}
           </CardContent>
         </Card>
+
+        {/* Debug Information - Remove in production */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="mt-6 p-4 bg-gray-100 rounded-lg">
+            <h3 className="text-sm font-semibold text-gray-700 mb-2">Debug Information</h3>
+            <div className="text-xs text-gray-600 space-y-1">
+              <p><strong>Token:</strong> {token || 'None'}</p>
+              <p><strong>Backend URL:</strong> {import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'}</p>
+              <p><strong>Current Status:</strong> {verificationStatus}</p>
+              <p><strong>Error Message:</strong> {errorMessage || 'None'}</p>
+            </div>
+          </div>
+        )}
 
         <div className="text-center">
           <p className="text-xs text-gray-500">
