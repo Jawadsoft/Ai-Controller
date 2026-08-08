@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { CheckCircle, XCircle, Mail, AlertCircle } from 'lucide-react';
+import { buildApiUrl, API_BASE_URL } from '@/lib/config';
 
 export const EmailVerification = () => {
   const [searchParams] = useSearchParams();
@@ -34,14 +35,13 @@ export const EmailVerification = () => {
     try {
       console.log('🔍 Starting email verification...');
       console.log('📍 Token:', verificationToken);
-      console.log('🌐 Backend URL:', import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000');
-      
-      const backendBase = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+      console.log('🌐 API base URL:', API_BASE_URL);
 
       // Customer QR accounts verify via /api/customer-auth; dealer/staff users verify via /api/auth.
+      // Use buildApiUrl so production hits the real API host, not localhost.
       const candidateUrls = [
-        `${backendBase}/api/customer-auth/verify-email/${verificationToken}`,
-        `${backendBase}/api/auth/verify-email/${verificationToken}`,
+        buildApiUrl(`customer-auth/verify-email/${verificationToken}`),
+        buildApiUrl(`auth/verify-email/${verificationToken}`),
       ];
 
       let lastError: any = null;
@@ -89,7 +89,8 @@ export const EmailVerification = () => {
         return;
       }
 
-      setVerificationStatus('error');
+      // Invalid for both endpoints — allow resend from the UI
+      setVerificationStatus('expired');
       setErrorMessage(lastError?.error || 'Invalid or expired verification token');
     } catch (error) {
       console.error('💥 Verification error:', error);
@@ -111,12 +112,11 @@ export const EmailVerification = () => {
     setIsResending(true);
     try {
       console.log('📧 Resending verification email to:', email);
-      console.log('🌐 Backend URL:', import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000');
-      
-      const backendBase = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+      console.log('🌐 API base URL:', API_BASE_URL);
+
       const candidateUrls = [
-        `${backendBase}/api/customer-auth/resend-verification`,
-        `${backendBase}/api/auth/resend-verification`,
+        buildApiUrl('customer-auth/resend-verification'),
+        buildApiUrl('auth/resend-verification'),
       ];
 
       let lastError: any = null;
@@ -172,6 +172,36 @@ export const EmailVerification = () => {
     }
   };
 
+  const renderResendForm = (title: string, description: string) => (
+    <div className="text-center">
+      <AlertCircle className="h-16 w-16 text-orange-500 mx-auto mb-4" />
+      <h2 className="text-2xl font-bold text-orange-600 mb-2">{title}</h2>
+      <p className="text-muted-foreground mb-6">{description}</p>
+      <div className="space-y-4">
+        <div className="space-y-2 text-left">
+          <Label htmlFor="email">Email Address</Label>
+          <Input
+            id="email"
+            type="email"
+            placeholder="Enter your email address"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
+        <Button
+          onClick={resendVerification}
+          disabled={isResending}
+          className="w-full"
+        >
+          {isResending ? 'Sending...' : 'Resend Verification Email'}
+        </Button>
+        <Button onClick={() => navigate('/')} variant="outline" className="w-full">
+          Back to Home
+        </Button>
+      </div>
+    </div>
+  );
+
   const renderContent = () => {
     switch (verificationStatus) {
       case 'pending':
@@ -190,7 +220,7 @@ export const EmailVerification = () => {
             <p className="text-muted-foreground mb-6">
               Your account has been successfully verified. You can now log in via QR code to access vehicle information.
             </p>
-            <Button onClick={() => window.location.href = '/'} className="w-full">
+            <Button onClick={() => navigate('/')} className="w-full">
               Continue to Website
             </Button>
           </div>
@@ -205,7 +235,7 @@ export const EmailVerification = () => {
               {errorMessage || 'There was an error verifying your email address.'}
             </p>
             <div className="space-y-4">
-              <Button onClick={() => window.location.href = '/'} variant="outline" className="w-full">
+              <Button onClick={() => navigate('/')} variant="outline" className="w-full">
                 Back to Home
               </Button>
               <Button onClick={() => window.location.reload()} className="w-full">
@@ -216,36 +246,10 @@ export const EmailVerification = () => {
         );
 
       case 'expired':
-        return (
-          <div className="text-center">
-            <AlertCircle className="h-16 w-16 text-orange-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-orange-600 mb-2">Verification Link Expired</h2>
-            <p className="text-muted-foreground mb-6">
-              Your verification link has expired. Please enter your email address below to receive a new verification email.
-            </p>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="Enter your email address"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </div>
-              <Button 
-                onClick={resendVerification} 
-                disabled={isResending}
-                className="w-full"
-              >
-                {isResending ? 'Sending...' : 'Resend Verification Email'}
-              </Button>
-              <Button onClick={() => window.location.href = '/'} variant="outline" className="w-full">
-                Back to Home
-              </Button>
-            </div>
-          </div>
+        return renderResendForm(
+          'Verification Link Invalid or Expired',
+          errorMessage ||
+            'Your verification link is invalid or expired. Enter your email below to receive a new verification email.'
         );
 
       default:
