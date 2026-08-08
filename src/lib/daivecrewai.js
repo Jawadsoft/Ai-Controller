@@ -1696,7 +1696,7 @@ class DAIVEService {
     
     if (/\b(hi|hello|hey|good morning|good afternoon|good evening)\b/.test(t)) return 'GREET';
     if (/\b(test\s*drive|schedule|drive|test drive)\b/.test(t)) return 'TEST_DRIVE';
-    if (/\b(price|cost|how much|o\.t\.d|out the door|pricing)\b/.test(t)) return 'PRICE';
+    if (/\b(price|cost|how much|o\.t\.d|out the door|outdoor|otd|all.?in|final|total)\b/.test(t)) return 'PRICE';
     if (/\b(finance|payment|loan|apr|interest rate|monthly payment|down payment)\b/.test(t)) return 'FINANCE';
     if (/\b(feature|spec|details?|safety|mpg|mileage|specifications)\b/.test(t)) return 'FEATURES';
     if (/\b(inventory|available|stock|show me|what do you have|in stock)\b/.test(t)) return 'INVENTORY';
@@ -5119,7 +5119,14 @@ Guidelines:
           conversationContext.conversationId = conversationContext.conversationId || conversation.id;
           const selectedForPersist = result.selectedVehicle || this.getSelectedVehicle(conversationContext);
           if (selectedForPersist) {
-            void this._persistConversationVehicleId(conversationContext, selectedForPersist);
+            // Use arrow function to preserve 'this' context
+            (async () => {
+              try {
+                await this._persistConversationVehicleId(conversationContext, selectedForPersist);
+              } catch (err) {
+                console.error('Failed to persist conversation vehicle ID:', err);
+              }
+            })();
           }
         }
         
@@ -5403,6 +5410,14 @@ Guidelines:
 3. **BE CONFIDENT** - Use assertive, helpful language
 4. **NO CORPORATE SPEAK** - Use natural, direct language
 5. **IMMEDIATE VALUE** - Get straight to the point
+
+**PRICING TRANSPARENCY**
+- When customer asks for "out-the-door", "outdoor", "OTD", "all-in", "final", or "total" price:
+  * ALWAYS provide the complete breakdown if available in context
+  * Format: "The out-the-door price is $XX,XXX (base $XX,XXX + $X,XXX taxes + $XXX fees)"
+  * If not yet calculated, say: "Let me calculate the exact out-the-door price for you including all taxes and fees..."
+  * NEVER say "varies" or "depends" without giving specifics if you have the data
+- Base price vs OTD: Always clarify which you're quoting
 
 **CRITICAL RULE: FLEXIBLE SLOT ENFORCEMENT**
 - ESSENTIAL SLOTS (budget + vehicle_type): Must be filled before showing inventory
@@ -11286,8 +11301,8 @@ class JourneyCompletionManager {
     
     // Define mandatory slots for each step (simplified to only budget and vehicle_type)
     this.mandatorySlots = {
-      'inquiry': ['vehicle_type'],
-      'lead_capture': ['budget'],
+      'inquiry': ['vehicle_type'], // Budget gathered progressively during exploration
+      'lead_capture': [], // Budget no longer mandatory - can be flexible
       'vehicle_selection': ['vehicle_selected'], // ? FIXED: Require vehicle selection before advancing
       'test_drive': [
         'test_drive_offered',
@@ -18903,15 +18918,13 @@ Completed slots: ${Object.entries(completedSlots).filter(([k,v]) => v).map(([k,v
 Missing mandatory slots: ${mandatorySlots.length > 0 ? mandatorySlots.join(', ') : 'none'}
 All mandatory slots completed: ${allMandatorySlotsCompleted}
 
-${messageCount <= 2 && !allMandatorySlotsCompleted ? `
-EARLY CONVERSATION ? WARM-UP PHASE (message ${messageCount} of first 2):
-You are just getting to know this customer. Your priority is to make them feel heard and understood.
-- React genuinely to what they said. Pick up on lifestyle signals (family, kids, commute, adventure, work) and briefly show you understood.
-- Ask ONE natural follow-up question about their situation, priorities, or lifestyle ? not about vehicle specs.
-- If they already mentioned a vehicle type (${completedSlots.vehicle_type || 'not yet'}), acknowledge it warmly ? do NOT immediately pivot to asking for budget.
-- Do NOT offer, suggest, or mention inventory or vehicle options yet.
-- Do NOT ask directly for vehicle type or budget ? let that surface naturally through conversation.
-- GOAL: Two turns of real conversation before transitioning to a product discussion.
+${messageCount === 1 && !allMandatorySlotsCompleted ? `
+FIRST MESSAGE ? EFFICIENT START:
+- Be warm but direct. Acknowledge what they said and get to the point.
+- If they mentioned a vehicle interest, ask for missing essentials in ONE natural sentence.
+- Example: "Great! What type of vehicle and budget range are you thinking?" (if both missing)
+- Example: "Perfect! What's your budget range for that SUV?" (if only budget missing)
+- DO show general vehicle examples while gathering info if appropriate.
 ` : ''}
 
 ${handleResponseContext ? `
@@ -19926,8 +19939,9 @@ Respond naturally ? no markdown, no bullet lists, no vehicle details in text.`;
   _applyCancelInterceptor(userMessage, finalCurrentStep, conversationContext) {
         const _cancelAllowedStages = ['vehicle_selection', 'test_drive', 'trade_evaluation'];
         const _hasSelection = conversationContext.Daivesteps?.[3]?.slots?.VehicleSelection?.hasSelectedVehicle === true;
-        const _isCancelMsg  = /\b(cancel.*selection|remove.*selection|deselect|start over|different vehicle|not this one|don't want this|changed my mind|pick another|choose another|i want (a )?different|let me (see|browse|look at) other|go back to inventory|browse again|browse other|show other options|show me other vehicles|cancel my (pick|choice|vehicle)|i don't want (the|this) (kona|tucson|santa fe|palisade|sorento|blazer|audi|bmw|accord|civic|camry|rav4|highlander|cr-v|f-150|escape|silverado|equinox|traverse|outback|rogue|altima|frontier|murano|model|vehicle|car|suv|sedan|truck|selected vehicle))\b/i.test(userMessage)
-          || /^(cancel|deselect|reset|restart|start over|different car|different vehicle|different suv|different sedan|another option|other options|browse)[\.\!\?]?$/i.test(userMessage.trim());
+        const _isCancelMsg  = /\b(cancel.*selection|remove.*selection|deselect|start over|different vehicle|not this one|don't want this|changed my mind|pick another|choose another|i want (a )?different|let me (see|browse|look at) (some)?other|go back to inventory|browse again|browse other|show other options|show me (some )?other vehicles|cancel my (pick|choice|vehicle)|i don't want (the|this)|not interested in (the|this)|maybe something else|any other options|what else|show me more|more vehicles|more cars|other selections)\b/i.test(userMessage)
+          || /^(cancel|deselect|reset|restart|start over|different car|different vehicle|different suv|different sedan|another option|other options|browse|more|what else|something else|others)[\.\!\?]?$/i.test(userMessage.trim())
+          || /\b(actually|wait|hold on|hmm|on second thought),?\s+(i want|let me see|show me|maybe|can i see)\b/i.test(userMessage);
 
     if (!_cancelAllowedStages.includes(finalCurrentStep) || !_hasSelection || !_isCancelMsg) return null;
 
@@ -21126,7 +21140,7 @@ Keep the total response to 2 sentences max. No markdown. No lists.`;
   _normalizeConcernCategories(concern, userMessage = '') {
     const rawCats = concern?.categories || [];
     const categoryMap = {
-      condition: 'comfort',
+      condition: 'condition', // Keep condition separate - it's about vehicle state
       mileage: 'high_mileage',
       performance: 'low_power',
       features: 'missing_features',
@@ -21135,6 +21149,7 @@ Keep the total response to 2 sentences max. No markdown. No lists.`;
       aesthetics: 'aesthetics',
       fuel_type: 'fuel_type',
       comfort: 'comfort',
+      service_experience: 'service_experience',
       general: 'general',
     };
     let mapped = rawCats.map(c => categoryMap[c] || c).filter(Boolean);
@@ -21155,15 +21170,38 @@ Keep the total response to 2 sentences max. No markdown. No lists.`;
   _regexConcernCategories(message) {
     const m = String(message || '').toLowerCase();
     const concerns = [];
+    
+    // Size concerns
     if (/too big|too large|too wide|too bulky|smaller|compact|can't park|parking/i.test(m)) concerns.push('size_too_large');
     if (/too small|too tiny|not enough space|need more room|more space|bigger/i.test(m)) concerns.push('size_too_small');
-    if (/too expensive|out of budget|over budget|can't afford|price|costly|pricey/i.test(m)) concerns.push('price_too_high');
+    
+    // Price concerns
+    if (/too expensive|out of budget|over budget|can't afford|price|costly|pricey|overpriced/i.test(m)) concerns.push('price_too_high');
+    
+    // Performance concerns
     if (/underpowered|too slow|not enough power|sluggish|weak engine|acceleration/i.test(m)) concerns.push('low_power');
+    
+    // Comfort concerns
     if (/uncomfortable|hard seats|rough ride|noisy|vibrat|bumpy|stiff|comfort/i.test(m)) concerns.push('comfort');
+    
+    // Feature concerns
     if (/missing features|no nav|no navigation|no sunroof|no heated|lacking features|basic|no bluetooth/i.test(m)) concerns.push('missing_features');
+    
+    // Aesthetic concerns
     if (/didn't like the look|not my style|ugly|design|exterior|interior look/i.test(m)) concerns.push('aesthetics');
-    if (/too much mileage|high mileage|too old|older model|newer/i.test(m)) concerns.push('high_mileage');
-    if (/not hybrid|want hybrid|fuel|gas|electric|mpg/i.test(m)) concerns.push('fuel_type');
+    
+    // Mileage/age concerns
+    if (/too much mileage|high mileage|too old|older model|newer|worn out/i.test(m)) concerns.push('high_mileage');
+    
+    // Fuel type concerns
+    if (/not hybrid|want hybrid|fuel|gas|electric|mpg|fuel economy|gas guzzler/i.test(m)) concerns.push('fuel_type');
+    
+    // Condition concerns - NEW
+    if (/scratches|dents|damage|worn|dirty|needs work|condition|beat up|not clean|poor shape/i.test(m)) concerns.push('condition');
+    
+    // Service experience concerns - NEW
+    if (/rude|unprofessional|bad service|poor service|waited too long|slow service|disrespectful|ignored|unhelpful|pushy|pressure|sales person|salesperson/i.test(m)) concerns.push('service_experience');
+    
     return concerns;
   }
 
@@ -21179,16 +21217,18 @@ Keep the total response to 2 sentences max. No markdown. No lists.`;
 
   _getNegativeReviewAckPrefix(primaryCat, vehicleName) {
     const _ackLines = {
-      size_too_large:    `Totally understandable ? the ${vehicleName} is on the larger side.`,
-      size_too_small:    `Got it ? you need more room.`,
-      price_too_high:    `That makes complete sense ? let's look at options that fit your budget better.`,
-      low_power:         `Fair point ? some drivers really want that extra punch.`,
-      comfort:           `Comfort is everything on a long drive.`,
-      missing_features:  `Absolutely ? you deserve the tech you want.`,
-      aesthetics:        `Style matters! Let me find something with a look you'll love.`,
-      high_mileage:      `Totally valid ? lower mileage gives more peace of mind.`,
-      fuel_type:         `Good call ? fuel efficiency is important.`,
-      general:           `Thanks for sharing that ? let me find a better match for you.`,
+      size_too_large:    `I completely understand ? the ${vehicleName} is definitely on the larger side. Thank you for taking the time to test drive it and for your honest feedback!`,
+      size_too_small:    `Got it, you need more space ? I appreciate your feedback! Test drives are exactly for this reason.`,
+      price_too_high:    `I really appreciate your honesty. Let's find something that fits your budget perfectly ? there's no point in stretching beyond what feels comfortable.`,
+      low_power:         `Fair point! Performance matters, and I completely understand wanting that extra punch. Let me find something with more power for you.`,
+      comfort:           `Comfort is absolutely essential ? you'll be spending a lot of time in your vehicle. Thank you for being honest about that!`,
+      missing_features:  `You deserve exactly the tech and features you want! Thanks for letting me know what didn't work ? that helps me find the perfect match.`,
+      aesthetics:        `Style is personal and it matters! I'm glad you were honest about the look. Let me show you options that match your aesthetic better.`,
+      high_mileage:      `Totally valid concern ? lower mileage gives more peace of mind and better long-term value. Let's find something with fewer miles!`,
+      fuel_type:         `Smart thinking! Fuel efficiency can make a huge difference in your monthly budget. Let me show you better options.`,
+      condition:         `I'm sorry the condition didn't meet your expectations. Quality matters, and I want you to feel 100% confident. Let me find you something in better shape.`,
+      service_experience: `I sincerely apologize that your experience wasn't what it should have been. Your feedback is valuable and I want to make this right. Let's find you the perfect vehicle with a better experience.`,
+      general:           `Thank you so much for your honest feedback ? that's exactly what test drives are for! Let me find a better match that checks all your boxes.`,
     };
     return _ackLines[primaryCat] || _ackLines.general;
   }
@@ -21477,7 +21517,7 @@ Keep the total response to 2 sentences max. No markdown. No lists.`;
       s4.awaiting_concern_detail = true;
       s4.negative_feedback_turn = 1;
       return {
-        response: `I'm sorry to hear that. What specifically didn't feel right about the ${vName}? Was it the size, the ride comfort, the features, the condition, or something else?`,
+        response: `I really appreciate you taking the time to test drive the ${vName} and being honest with me about your experience. That's exactly what test drives are for! Help me understand what didn't feel quite right:\n\n? Was it the **size** (too big/small)?\n? The **ride comfort** or handling?\n? **Missing features** or technology?\n? The **condition** or something else?\n\nYour feedback helps me find the perfect match for you!`,
         agentType: 'Sales Consultant',
         conversationContext,
         testDriveCompleted: true,
@@ -21969,6 +22009,10 @@ Keep the total response to 2 sentences max. No markdown. No lists.`;
     const _td   = _s4sl.testDrive || _s4sl.test_drive || {};
     const _fin  = _s6sl.finance || {};
     const _qual = _s6sl.qualification || {};
+
+    // ?? NEW: Calculate OTD price whenever a vehicle is selected (not just during financing stage)
+    // This ensures customers can ask about OTD price at any stage after selecting a vehicle
+    await this._ensureOTDPriceCalculated(conversationContext);
 
     const _known = [
       // vehicle_type / make / model / condition may be in step 1 slots OR step 3 VehicleSelection slots
@@ -25804,7 +25848,14 @@ ${(() => {
     });
 
     // Persist to daive_conversations so Analytics / Leads show the selected vehicle
-    void this._persistConversationVehicleId(conversationContext, vehicle);
+    // Use arrow function to preserve 'this' context
+    (async () => {
+      try {
+        await this._persistConversationVehicleId(conversationContext, vehicle);
+      } catch (err) {
+        console.error('Failed to persist conversation vehicle ID:', err);
+      }
+    })();
   }
 
   /**
@@ -27335,7 +27386,10 @@ async handleVehicleSelectionStepOptimized(userMessage, intentResult, conversatio
       
       // Mark lead capture as completed
       if (!conversationContext.Daivesteps[2]) {
-        conversationContext.Daivesteps[2] = { slots: {} };
+        conversationContext.Daivesteps[2] = { slots: {}, status: 'in_progress' };
+      }
+      if (!conversationContext.Daivesteps[2].slots) {
+        conversationContext.Daivesteps[2].slots = {};
       }
       conversationContext.Daivesteps[2].status = 'completed';
       conversationContext.Daivesteps[2].completedAt = new Date().toISOString();
@@ -29124,6 +29178,77 @@ async handleVehicleSelectionStepOptimized(userMessage, intentResult, conversatio
     addonDescription:  '',
     stateCode:         'TX'
   };
+
+  /**
+   * ?? NEW: Ensure OTD price is calculated whenever a vehicle is selected
+   * This allows customers to ask for OTD price at ANY stage (not just financing)
+   */
+  async _ensureOTDPriceCalculated(conversationContext) {
+    try {
+      // Only calculate if we have a selected vehicle
+      const selectedVehicle = this.getSelectedVehicle(conversationContext);
+      if (!selectedVehicle) return;
+
+      // Check if already calculated
+      const _s6sl = conversationContext.Daivesteps?.[6]?.slots;
+      if (_s6sl?.finance?.otd_price) return; // Already calculated
+
+      // Ensure Step 6 exists
+      if (!conversationContext.Daivesteps[6]) {
+        conversationContext.Daivesteps[6] = {
+          description: 'Financing and qualification',
+          stageCompleted: false,
+          slots: { qualification: {}, finance: {}, application: { created: false, id: null, link: null, status: 'not_started', submitted: false } },
+          status: 'pending',
+          startedAt: new Date().toISOString()
+        };
+      }
+      if (!conversationContext.Daivesteps[6].slots) conversationContext.Daivesteps[6].slots = {};
+      if (!conversationContext.Daivesteps[6].slots.finance) conversationContext.Daivesteps[6].slots.finance = {};
+
+      const f = conversationContext.Daivesteps[6].slots.finance;
+
+      // Parse vehicle price
+      const parsePrice = (p) => {
+        if (!p) return null;
+        const n = parseFloat(String(p).replace(/[$,]/g, ''));
+        return isNaN(n) ? null : n;
+      };
+      const vehiclePrice = parsePrice(selectedVehicle.price || selectedVehicle.msrp);
+      if (!vehiclePrice) return; // No price available
+
+      // Load dealer finance settings
+      if (!conversationContext._dealerFinanceSettings) {
+        const _dealerId = conversationContext.dealerId || this.dealerId;
+        conversationContext._dealerFinanceSettings = await this._getDealerFinanceSettings(_dealerId);
+      }
+      const _dfs = conversationContext._dealerFinanceSettings;
+      if (!_dfs) return;
+
+      // Calculate OTD components
+      const _basePrice = vehiclePrice;
+      const _taxAmt = Math.round(_basePrice * (_dfs.salesTaxRate || 0));
+      const _govFees = _taxAmt + (_dfs.titleFee || 0) + (_dfs.licenseFee || 0) + (_dfs.registrationFee || 0) + (_dfs.inspectionFee || 0);
+      const _dealerFees = (_dfs.docFee || 0) + (_dfs.dealerAddonsTotal || 0);
+      const _otdTotal = Math.round(_basePrice + _govFees + _dealerFees);
+
+      if (_otdTotal > _basePrice) {
+        // Store OTD price
+        f.otd_price = _otdTotal;
+        f.otd_tax_amount = _taxAmt;
+        f.otd_gov_fees = Math.round(_govFees);
+        f.otd_dealer_fees = Math.round(_dealerFees);
+        f.otd_doc_fee = _dfs.docFee || 0;
+        f.otd_addons_total = _dfs.dealerAddonsTotal || 0;
+        f.otd_addon_desc = _dfs.addonDescription || '';
+        f.otd_tax_rate_pct = (_dfs.salesTaxRate * 100).toFixed(3);
+        console.log(`?? [OTD-Early] Computed out-the-door: $${_otdTotal.toLocaleString()} (base $${_basePrice.toLocaleString()} + gov $${Math.round(_govFees)} + dealer $${Math.round(_dealerFees)})`);
+      }
+    } catch (error) {
+      console.warn('?? [OTD-Early] Failed to calculate OTD price:', error.message);
+      // Non-critical - don't throw
+    }
+  }
 
   /**
    * Load dealer-level finance defaults (tax, fees, add-ons) from dealer_finance_settings.

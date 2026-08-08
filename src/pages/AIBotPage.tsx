@@ -7,7 +7,7 @@
  * - Or by clicking the "Hide Tracker" button in the header
  * - The journey tracker helps developers monitoccr conversation flow and step progression
  */
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useParams, useSearchParams, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -115,6 +115,7 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
   
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isVehicleActionProcessing, setIsVehicleActionProcessing] = useState(false);
   const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -240,7 +241,16 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
 
   // ✅ ENHANCED: Handle vehicle selection with vehicle ID and details
   const handleVehicleSelection = async (selectedVehicle: any) => {
+    if (isVehicleActionProcessing) {
+      console.log('⚠️ Vehicle action already in progress, ignoring click');
+      return;
+    }
+    
+    setIsVehicleActionProcessing(true);
+    console.log('✅ handleVehicleSelection CALLED');
     console.log('🚗 Vehicle selected:', selectedVehicle);
+    
+    try {
     // Keep header in sync with the customer's active selection
     setActiveSelectedVehicle({
       year: selectedVehicle.year,
@@ -342,6 +352,12 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
     } catch (error) {
       console.error('Error sending vehicle selection:', error);
       toast.error('Failed to process vehicle selection. Please try again.');
+    } finally {
+      setIsVehicleActionProcessing(false);
+    }
+    } catch (error) {
+      console.error('Error in handleVehicleSelection:', error);
+      setIsVehicleActionProcessing(false);
     }
   };
 
@@ -414,7 +430,16 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
 
   // ✅ NEW: Handle test drive interest
   const handleTestDriveInterest = async (selectedVehicle: any) => {
+    if (isVehicleActionProcessing) {
+      console.log('⚠️ Vehicle action already in progress, ignoring click');
+      return;
+    }
+    
+    setIsVehicleActionProcessing(true);
+    console.log('✅ handleTestDriveInterest CALLED');
     console.log('🚗 Test drive interest:', selectedVehicle);
+    
+    try {
     setActiveSelectedVehicle({
       year: selectedVehicle.year,
       make: selectedVehicle.make,
@@ -510,6 +535,12 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
     } catch (error) {
       console.error('Error sending test drive interest:', error);
       toast.error('Failed to process test drive request. Please try again.');
+    } finally {
+      setIsVehicleActionProcessing(false);
+    }
+    } catch (error) {
+      console.error('Error in handleTestDriveInterest:', error);
+      setIsVehicleActionProcessing(false);
     }
   };
   
@@ -6381,8 +6412,7 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
     }`;
     return (
       <div 
-        className="bg-white border border-[#5D6D7E]/18 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer hover:border-[#FF6B2B]/35"
-        onClick={() => onSelect(vehicle)}
+        className="bg-white border border-[#5D6D7E]/18 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
       >
         {thumbSrc ? (
           <div className="relative w-full h-24 bg-gray-100">
@@ -6458,11 +6488,14 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
             <button
               aria-label="Select This Vehicle"
               title="Select This Vehicle"
-              className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-[#FF6B2B] text-white hover:bg-[#e85f24] transition-colors"
+              className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-[#FF6B2B] text-white hover:bg-[#e85f24] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={(e) => {
+                e.preventDefault();
                 e.stopPropagation();
+                console.log('🔘 Select button clicked', vehicle);
                 onSelect(vehicle);
               }}
+              type="button"
             >
               <Check className="w-3.5 h-3.5" />
             </button>
@@ -6471,11 +6504,14 @@ const AIBotPage: React.FC<AIBotPageProps> = ({
             <button
               aria-label="Test Drive Interested"
               title="Test Drive Interested"
-              className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-[#5D6D7E] text-white hover:bg-[#4d5a68] transition-colors"
+              className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-[#5D6D7E] text-white hover:bg-[#4d5a68] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={(e) => {
+                e.preventDefault();
                 e.stopPropagation();
+                console.log('🔘 Test drive button clicked', vehicle);
                 onTestDrive(vehicle);
               }}
+              type="button"
             >
               <img src={testDriveIconUrl} alt="" className="w-4 h-4" draggable={false} />
             </button>
