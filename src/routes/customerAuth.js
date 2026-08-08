@@ -265,6 +265,49 @@ router.post('/reset-password', [
   }
 });
 
+// Debug endpoint - Check token status without consuming it
+router.get('/check-token/:token', async (req, res) => {
+  try {
+    const { token } = req.params;
+    
+    const tokenCheck = await query(
+      `SELECT 
+        id, email, first_name, email_verified, 
+        verification_token_expires, 
+        NOW() as current_time,
+        verification_token_expires > NOW() as is_valid,
+        EXTRACT(EPOCH FROM (verification_token_expires - NOW())) / 3600 as hours_until_expiry
+       FROM customers 
+       WHERE verification_token = $1`,
+      [token]
+    );
+    
+    if (tokenCheck.rows.length === 0) {
+      return res.json({
+        found: false,
+        message: 'Token not found in database'
+      });
+    }
+    
+    const info = tokenCheck.rows[0];
+    res.json({
+      found: true,
+      email: info.email,
+      email_verified: info.email_verified,
+      token_expires: info.verification_token_expires,
+      current_time: info.current_time,
+      is_valid: info.is_valid,
+      hours_until_expiry: parseFloat(info.hours_until_expiry).toFixed(2),
+      status: info.email_verified ? 'Already verified' : 
+              info.is_valid ? 'Valid - ready to verify' : 
+              'Expired'
+    });
+  } catch (error) {
+    console.error('Error checking token:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Verify email address
 router.get('/verify-email/:token', async (req, res) => {
   try {
@@ -373,12 +416,15 @@ router.post('/resend-verification', [
     console.log('🔐 Resending verification - Generated token:', verificationToken);
     
     // Update token in database with PostgreSQL NOW() + interval to avoid timezone issues
-    await query(
-      'UPDATE customers SET verification_token = $1, verification_token_expires = NOW() + INTERVAL \'24 hours\', updated_at = NOW() WHERE id = $2 RETURNING verification_token_expires',
+    const updateResult = await query(
+      'UPDATE customers SET verification_token = $1, verification_token_expires = NOW() + INTERVAL \'24 hours\', updated_at = NOW() WHERE id = $2 RETURNING verification_token, verification_token_expires',
       [verificationToken, customer.id]
     );
     
-    console.log('📧 Token expires in 24 hours from NOW()');
+    console.log('📧 Token saved to database');
+    console.log('   Saved token:', updateResult.rows[0]?.verification_token);
+    console.log('   Tokens match:', updateResult.rows[0]?.verification_token === verificationToken);
+    console.log('   Expires at:', updateResult.rows[0]?.verification_token_expires);
     
     // Send verification email
     try {

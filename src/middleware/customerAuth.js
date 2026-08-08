@@ -449,18 +449,23 @@ export const registerCustomer = async (customerData) => {
     const customer = customerResult.rows[0];
     
     console.log(`✅ Customer registered with verification token`);
+    console.log(`   Customer ID: ${customer.id}`);
     console.log(`   Email: ${customer.email}`);
+    console.log(`   Token: ${verificationToken}`);
     console.log(`   Token expires at: ${customer.verification_token_expires}`);
     console.log(`   Current time (JavaScript): ${new Date().toISOString()}`);
     
     // Verify the token was set correctly by checking it immediately
     const verifyResult = await query(
-      `SELECT verification_token_expires, NOW() as current_db_time, 
+      `SELECT verification_token, verification_token_expires, NOW() as current_db_time, 
               verification_token_expires > NOW() as is_valid,
               EXTRACT(EPOCH FROM (verification_token_expires - NOW())) / 3600 as hours_until_expiry
        FROM customers WHERE id = $1`,
       [customer.id]
     );
+    
+    console.log(`   Saved token in DB: ${verifyResult.rows[0]?.verification_token}`);
+    console.log(`   Tokens match: ${verifyResult.rows[0]?.verification_token === verificationToken}`);
     
     if (verifyResult.rows.length > 0) {
       const check = verifyResult.rows[0];
