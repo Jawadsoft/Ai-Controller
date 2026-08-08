@@ -293,6 +293,44 @@ router.get('/verify-email/:token', async (req, res) => {
   }
 });
 
+// Test email service endpoint (development only)
+router.get('/test-email', async (req, res) => {
+  try {
+    console.log('🧪 Testing email service...');
+    
+    const daiveEmailService = await import('../lib/daiveEmailService.js');
+    
+    if (!daiveEmailService.default.transporter) {
+      return res.json({
+        status: 'error',
+        message: 'Email transporter not initialized',
+        configured: false
+      });
+    }
+    
+    // Verify SMTP connection
+    await daiveEmailService.default.transporter.verify();
+    
+    res.json({
+      status: 'success',
+      message: 'Email service is configured and connection verified',
+      configured: true,
+      smtpConfig: {
+        host: process.env.SMTP_HOST || 'Gmail',
+        user: process.env.SMTP_USER || process.env.GMAIL_USER
+      }
+    });
+  } catch (error) {
+    console.error('❌ Email service test failed:', error);
+    res.json({
+      status: 'error',
+      message: 'Email service test failed',
+      error: error.message,
+      configured: false
+    });
+  }
+});
+
 // Resend verification email
 router.post('/resend-verification', [
   body('email').isEmail().normalizeEmail().withMessage('Valid email is required')
@@ -331,16 +369,28 @@ router.post('/resend-verification', [
     
     // Generate new verification token
     const verificationToken = generateVerificationToken();
-    const tokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
     
-    // Update token in database
+    console.log('🔐 Resending verification - Generated token:', verificationToken);
+    
+    // Update token in database with PostgreSQL NOW() + interval to avoid timezone issues
     await query(
-      'UPDATE customers SET verification_token = $1, verification_token_expires = $2, updated_at = NOW() WHERE id = $3',
-      [verificationToken, tokenExpiry, customer.id]
+      'UPDATE customers SET verification_token = $1, verification_token_expires = NOW() + INTERVAL \'24 hours\', updated_at = NOW() WHERE id = $2 RETURNING verification_token_expires',
+      [verificationToken, customer.id]
     );
     
+    console.log('📧 Token expires in 24 hours from NOW()');
+    
     // Send verification email
-    await sendVerificationEmail(customer, verificationToken);
+    try {
+      await sendVerificationEmail(customer, verificationToken);
+      console.log('✅ Verification email sent successfully');
+    } catch (emailError) {
+      console.error('❌ Failed to send verification email:', emailError);
+      return res.status(500).json({ 
+        error: 'Failed to send verification email',
+        details: 'Email service error. Please contact support or try again later.'
+      });
+    }
     
     res.json({ 
       success: true,
@@ -348,7 +398,10 @@ router.post('/resend-verification', [
     });
   } catch (error) {
     console.error('Error resending verification email:', error);
-    res.status(500).json({ error: 'Failed to resend verification email' });
+    res.status(500).json({ 
+      error: 'Failed to resend verification email',
+      details: error.message 
+    });
   }
 });
 
@@ -563,11 +616,10 @@ router.post('/session-with-login', [
 
           if (!customer.email_verified) {
             const verificationToken = generateVerificationToken();
-            const tokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
             await query(
-              'UPDATE customers SET verification_token = $1, verification_token_expires = $2, updated_at = NOW() WHERE id = $3',
-              [verificationToken, tokenExpiry, customer.id]
+              'UPDATE customers SET verification_token = $1, verification_token_expires = NOW() + INTERVAL \'24 hours\', updated_at = NOW() WHERE id = $2',
+              [verificationToken, customer.id]
             );
 
             await sendVerificationEmail(customer, verificationToken);

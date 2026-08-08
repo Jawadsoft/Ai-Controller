@@ -190,12 +190,23 @@ export const generateVerificationToken = () => {
 // Send verification email
 export const sendVerificationEmail = async (customer, verificationToken) => {
   try {
+    console.log('📧 Preparing to send verification email...');
+    console.log('   To:', customer.email);
+    console.log('   Token:', verificationToken);
+    
     // Import email service
     const daiveEmailService = await import('../lib/daiveEmailService.js');
+    
+    if (!daiveEmailService.default.transporter) {
+      console.error('❌ Email transporter not initialized!');
+      throw new Error('Email service not configured');
+    }
     
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8080';
     // Use HashRouter format: /#/verify-email?token=...
     const verificationLink = `${frontendUrl}/#/verify-email?token=${verificationToken}`;
+    
+    console.log('🔗 Verification link:', verificationLink);
     
     const subject = '✅ Verify Your Email Address';
     
@@ -266,25 +277,53 @@ This email was sent by D.A.I.V.E. (Dealer AI Vehicle Expert).
 Need help? Contact us at ${process.env.SMTP_USER || 'support@mitiesoft.com'}
     `;
     
-    await daiveEmailService.default.transporter.sendMail({
-      from: `D.A.I.V.E. <${process.env.SMTP_USER}>`,
+    const mailOptions = {
+      from: `D.A.I.V.E. <${process.env.SMTP_USER || process.env.GMAIL_USER}>`,
       to: customer.email,
       subject: subject,
       text: textContent,
       html: htmlContent
+    };
+    
+    console.log('📬 Sending email with options:', {
+      from: mailOptions.from,
+      to: mailOptions.to,
+      subject: mailOptions.subject
     });
     
-    console.log(`✅ Verification email sent to ${customer.email}`);
+    const result = await daiveEmailService.default.transporter.sendMail(mailOptions);
+    
+    console.log(`✅ Verification email sent successfully to ${customer.email}`);
+    console.log('   Message ID:', result.messageId);
+    console.log('   Response:', result.response);
+    
     return true;
   } catch (error) {
     console.error('❌ Error sending verification email:', error);
-    return false;
+    console.error('   Error details:', error.message);
+    console.error('   Error stack:', error.stack);
+    throw error; // Re-throw to let caller know it failed
   }
 };
 
 // Verify email with token
 export const verifyEmailToken = async (token) => {
   try {
+    console.log('🔍 Verifying email token:', token);
+    
+    // First, check if token exists at all
+    const tokenCheck = await query(
+      `SELECT id, email, first_name, last_name, email_verified, 
+              verification_token_expires, 
+              NOW() as current_time,
+              verification_token_expires > NOW() as is_valid
+       FROM customers 
+       WHERE verification_token = $1`,
+      [token]
+    );
+    
+    console.log('📊 Token check result:', tokenCheck.rows[0]);
+    
     // Find customer with valid token
     const customerResult = await query(
       `SELECT id, email, first_name, last_name FROM customers 
@@ -295,6 +334,14 @@ export const verifyEmailToken = async (token) => {
     );
     
     if (customerResult.rows.length === 0) {
+      if (tokenCheck.rows.length > 0) {
+        const tokenInfo = tokenCheck.rows[0];
+        if (tokenInfo.email_verified) {
+          throw new Error('Email is already verified');
+        } else if (!tokenInfo.is_valid) {
+          throw new Error('Verification token has expired');
+        }
+      }
       throw new Error('Invalid or expired verification token');
     }
     
@@ -339,27 +386,38 @@ export const registerCustomer = async (customerData) => {
 
     // Generate verification token
     const verificationToken = generateVerificationToken();
-    const tokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+    
+    console.log('🔐 Generated verification token:', verificationToken);
 
-    // Create customer
+    // Create customer with token expiry set via PostgreSQL NOW() + interval to avoid timezone issues
     const customerResult = await query(
       `INSERT INTO customers (
         email, password_hash, first_name, last_name, phone,
         terms_accepted, privacy_policy_accepted, email_verified,
         verification_token, verification_token_expires
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-      RETURNING id, email, first_name, last_name, phone, created_at`,
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW() + INTERVAL '24 hours')
+      RETURNING id, email, first_name, last_name, phone, created_at, verification_token_expires`,
       [email, passwordHash, first_name, last_name, phone, 
        terms_accepted, privacy_policy_accepted, false,
-       verificationToken, tokenExpiry]
+       verificationToken]
     );
 
     const customer = customerResult.rows[0];
     
-    // Send verification email
-    await sendVerificationEmail(customer, verificationToken);
+    console.log(`📧 Token expires at: ${customer.verification_token_expires}`);
+    console.log(`🕐 Current time (NOW): ${new Date().toISOString()}`);
     
-    console.log(`✅ Customer registered: ${customer.email} - Verification email sent`);
+    // Send verification email
+    try {
+      await sendVerificationEmail(customer, verificationToken);
+      console.log(`✅ Customer registered: ${customer.email} - Verification email sent`);
+    } catch (emailError) {
+      console.error(`❌ Customer registered but email failed: ${customer.email}`);
+      console.error('   Email error:', emailError.message);
+      // Customer is still created, but email failed
+      customer.emailSendFailed = true;
+    }
+    
     return customer;
   } catch (error) {
     console.error('Error registering customer:', error);
