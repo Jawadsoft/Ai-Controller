@@ -284,7 +284,10 @@ router.get('/makes', async (req, res) => {
   try {
     const dealerId = req.user.dealer_id;
     
+    console.log('🚗 Fetching makes for dealer:', dealerId);
+    
     if (!dealerId) {
+      console.log('⚠️ No dealer_id found, returning empty makes');
       return res.json({ makes: [] });
     }
 
@@ -297,9 +300,12 @@ router.get('/makes', async (req, res) => {
       ORDER BY make ASC
     `, [dealerId]);
 
-    res.json({ makes: result.rows.map(row => row.make) });
+    const makes = result.rows.map(row => row.make);
+    console.log('🚗 Makes found:', makes.length, 'unique makes:', makes);
+
+    res.json({ makes });
   } catch (error) {
-    console.error('Get makes error:', error);
+    console.error('❌ Get makes error:', error);
     res.status(500).json({ error: 'Failed to fetch makes' });
   }
 });
@@ -310,7 +316,10 @@ router.get('/models', async (req, res) => {
     const dealerId = req.user.dealer_id;
     const make = req.query.make || '';
     
+    console.log('🏎️ Fetching models for dealer:', dealerId, 'make filter:', make || '(all)');
+    
     if (!dealerId) {
+      console.log('⚠️ No dealer_id found, returning empty models');
       return res.json({ models: [] });
     }
 
@@ -332,9 +341,12 @@ router.get('/models', async (req, res) => {
 
     const result = await query(queryText, params);
 
-    res.json({ models: result.rows.map(row => row.model) });
+    const models = result.rows.map(row => row.model);
+    console.log('🏎️ Models found:', models.length, 'unique models:', models);
+
+    res.json({ models });
   } catch (error) {
-    console.error('Get models error:', error);
+    console.error('❌ Get models error:', error);
     res.status(500).json({ error: 'Failed to fetch models' });
   }
 });
@@ -344,7 +356,10 @@ router.get('/years', async (req, res) => {
   try {
     const dealerId = req.user.dealer_id;
     
+    console.log('📅 Fetching years for dealer:', dealerId);
+    
     if (!dealerId) {
+      console.log('⚠️ No dealer_id found, returning empty years');
       return res.json({ years: [] });
     }
 
@@ -356,9 +371,13 @@ router.get('/years', async (req, res) => {
       ORDER BY year DESC
     `, [dealerId]);
 
-    res.json({ years: result.rows.map(row => row.year.toString()) });
+    console.log('📅 Years found:', result.rows.length, 'unique years');
+    const years = result.rows.map(row => row.year.toString());
+    console.log('📅 Returning years:', years);
+
+    res.json({ years });
   } catch (error) {
-    console.error('Get years error:', error);
+    console.error('❌ Get years error:', error);
     res.status(500).json({ error: 'Failed to fetch years' });
   }
 });
