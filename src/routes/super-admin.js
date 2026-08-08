@@ -5444,7 +5444,6 @@ router.get('/dealers/pending',
 router.post('/dealers/:dealerId/approve',
   authenticateToken,
   requireSuperAdmin,
-  superAdminAuditMiddleware('dealer_approval'),
   async (req, res) => {
     try {
       const { dealerId } = req.params;
@@ -5567,7 +5566,6 @@ router.post('/dealers/:dealerId/approve',
 router.post('/dealers/:dealerId/reject',
   authenticateToken,
   requireSuperAdmin,
-  superAdminAuditMiddleware('dealer_rejection'),
   [
     body('reason').optional().isString()
   ],
