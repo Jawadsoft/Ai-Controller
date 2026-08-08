@@ -40,12 +40,10 @@ export const verifyCustomerToken = async (token) => {
       throw new Error('Session expired or not found');
     }
 
-    const row = sessionResult.rows[0];
     return {
-      session: row,
+      session: sessionResult.rows[0],
       customer: {
         sessionId: decoded.sessionId,
-        id: decoded.customer_id || row.customer_id || null,
         name: decoded.customer_name,
         email: decoded.customer_email,
         phone: decoded.customer_phone
@@ -182,234 +180,6 @@ export const createCustomerSession = async (sessionData) => {
   }
 };
 
-// Generate email verification token
-export const generateVerificationToken = () => {
-  return crypto.randomBytes(32).toString('hex');
-};
-
-// Send verification email
-export const sendVerificationEmail = async (customer, verificationToken) => {
-  try {
-    console.log('📧 Preparing to send verification email...');
-    console.log('   To:', customer.email);
-    console.log('   Token:', verificationToken);
-    
-    // Import email service
-    const daiveEmailService = await import('../lib/daiveEmailService.js');
-    
-    if (!daiveEmailService.default.transporter) {
-      console.error('❌ Email transporter not initialized!');
-      throw new Error('Email service not configured');
-    }
-    
-    // Determine frontend URL based on environment
-    let frontendUrl = process.env.FRONTEND_URL;
-    
-    // Auto-detect production environment if FRONTEND_URL not set
-    if (!frontendUrl) {
-      if (process.env.NODE_ENV === 'production' || process.env.RENDER) {
-        // Production environment detected
-        frontendUrl = 'https://app.dealeriq.co';
-        console.log('🌐 Auto-detected production environment, using:', frontendUrl);
-      } else {
-        // Development environment
-        frontendUrl = 'http://localhost:8080';
-        console.log('🌐 Using development URL:', frontendUrl);
-      }
-    } else {
-      console.log('🌐 Using configured FRONTEND_URL:', frontendUrl);
-    }
-    
-    // Use HashRouter format: /#/verify-email?token=...
-    const verificationLink = `${frontendUrl}/#/verify-email?token=${verificationToken}`;
-    
-    console.log('🔗 Verification link:', verificationLink);
-    
-    const subject = '✅ Verify Your Email Address';
-    
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Email Verification</title>
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 20px; background-color: #f4f4f4; }
-          .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 0 20px rgba(0,0,0,0.1); }
-          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px 10px 0 0; margin: -30px -30px 30px -30px; }
-          .header h1 { margin: 0; font-size: 24px; }
-          .button { display: inline-block; background: #667eea; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; font-size: 16px; font-weight: bold; }
-          .link-text { color: #666; font-size: 12px; word-break: break-all; }
-          .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; color: #666; font-size: 14px; }
-          .warning { background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; padding: 15px; border-radius: 5px; margin: 20px 0; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1>✅ Verify Your Email Address</h1>
-            <p>Welcome to D.A.I.V.E.</p>
-          </div>
-          
-          <p>Hi ${customer.first_name},</p>
-          
-          <p>Thank you for registering! To access vehicle information and start using our services, please verify your email address.</p>
-          
-          <div style="text-align: center;">
-            <a href="${verificationLink}" class="button">Verify Email Address</a>
-          </div>
-          
-          <p class="link-text">Or copy and paste this link in your browser:<br>${verificationLink}</p>
-          
-          <div class="warning">
-            <strong>⏰ Important:</strong> This verification link will expire in 24 hours.
-          </div>
-          
-          <p style="color: #666; font-size: 14px;">If you didn't create this account, you can safely ignore this email.</p>
-          
-          <div class="footer">
-            <p>This email was sent by D.A.I.V.E. (Dealer AI Vehicle Expert).</p>
-            <p>Need help? Contact us at ${process.env.SMTP_USER || 'support@mitiesoft.com'}</p>
-          </div>
-        </div>
-      </body>
-      </html>
-    `;
-    
-    const textContent = `
-VERIFY YOUR EMAIL ADDRESS
-
-Hi ${customer.first_name},
-
-Thank you for registering! To access vehicle information and start using our services, please verify your email address by clicking the link below:
-
-${verificationLink}
-
-⏰ Important: This verification link will expire in 24 hours.
-
-If you didn't create this account, you can safely ignore this email.
-
-This email was sent by D.A.I.V.E. (Dealer AI Vehicle Expert).
-Need help? Contact us at ${process.env.SMTP_USER || 'support@mitiesoft.com'}
-    `;
-    
-    const mailOptions = {
-      from: `D.A.I.V.E. <${process.env.SMTP_USER || process.env.GMAIL_USER}>`,
-      to: customer.email,
-      subject: subject,
-      text: textContent,
-      html: htmlContent
-    };
-    
-    console.log('📬 Sending email with options:', {
-      from: mailOptions.from,
-      to: mailOptions.to,
-      subject: mailOptions.subject
-    });
-    
-    const result = await daiveEmailService.default.transporter.sendMail(mailOptions);
-    
-    console.log(`✅ Verification email sent successfully to ${customer.email}`);
-    console.log('   Message ID:', result.messageId);
-    console.log('   Response:', result.response);
-    console.log('   Accepted:', result.accepted);
-    console.log('   Rejected:', result.rejected);
-    
-    return true;
-  } catch (error) {
-    console.error('❌ Error sending verification email:', error);
-    console.error('   Error details:', error.message);
-    console.error('   Error code:', error.code);
-    console.error('   Error command:', error.command);
-    
-    if (error.code === 'EAUTH') {
-      console.error('   🔑 Authentication failed - email credentials are invalid');
-    } else if (error.code === 'ETIMEDOUT' || error.code === 'ECONNREFUSED') {
-      console.error('   🌐 Connection failed - check network/firewall settings');
-    } else if (error.code === 'EENVELOPE') {
-      console.error('   📧 Invalid email address format');
-    }
-    
-    throw error; // Re-throw to let caller know it failed
-  }
-};
-
-// Verify email with token
-export const verifyEmailToken = async (token) => {
-  try {
-    console.log('🔍 Verifying email token:', token);
-    
-    // First, check if token exists at all with detailed timestamp info
-    const tokenCheck = await query(
-      `SELECT id, email, first_name, last_name, email_verified, 
-              verification_token_expires, 
-              NOW() as current_time,
-              verification_token_expires > NOW() as is_valid,
-              EXTRACT(EPOCH FROM (verification_token_expires - NOW())) as seconds_until_expiry
-       FROM customers 
-       WHERE verification_token = $1`,
-      [token]
-    );
-    
-    if (tokenCheck.rows.length > 0) {
-      const tokenInfo = tokenCheck.rows[0];
-      console.log('📊 Token check result:');
-      console.log('   Email:', tokenInfo.email);
-      console.log('   Already verified:', tokenInfo.email_verified);
-      console.log('   Token expires:', tokenInfo.verification_token_expires);
-      console.log('   Current DB time:', tokenInfo.current_time);
-      console.log('   Is valid:', tokenInfo.is_valid);
-      console.log('   Seconds until expiry:', tokenInfo.seconds_until_expiry);
-      
-      if (tokenInfo.email_verified) {
-        throw new Error('Email is already verified');
-      }
-      
-      // If token expired, provide helpful info
-      if (!tokenInfo.is_valid || tokenInfo.seconds_until_expiry < 0) {
-        const hoursAgo = Math.abs(tokenInfo.seconds_until_expiry) / 3600;
-        console.error(`❌ Token expired ${hoursAgo.toFixed(2)} hours ago`);
-        throw new Error('Verification token has expired. Please request a new verification email.');
-      }
-    } else {
-      console.error('❌ Token not found in database');
-      throw new Error('Invalid verification token');
-    }
-    
-    // Find customer with valid token
-    const customerResult = await query(
-      `SELECT id, email, first_name, last_name FROM customers 
-       WHERE verification_token = $1 
-       AND email_verified = FALSE`,
-      [token]
-    );
-    
-    if (customerResult.rows.length === 0) {
-      throw new Error('Invalid or expired verification token');
-    }
-    
-    const customer = customerResult.rows[0];
-    
-    // Mark email as verified
-    await query(
-      `UPDATE customers 
-       SET email_verified = TRUE, 
-           verification_token = NULL, 
-           verification_token_expires = NULL,
-           updated_at = NOW() 
-       WHERE id = $1`,
-      [customer.id]
-    );
-    
-    console.log(`✅ Email verified for customer: ${customer.email}`);
-    return { success: true, customer };
-  } catch (error) {
-    console.error('Error verifying email:', error);
-    throw error;
-  }
-};
-
 // Register a new customer
 export const registerCustomer = async (customerData) => {
   try {
@@ -428,69 +198,17 @@ export const registerCustomer = async (customerData) => {
     // Hash password
     const passwordHash = await bcrypt.hash(password, 12);
 
-    // Generate verification token
-    const verificationToken = generateVerificationToken();
-    
-    console.log('🔐 Generated verification token:', verificationToken);
-
-    // Create customer with token expiry set via PostgreSQL NOW() + interval to avoid timezone issues
+    // Create customer
     const customerResult = await query(
       `INSERT INTO customers (
         email, password_hash, first_name, last_name, phone,
-        terms_accepted, privacy_policy_accepted, email_verified,
-        verification_token, verification_token_expires
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW() + INTERVAL '24 hours')
-      RETURNING id, email, first_name, last_name, phone, created_at, verification_token_expires`,
-      [email, passwordHash, first_name, last_name, phone, 
-       terms_accepted, privacy_policy_accepted, false,
-       verificationToken]
+        terms_accepted, privacy_policy_accepted, email_verified
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING id, email, first_name, last_name, phone, created_at`,
+      [email, passwordHash, first_name, last_name, phone, terms_accepted, privacy_policy_accepted, false]
     );
 
-    const customer = customerResult.rows[0];
-    
-    console.log(`✅ Customer registered with verification token`);
-    console.log(`   Customer ID: ${customer.id}`);
-    console.log(`   Email: ${customer.email}`);
-    console.log(`   Token: ${verificationToken}`);
-    console.log(`   Token expires at: ${customer.verification_token_expires}`);
-    console.log(`   Current time (JavaScript): ${new Date().toISOString()}`);
-    
-    // Verify the token was set correctly by checking it immediately
-    const verifyResult = await query(
-      `SELECT verification_token, verification_token_expires, NOW() as current_db_time, 
-              verification_token_expires > NOW() as is_valid,
-              EXTRACT(EPOCH FROM (verification_token_expires - NOW())) / 3600 as hours_until_expiry
-       FROM customers WHERE id = $1`,
-      [customer.id]
-    );
-    
-    console.log(`   Saved token in DB: ${verifyResult.rows[0]?.verification_token}`);
-    console.log(`   Tokens match: ${verifyResult.rows[0]?.verification_token === verificationToken}`);
-    
-    if (verifyResult.rows.length > 0) {
-      const check = verifyResult.rows[0];
-      console.log(`   Token valid: ${check.is_valid}`);
-      console.log(`   Hours until expiry: ${check.hours_until_expiry}`);
-      console.log(`   DB current time: ${check.current_db_time}`);
-      
-      if (!check.is_valid) {
-        console.error('⚠️ WARNING: Token was set but is already expired!');
-        console.error('   This suggests a timezone mismatch between application and database');
-      }
-    }
-    
-    // Send verification email
-    try {
-      await sendVerificationEmail(customer, verificationToken);
-      console.log(`✅ Customer registered: ${customer.email} - Verification email sent`);
-    } catch (emailError) {
-      console.error(`❌ Customer registered but email failed: ${customer.email}`);
-      console.error('   Email error:', emailError.message);
-      // Customer is still created, but email failed
-      customer.emailSendFailed = true;
-    }
-    
-    return customer;
+    return customerResult.rows[0];
   } catch (error) {
     console.error('Error registering customer:', error);
     throw error;
@@ -498,13 +216,11 @@ export const registerCustomer = async (customerData) => {
 };
 
 // Login customer
-export const loginCustomer = async (email, password, options = {}) => {
+export const loginCustomer = async (email, password) => {
   try {
-    const { requireVerifiedEmail = true } = options;
-
-    // Get customer with password hash and email verification status
+    // Get customer with password hash
     const customerResult = await query(
-      'SELECT id, email, password_hash, first_name, last_name, phone, status, email_verified FROM customers WHERE email = $1',
+      'SELECT id, email, password_hash, first_name, last_name, phone, status FROM customers WHERE email = $1',
       [email]
     );
 
@@ -518,13 +234,6 @@ export const loginCustomer = async (email, password, options = {}) => {
       throw new Error('Account is not active');
     }
 
-    // ✅ Check if email is verified
-    if (requireVerifiedEmail && !customer.email_verified) {
-      const err = new Error('Please verify your email address before logging in. Check your inbox for the verification email.');
-      err.code = 'EMAIL_NOT_VERIFIED';
-      throw err;
-    }
-
     // Check password
     const isValidPassword = await bcrypt.compare(password, customer.password_hash);
     if (!isValidPassword) {
@@ -536,8 +245,6 @@ export const loginCustomer = async (email, password, options = {}) => {
       'UPDATE customers SET last_login = NOW(), login_count = login_count + 1, updated_at = NOW() WHERE id = $1',
       [customer.id]
     );
-
-    console.log(`✅ Customer logged in: ${customer.email}`);
 
     // Return customer data without password hash
     const { password_hash, ...customerData } = customer;
@@ -676,107 +383,15 @@ export const requestPasswordReset = async (email) => {
       [resetToken, resetTokenExpires, customer.id]
     );
 
-    // Send password reset email
-    try {
-      const daiveEmailService = await import('../lib/daiveEmailService.js');
-      // Determine frontend URL based on environment
-      let frontendUrl = process.env.FRONTEND_URL;
-      
-      if (!frontendUrl) {
-        if (process.env.NODE_ENV === 'production' || process.env.RENDER) {
-          frontendUrl = 'https://app.dealeriq.co';
-        } else {
-          frontendUrl = 'http://localhost:8080';
-        }
-      }
-      
-      const resetLink = `${frontendUrl}/#/reset-password?token=${resetToken}`;
-      
-      const subject = '🔐 Reset Your Password';
-      
-      const htmlContent = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Reset Password</title>
-          <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 20px; background-color: #f4f4f4; }
-            .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 0 20px rgba(0,0,0,0.1); }
-            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px 10px 0 0; margin: -30px -30px 30px -30px; }
-            .header h1 { margin: 0; font-size: 24px; }
-            .button { display: inline-block; background: #667eea; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; font-size: 16px; font-weight: bold; }
-            .link-text { color: #666; font-size: 12px; word-break: break-all; }
-            .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; color: #666; font-size: 14px; }
-            .warning { background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; padding: 15px; border-radius: 5px; margin: 20px 0; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1>🔐 Reset Your Password</h1>
-              <p>Password reset request</p>
-            </div>
-            
-            <p>Hi ${customer.first_name},</p>
-            
-            <p>We received a request to reset your password. Click the button below to create a new password:</p>
-            
-            <div style="text-align: center;">
-              <a href="${resetLink}" class="button">Reset Password</a>
-            </div>
-            
-            <p class="link-text">Or copy and paste this link in your browser:<br>${resetLink}</p>
-            
-            <div class="warning">
-              <strong>⏰ Important:</strong> This link will expire in 1 hour for security reasons.
-            </div>
-            
-            <p style="color: #666; font-size: 14px;">If you didn't request a password reset, you can safely ignore this email. Your password will remain unchanged.</p>
-            
-            <div class="footer">
-              <p>This email was sent by D.A.I.V.E. (Dealer AI Vehicle Expert).</p>
-              <p>Need help? Contact us at ${process.env.SMTP_USER || 'support@mitiesoft.com'}</p>
-            </div>
-          </div>
-        </body>
-        </html>
-      `;
-      
-      const textContent = `
-RESET YOUR PASSWORD
-
-Hi ${customer.first_name},
-
-We received a request to reset your password. Click the link below to create a new password:
-
-${resetLink}
-
-⏰ Important: This link will expire in 1 hour for security reasons.
-
-If you didn't request a password reset, you can safely ignore this email. Your password will remain unchanged.
-
-This email was sent by D.A.I.V.E. (Dealer AI Vehicle Expert).
-Need help? Contact us at ${process.env.SMTP_USER || 'support@mitiesoft.com'}
-      `;
-      
-      await daiveEmailService.default.transporter.sendMail({
-        from: `D.A.I.V.E. <${process.env.SMTP_USER}>`,
-        to: customer.email,
-        subject: subject,
-        text: textContent,
-        html: htmlContent
-      });
-      
-      console.log(`✅ Password reset email sent to ${customer.email}`);
-    } catch (emailError) {
-      console.error('❌ Error sending password reset email:', emailError);
-      // Don't fail the request if email fails
-    }
+    // In a real application, you would send an email here
+    // For now, we'll return the token for testing purposes
+    console.log(`Password reset token for ${email}: ${resetToken}`);
+    console.log(`Reset link: ${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`);
 
     return {
-      message: 'If an account with that email exists, a password reset link has been sent.'
+      message: 'If an account with that email exists, a password reset link has been sent.',
+      resetToken, // Remove this in production
+      resetLink: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}` // Remove this in production
     };
   } catch (error) {
     console.error('Error requesting password reset:', error);
