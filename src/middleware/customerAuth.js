@@ -202,7 +202,24 @@ export const sendVerificationEmail = async (customer, verificationToken) => {
       throw new Error('Email service not configured');
     }
     
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8080';
+    // Determine frontend URL based on environment
+    let frontendUrl = process.env.FRONTEND_URL;
+    
+    // Auto-detect production environment if FRONTEND_URL not set
+    if (!frontendUrl) {
+      if (process.env.NODE_ENV === 'production' || process.env.RENDER) {
+        // Production environment detected
+        frontendUrl = 'https://app.dealeriq.co';
+        console.log('🌐 Auto-detected production environment, using:', frontendUrl);
+      } else {
+        // Development environment
+        frontendUrl = 'http://localhost:8080';
+        console.log('🌐 Using development URL:', frontendUrl);
+      }
+    } else {
+      console.log('🌐 Using configured FRONTEND_URL:', frontendUrl);
+    }
+    
     // Use HashRouter format: /#/verify-email?token=...
     const verificationLink = `${frontendUrl}/#/verify-email?token=${verificationToken}`;
     
@@ -323,37 +340,52 @@ export const verifyEmailToken = async (token) => {
   try {
     console.log('🔍 Verifying email token:', token);
     
-    // First, check if token exists at all
+    // First, check if token exists at all with detailed timestamp info
     const tokenCheck = await query(
       `SELECT id, email, first_name, last_name, email_verified, 
               verification_token_expires, 
               NOW() as current_time,
-              verification_token_expires > NOW() as is_valid
+              verification_token_expires > NOW() as is_valid,
+              EXTRACT(EPOCH FROM (verification_token_expires - NOW())) as seconds_until_expiry
        FROM customers 
        WHERE verification_token = $1`,
       [token]
     );
     
-    console.log('📊 Token check result:', tokenCheck.rows[0]);
+    if (tokenCheck.rows.length > 0) {
+      const tokenInfo = tokenCheck.rows[0];
+      console.log('📊 Token check result:');
+      console.log('   Email:', tokenInfo.email);
+      console.log('   Already verified:', tokenInfo.email_verified);
+      console.log('   Token expires:', tokenInfo.verification_token_expires);
+      console.log('   Current DB time:', tokenInfo.current_time);
+      console.log('   Is valid:', tokenInfo.is_valid);
+      console.log('   Seconds until expiry:', tokenInfo.seconds_until_expiry);
+      
+      if (tokenInfo.email_verified) {
+        throw new Error('Email is already verified');
+      }
+      
+      // If token expired, provide helpful info
+      if (!tokenInfo.is_valid || tokenInfo.seconds_until_expiry < 0) {
+        const hoursAgo = Math.abs(tokenInfo.seconds_until_expiry) / 3600;
+        console.error(`❌ Token expired ${hoursAgo.toFixed(2)} hours ago`);
+        throw new Error('Verification token has expired. Please request a new verification email.');
+      }
+    } else {
+      console.error('❌ Token not found in database');
+      throw new Error('Invalid verification token');
+    }
     
     // Find customer with valid token
     const customerResult = await query(
       `SELECT id, email, first_name, last_name FROM customers 
        WHERE verification_token = $1 
-       AND verification_token_expires > NOW() 
        AND email_verified = FALSE`,
       [token]
     );
     
     if (customerResult.rows.length === 0) {
-      if (tokenCheck.rows.length > 0) {
-        const tokenInfo = tokenCheck.rows[0];
-        if (tokenInfo.email_verified) {
-          throw new Error('Email is already verified');
-        } else if (!tokenInfo.is_valid) {
-          throw new Error('Verification token has expired');
-        }
-      }
       throw new Error('Invalid or expired verification token');
     }
     
@@ -416,8 +448,31 @@ export const registerCustomer = async (customerData) => {
 
     const customer = customerResult.rows[0];
     
-    console.log(`📧 Token expires at: ${customer.verification_token_expires}`);
-    console.log(`🕐 Current time (NOW): ${new Date().toISOString()}`);
+    console.log(`✅ Customer registered with verification token`);
+    console.log(`   Email: ${customer.email}`);
+    console.log(`   Token expires at: ${customer.verification_token_expires}`);
+    console.log(`   Current time (JavaScript): ${new Date().toISOString()}`);
+    
+    // Verify the token was set correctly by checking it immediately
+    const verifyResult = await query(
+      `SELECT verification_token_expires, NOW() as current_db_time, 
+              verification_token_expires > NOW() as is_valid,
+              EXTRACT(EPOCH FROM (verification_token_expires - NOW())) / 3600 as hours_until_expiry
+       FROM customers WHERE id = $1`,
+      [customer.id]
+    );
+    
+    if (verifyResult.rows.length > 0) {
+      const check = verifyResult.rows[0];
+      console.log(`   Token valid: ${check.is_valid}`);
+      console.log(`   Hours until expiry: ${check.hours_until_expiry}`);
+      console.log(`   DB current time: ${check.current_db_time}`);
+      
+      if (!check.is_valid) {
+        console.error('⚠️ WARNING: Token was set but is already expired!');
+        console.error('   This suggests a timezone mismatch between application and database');
+      }
+    }
     
     // Send verification email
     try {
@@ -619,7 +674,17 @@ export const requestPasswordReset = async (email) => {
     // Send password reset email
     try {
       const daiveEmailService = await import('../lib/daiveEmailService.js');
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8080';
+      // Determine frontend URL based on environment
+      let frontendUrl = process.env.FRONTEND_URL;
+      
+      if (!frontendUrl) {
+        if (process.env.NODE_ENV === 'production' || process.env.RENDER) {
+          frontendUrl = 'https://app.dealeriq.co';
+        } else {
+          frontendUrl = 'http://localhost:8080';
+        }
+      }
+      
       const resetLink = `${frontendUrl}/#/reset-password?token=${resetToken}`;
       
       const subject = '🔐 Reset Your Password';
