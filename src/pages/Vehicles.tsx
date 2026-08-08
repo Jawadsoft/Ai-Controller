@@ -258,8 +258,10 @@ const Vehicles = () => {
   };
 
   // Handle filter blur (when user finishes typing and leaves field)
-  const handleFilterBlur = () => {
-    fetchVehicles(1, filters, false); // Filter load, not initial
+  // Accept optional updated filters to avoid stale state issues
+  const handleFilterBlur = (updatedFilters?: Partial<typeof filters>) => {
+    const filtersToUse = updatedFilters ? { ...filters, ...updatedFilters } : filters;
+    fetchVehicles(1, filtersToUse, false); // Filter load, not initial
   };
 
   const clearFilters = () => {

@@ -31,7 +31,7 @@ interface Filters {
 interface VehicleFiltersProps {
   filters: Filters;
   onFiltersChange: (filters: Partial<Filters>) => void;
-  onFilterBlur: () => void;
+  onFilterBlur: (updatedFilters?: Partial<Filters>) => void;
   onClearFilters: () => void;
   totalCount: number;
   loading?: boolean;
@@ -87,8 +87,9 @@ export const VehicleFilters = ({ filters, onFiltersChange, onFilterBlur, onClear
   // Convert the "__all__" sentinel back to empty string before storing
   const updateFilterAndSearch = (key: keyof Filters, value: any) => {
     const resolved = value === ALL_VALUE ? '' : value;
-    onFiltersChange({ [key]: resolved });
-    onFilterBlur();
+    const updates = { [key]: resolved };
+    onFiltersChange(updates);
+    onFilterBlur(updates); // Pass the updated values to avoid stale state
   };
 
   // Convert a stored filter value to the SelectItem value (empty → sentinel)
@@ -124,7 +125,7 @@ export const VehicleFilters = ({ filters, onFiltersChange, onFilterBlur, onClear
     
     if (Object.keys(updates).length > 0) {
       onFiltersChange(updates);
-      onFilterBlur();
+      onFilterBlur(updates); // Pass the updated values
     }
     
     setShowParsedFields(false);
@@ -254,8 +255,9 @@ export const VehicleFilters = ({ filters, onFiltersChange, onFilterBlur, onClear
             <Label htmlFor="make">Make</Label>
             <Select value={filters.make || '__none__'} onValueChange={(value) => {
               const resolved = value === '__none__' ? '' : value;
-              onFiltersChange({ make: resolved, model: '' }); // Reset model when make changes
-              onFilterBlur();
+              const updates = { make: resolved, model: '' }; // Reset model when make changes
+              onFiltersChange(updates);
+              onFilterBlur(updates); // Pass the updated values
             }}>
               <SelectTrigger>
                 <SelectValue placeholder="All Makes" />
@@ -273,8 +275,9 @@ export const VehicleFilters = ({ filters, onFiltersChange, onFilterBlur, onClear
             <Label htmlFor="model">Model</Label>
             <Select value={filters.model || '__none__'} onValueChange={(value) => {
               const resolved = value === '__none__' ? '' : value;
-              onFiltersChange({ model: resolved });
-              onFilterBlur();
+              const updates = { model: resolved };
+              onFiltersChange(updates);
+              onFilterBlur(updates); // Pass the updated values
             }}>
               <SelectTrigger>
                 <SelectValue placeholder="All Models" />
@@ -292,8 +295,9 @@ export const VehicleFilters = ({ filters, onFiltersChange, onFilterBlur, onClear
             <Label htmlFor="year">Year</Label>
             <Select value={filters.year || '__none__'} onValueChange={(value) => {
               const resolved = value === '__none__' ? '' : value;
-              onFiltersChange({ year: resolved });
-              onFilterBlur();
+              const updates = { year: resolved };
+              onFiltersChange(updates);
+              onFilterBlur(updates); // Pass the updated values
             }}>
               <SelectTrigger>
                 <SelectValue placeholder="All Years" />
