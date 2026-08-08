@@ -1,9 +1,9 @@
 import express from 'express';
 import { body, validationResult } from 'express-validator';
 import { query } from '../database/connection.js';
-import { 
-  createCustomerSession, 
-  updateCustomerAuth, 
+import {
+  createCustomerSession,
+  updateCustomerAuth,
   generateCustomerToken,
   verifyCustomerToken,
   registerCustomer,
@@ -11,7 +11,10 @@ import {
   createOrGetCustomerSession,
   requestPasswordReset,
   resetPassword,
-  verifyResetToken
+  verifyResetToken,
+  generateVerificationToken,
+  sendVerificationEmail,
+  verifyEmailToken
 } from '../middleware/customerAuth.js';
 
 const router = express.Router();
@@ -46,7 +49,9 @@ router.post('/register', [
     });
 
     res.json({
-      message: 'Customer registered successfully',
+      success: true,
+      message: 'Registration successful! Please check your email to verify your account.',
+      emailSent: true,
       customer: {
         id: customer.id,
         email: customer.email,
@@ -91,6 +96,102 @@ router.post('/login', [
   } catch (error) {
     console.error('Error logging in customer:', error);
     res.status(401).json({ error: error.message || 'Login failed' });
+  }
+});
+
+/**
+ * Login customer and create a JWT session (for credit application link, etc.)
+ * Same credentials as /login but returns session token for Authorization header.
+ */
+router.post('/login-session', [
+  body('email').isEmail().normalizeEmail().withMessage('Valid email is required'),
+  body('password').notEmpty().withMessage('Password is required'),
+  body('dealer_id').optional().isUUID(),
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { email, password, dealer_id: dealerIdBody } = req.body;
+    const ip_address = req.ip || req.connection?.remoteAddress;
+    const user_agent = req.get('User-Agent');
+
+    let customer;
+    try {
+      // Credit application links are sent directly to the customer's inbox, so the
+      // email address is already trusted — skip the email-verified gate to avoid a
+      // catch-22 where auto-registered customers can never access their application.
+      customer = await loginCustomer(email, password, { requireVerifiedEmail: false });
+    } catch (loginErr) {
+      if (loginErr?.code === 'EMAIL_NOT_VERIFIED') {
+        return res.status(403).json({
+          error: loginErr.message,
+          code: 'EMAIL_NOT_VERIFIED',
+        });
+      }
+      throw loginErr;
+    }
+
+    const session = await createOrGetCustomerSession(
+      {
+        customer_name: `${customer.first_name} ${customer.last_name}`,
+        customer_email: customer.email,
+        customer_phone: customer.phone || null,
+        ip_address,
+        user_agent,
+        access_type: 'credit_application',
+        vehicle_id: null,
+        dealer_id: dealerIdBody || null,
+        qr_hash: null,
+      },
+      customer.id
+    );
+
+    const token = generateCustomerToken(session.id, {
+      customer_id: customer.id,
+      customer_name: `${customer.first_name} ${customer.last_name}`,
+      customer_email: customer.email,
+      customer_phone: customer.phone || '',
+    });
+
+    res.json({
+      message: 'Login successful',
+      session: {
+        id: session.id,
+        token,
+        is_authenticated: session.is_authenticated,
+        expires_at: session.expires_at,
+      },
+      customer: {
+        id: customer.id,
+        email: customer.email,
+        first_name: customer.first_name,
+        last_name: customer.last_name,
+        phone: customer.phone,
+      },
+    });
+  } catch (error) {
+    console.error('Error in login-session:', error);
+    res.status(401).json({ error: error.message || 'Login failed' });
+  }
+});
+
+// Logout customer
+router.post('/logout', async (req, res) => {
+  try {
+    // For now, logout is handled client-side by clearing the token
+    // You could also invalidate the session in the database if needed
+    console.log('✅ Customer logged out');
+    
+    res.json({
+      success: true,
+      message: 'Logged out successfully'
+    });
+  } catch (error) {
+    console.error('Error logging out customer:', error);
+    res.status(500).json({ error: 'Logout failed' });
   }
 });
 
@@ -161,6 +262,192 @@ router.post('/reset-password', [
   } catch (error) {
     console.error('Error resetting password:', error);
     res.status(400).json({ error: error.message || 'Failed to reset password' });
+  }
+});
+
+// Debug endpoint - Check token status without consuming it
+router.get('/check-token/:token', async (req, res) => {
+  try {
+    const { token } = req.params;
+    
+    const tokenCheck = await query(
+      `SELECT 
+        id, email, first_name, email_verified, 
+        verification_token_expires, 
+        NOW() as current_time,
+        verification_token_expires > NOW() as is_valid,
+        EXTRACT(EPOCH FROM (verification_token_expires - NOW())) / 3600 as hours_until_expiry
+       FROM customers 
+       WHERE verification_token = $1`,
+      [token]
+    );
+    
+    if (tokenCheck.rows.length === 0) {
+      return res.json({
+        found: false,
+        message: 'Token not found in database'
+      });
+    }
+    
+    const info = tokenCheck.rows[0];
+    res.json({
+      found: true,
+      email: info.email,
+      email_verified: info.email_verified,
+      token_expires: info.verification_token_expires,
+      current_time: info.current_time,
+      is_valid: info.is_valid,
+      hours_until_expiry: parseFloat(info.hours_until_expiry).toFixed(2),
+      status: info.email_verified ? 'Already verified' : 
+              info.is_valid ? 'Valid - ready to verify' : 
+              'Expired'
+    });
+  } catch (error) {
+    console.error('Error checking token:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Verify email address
+router.get('/verify-email/:token', async (req, res) => {
+  try {
+    const { token } = req.params;
+    
+    if (!token) {
+      return res.status(400).json({ error: 'Verification token is required' });
+    }
+    
+    const result = await verifyEmailToken(token);
+    
+    res.json({
+      success: true,
+      message: 'Email verified successfully! You can now log in.',
+      customer: {
+        email: result.customer.email,
+        first_name: result.customer.first_name
+      }
+    });
+  } catch (error) {
+    console.error('Error verifying email:', error);
+    res.status(400).json({ 
+      error: error.message || 'Failed to verify email',
+      message: 'The verification link may be invalid or expired. Please request a new one.'
+    });
+  }
+});
+
+// Test email service endpoint (development only)
+router.get('/test-email', async (req, res) => {
+  try {
+    console.log('🧪 Testing email service...');
+    
+    const daiveEmailService = await import('../lib/daiveEmailService.js');
+    
+    if (!daiveEmailService.default.transporter) {
+      return res.json({
+        status: 'error',
+        message: 'Email transporter not initialized',
+        configured: false
+      });
+    }
+    
+    // Verify SMTP connection
+    await daiveEmailService.default.transporter.verify();
+    
+    res.json({
+      status: 'success',
+      message: 'Email service is configured and connection verified',
+      configured: true,
+      smtpConfig: {
+        host: process.env.SMTP_HOST || 'Gmail',
+        user: process.env.SMTP_USER || process.env.GMAIL_USER
+      }
+    });
+  } catch (error) {
+    console.error('❌ Email service test failed:', error);
+    res.json({
+      status: 'error',
+      message: 'Email service test failed',
+      error: error.message,
+      configured: false
+    });
+  }
+});
+
+// Resend verification email
+router.post('/resend-verification', [
+  body('email').isEmail().normalizeEmail().withMessage('Valid email is required')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+    
+    const { email } = req.body;
+    
+    // Find customer
+    const customerResult = await query(
+      'SELECT id, email, first_name, last_name, email_verified FROM customers WHERE email = $1',
+      [email]
+    );
+    
+    if (customerResult.rows.length === 0) {
+      // Don't reveal if email exists or not (security)
+      return res.json({ 
+        success: true,
+        message: 'If an account exists with this email, a verification email will be sent.' 
+      });
+    }
+    
+    const customer = customerResult.rows[0];
+    
+    if (customer.email_verified) {
+      return res.json({ 
+        success: true,
+        message: 'Your email is already verified! You can log in now.',
+        alreadyVerified: true
+      });
+    }
+    
+    // Generate new verification token
+    const verificationToken = generateVerificationToken();
+    
+    console.log('🔐 Resending verification - Generated token:', verificationToken);
+    
+    // Update token in database with PostgreSQL NOW() + interval to avoid timezone issues
+    const updateResult = await query(
+      'UPDATE customers SET verification_token = $1, verification_token_expires = NOW() + INTERVAL \'24 hours\', updated_at = NOW() WHERE id = $2 RETURNING verification_token, verification_token_expires',
+      [verificationToken, customer.id]
+    );
+    
+    console.log('📧 Token saved to database');
+    console.log('   Saved token:', updateResult.rows[0]?.verification_token);
+    console.log('   Tokens match:', updateResult.rows[0]?.verification_token === verificationToken);
+    console.log('   Expires at:', updateResult.rows[0]?.verification_token_expires);
+    
+    // Send verification email
+    try {
+      await sendVerificationEmail(customer, verificationToken);
+      console.log('✅ Verification email sent successfully');
+    } catch (emailError) {
+      console.error('❌ Failed to send verification email:', emailError);
+      return res.status(500).json({ 
+        error: 'Failed to send verification email',
+        details: 'Email service error. Please contact support or try again later.'
+      });
+    }
+    
+    res.json({ 
+      success: true,
+      message: 'Verification email sent! Please check your inbox.' 
+    });
+  } catch (error) {
+    console.error('Error resending verification email:', error);
+    res.status(500).json({ 
+      error: 'Failed to resend verification email',
+      details: error.message 
+    });
   }
 });
 
@@ -362,6 +649,40 @@ router.post('/session-with-login', [
     });
   } catch (error) {
     console.error('❌ Error creating session with login:', error);
+    if (error?.code === 'EMAIL_NOT_VERIFIED') {
+      try {
+        // Attempt to resend verification email (best-effort)
+        const customerResult = await query(
+          'SELECT id, email, first_name, last_name, email_verified FROM customers WHERE email = $1',
+          [req.body.email]
+        );
+
+        if (customerResult.rows.length > 0) {
+          const customer = customerResult.rows[0];
+
+          if (!customer.email_verified) {
+            const verificationToken = generateVerificationToken();
+
+            await query(
+              'UPDATE customers SET verification_token = $1, verification_token_expires = NOW() + INTERVAL \'24 hours\', updated_at = NOW() WHERE id = $2',
+              [verificationToken, customer.id]
+            );
+
+            await sendVerificationEmail(customer, verificationToken);
+          }
+        }
+      } catch (resendError) {
+        console.error('❌ Failed to resend verification email during QR login:', resendError);
+      }
+
+      return res.status(403).json({
+        error: error.message,
+        code: 'EMAIL_NOT_VERIFIED',
+        message: 'Please verify your email address before logging in. We have re-sent a verification email if the account exists.',
+        next: 'verify_email_then_retry_login'
+      });
+    }
+
     res.status(500).json({ error: error.message || 'Failed to create session with login' });
   }
 });
