@@ -46,7 +46,7 @@ class SettingsManager {
       // TTS Settings
       tts_provider: 'elevenlabs',
       tts_voice: 'mark', // Changed from 'liam' to 'mark'
-      tts_model: 'eleven_multilingual_v1', // Using v1 for faster response time
+      tts_model: 'eleven_multilingual_v2', // Updated to v2 (v1 deprecated)
       tts_stability: 0.5,
       tts_similarity_boost: 0.6
     };
@@ -292,7 +292,7 @@ class SettingsManager {
       elevenlabsVoice: settings.voice_elevenlabs_voice?.value || settings.voice_elevenlabs_voice, // This should now work correctly
       
       // TTS model and quality settings
-      model: settings.tts_model || 'eleven_multilingual_v1', // Using v1 for faster response time
+      model: settings.tts_model || 'eleven_multilingual_v2', // Updated to v2 (v1 deprecated)
       stability: settings.tts_stability || 0.5,
       similarityBoost: settings.tts_similarity_boost || 0.6,
       
@@ -438,7 +438,7 @@ class SettingsManager {
       // TTS Settings
       tts_provider: 'elevenlabs',
       tts_voice: 'mark',
-      tts_model: 'eleven_multilingual_v1', // Using v1 for faster response time
+      tts_model: 'eleven_multilingual_v2', // Updated to v2 (v1 deprecated)
       tts_stability: 0.5,
       tts_similarity_boost: 0.5
     };

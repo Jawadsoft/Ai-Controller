@@ -398,8 +398,8 @@ export const VehicleFilters = ({ filters, onFiltersChange, onFilterBlur, onClear
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={ALL_VALUE}>All</SelectItem>
-                    <SelectItem value="N">New</SelectItem>
-                    <SelectItem value="U">Used</SelectItem>
+                    <SelectItem value="new">New</SelectItem>
+                    <SelectItem value="used">Used</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

@@ -132,8 +132,24 @@ router.get('/', async (req, res) => {
     }
     
     if (newUsed) {
-      whereConditions.push(`v.new_used = $${paramIndex}`);
-      params.push(newUsed);
+      console.log('🔍 NEW/USED FILTER DEBUG:', {
+        receivedValue: newUsed,
+        valueType: typeof newUsed,
+        valueLength: newUsed.length,
+        trimmed: newUsed.trim()
+      });
+      
+      // First, let's check what values actually exist in the database
+      if (req.user.dealer_id) {
+        const checkQuery = await query(
+          'SELECT DISTINCT new_used, COUNT(*) as count FROM vehicles WHERE dealer_id = $1 GROUP BY new_used ORDER BY new_used',
+          [req.user.dealer_id]
+        );
+        console.log('🔍 ACTUAL DATABASE VALUES:', checkQuery.rows);
+      }
+      
+      whereConditions.push(`LOWER(v.new_used) = LOWER($${paramIndex})`);
+      params.push(newUsed.trim().toLowerCase());
       paramIndex++;
     }
     
@@ -182,6 +198,12 @@ router.get('/', async (req, res) => {
     // Build the WHERE clause
     const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
     
+    // Debug log for filters
+    if (newUsed) {
+      console.log('🔍 WHERE CONDITIONS:', whereConditions);
+      console.log('🔍 PARAMS:', params);
+    }
+    
     // Validate sort parameters
     const allowedSortFields = ['created_at', 'updated_at', 'make', 'model', 'year', 'price', 'mileage'];
     const validSortBy = allowedSortFields.includes(sortBy) ? sortBy : 'created_at';
@@ -209,8 +231,18 @@ router.get('/', async (req, res) => {
     
     // Get total count for pagination
     const countQuery = `SELECT COUNT(*) as total FROM (${baseQuery}) as count_query`;
+    
+    if (newUsed) {
+      console.log('🔍 COUNT QUERY:', countQuery);
+      console.log('🔍 WITH PARAMS:', params);
+    }
+    
     const countResult = await query(countQuery, params);
     const total = parseInt(countResult.rows[0].total);
+    
+    if (newUsed) {
+      console.log('🔍 TOTAL VEHICLES FOUND:', total);
+    }
     
     // Get paginated results
     let dataQuery;

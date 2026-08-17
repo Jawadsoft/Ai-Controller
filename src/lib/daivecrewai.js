@@ -823,7 +823,7 @@ class DAIVEService {
     return {
       provider: 'elevenlabs',
       voice: 'mark',
-      model: 'eleven_multilingual_v1',
+      model: 'eleven_multilingual_v2',
       stability: 0.5,
       similarityBoost: 0.5,
       voiceSpeed: 1.0,
@@ -6329,7 +6329,7 @@ Please respond as ${agent.role} following your professional guidelines:
       return {
         provider: 'elevenlabs',
         voice: 'mark',
-        model: 'eleven_multilingual_v1', // Using v1 for faster response time
+        model: 'eleven_multilingual_v2', // Updated to v2 (v1 deprecated)
         stability: 0.5,
         similarityBoost: 0.5,
         voiceSpeed: 1.0, // Add missing voice speed
@@ -6530,7 +6530,7 @@ Please respond as ${agent.role} following your professional guidelines:
               },
               body: JSON.stringify({
                 text: cleanedText,
-                model_id: model || "eleven_monolingual_v1",
+                model_id: model || "eleven_multilingual_v2",
                 voice_settings: {
                   stability: stability || 0.5,
                   similarity_boost: similarityBoost || 0.5

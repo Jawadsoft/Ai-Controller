@@ -1025,8 +1025,9 @@ class ImportService {
             console.log(`Processed ${processed}/${records.length} records`);
           }
           
-          console.log(`\n--- Processing record ${processed} ---`);
-          console.log('Original record:', JSON.stringify(record, null, 2));
+          // ⚡ Reduced logging for better console readability
+          // console.log(`\n--- Processing record ${processed} ---`);
+          // console.log('Original record:', JSON.stringify(record, null, 2));
           
           // Transform record based on field mappings
           let transformedRecord = this.transformRecordWithValidation(record, config.fieldMappings);
@@ -1042,7 +1043,7 @@ class ImportService {
             transformedRecord.other_price = 0;
           }
           
-          console.log('Transformed record:', JSON.stringify(transformedRecord, null, 2));
+          // console.log('Transformed record:', JSON.stringify(transformedRecord, null, 2));
           
           // Validate record
           if (config.processing.validate_data) {
@@ -1064,21 +1065,22 @@ class ImportService {
           // Insert or update record using the database function
           const result = await this.insertOrUpdateVehicleRecord(client, transformedRecord, config);
           
-          console.log('Insert/Update result:', result);
+          // console.log('Insert/Update result:', result);
           
           if (result.action === 'inserted') {
             inserted++;
-            console.log(`✅ Record ${processed} inserted successfully`);
+            // console.log(`✅ Record ${processed} inserted successfully`);
           } else if (result.action === 'updated') {
             updated++;
-            console.log(`🔄 Record ${processed} updated successfully`);
+            // console.log(`🔄 Record ${processed} updated successfully`);
           } else {
             skipped++;
-            console.log(`⏭️ Record ${processed} skipped`);
+            // console.log(`⏭️ Record ${processed} skipped`);
           }
           
         } catch (error) {
-          console.error('❌ Error processing record:', error.message, 'Record:', JSON.stringify(record));
+          // Only log error summary, not full record data
+          console.error(`❌ Error processing record ${processed}:`, error.message);
           failed++;
           errors.push({
             row_number: processed,
@@ -1311,18 +1313,19 @@ class ImportService {
       delete record.dealer_id;
     }
   
-    console.log('=== INSERT/UPDATE VEHICLE DEBUG ===');
-    console.log('Config dealer_id (from session):', dealerId);
-    console.log('CSV Record Keys:', Object.keys(record));
-    console.log('CSV DealerId field:', record.DealerId);
-    console.log('CSV dealer_id field (should be undefined):', record.dealer_id);
-    console.log('Record VIN:', record.vin);
-    console.log('Record make:', record.make);
-    console.log('Record model:', record.model);
-    console.log('Record photo_url_list:', record.photo_url_list);
-    console.log('Record photo_url_list type:', typeof record.photo_url_list);
-    console.log('Record photo_url_list length:', record.photo_url_list ? record.photo_url_list.length : 'null');
-    console.log('=== END INSERT/UPDATE VEHICLE DEBUG ===');
+    // ⚡ Reduced logging for better console readability
+    // console.log('=== INSERT/UPDATE VEHICLE DEBUG ===');
+    // console.log('Config dealer_id (from session):', dealerId);
+    // console.log('CSV Record Keys:', Object.keys(record));
+    // console.log('CSV DealerId field:', record.DealerId);
+    // console.log('CSV dealer_id field (should be undefined):', record.dealer_id);
+    // console.log('Record VIN:', record.vin);
+    // console.log('Record make:', record.make);
+    // console.log('Record model:', record.model);
+    // console.log('Record photo_url_list:', record.photo_url_list);
+    // console.log('Record photo_url_list type:', typeof record.photo_url_list);
+    // console.log('Record photo_url_list length:', record.photo_url_list ? record.photo_url_list.length : 'null');
+    // console.log('=== END INSERT/UPDATE VEHICLE DEBUG ===');
   
     // Handle case where dealer_id is not a valid UUID
     if (!dealerId) {
@@ -1375,16 +1378,16 @@ class ImportService {
     const referenceDealerId =
       record.DealerId || record.dealerid || record.dealer_id || record.reference_dealer_id || null;
     
-    console.log('Reference dealer ID from CSV:', referenceDealerId);
+    // console.log('Reference dealer ID from CSV:', referenceDealerId);
     
-    // Debug: Log the original record data
-    console.log('=== ORIGINAL RECORD DATA ===');
-    console.log('Original record keys:', Object.keys(record));
-    console.log('Original record values:', JSON.stringify(record, null, 2));
-    console.log('=== END ORIGINAL RECORD DATA ===');
+    // ⚡ Reduced logging for better console readability
+    // console.log('=== ORIGINAL RECORD DATA ===');
+    // console.log('Original record keys:', Object.keys(record));
+    // console.log('Original record values:', JSON.stringify(record, null, 2));
+    // console.log('=== END ORIGINAL RECORD DATA ===');
   
     const certified = this.transformBooleanField(record.certified);
-    console.log('Transformed certified field:', certified, typeof certified);
+    // console.log('Transformed certified field:', certified, typeof certified);
     
     // Clean and format the Features field
     let features = record.features || null;
@@ -1490,30 +1493,28 @@ class ImportService {
     `;
   
     // Log parameters with types and values
-    console.log('=== DETAILED PARAMETER LOGGING ===');
-    const paramNames = [
-      'p_dealer_id', 'p_vin', 'p_make', 'p_model', 'p_series', 'p_stock_number', 'p_new_used', 'p_body_style',
-      'p_vehicle_type', 'p_certified', 'p_color', 'p_interior_color', 'p_engine_type', 'p_displacement', 'p_features',
-      'p_odometer', 'p_price', 'p_other_price', 'p_transmission', 'p_msrp', 'p_dealer_discount',
-      'p_consumer_rebate', 'p_dealer_accessories', 'p_total_customer_savings', 'p_total_dealer_rebate',
-      'p_photo_url_list', 'p_year', 'p_reference_dealer_id', 'p_inventory_status',
-      'p_import_config_id', 'p_import_source'
-    ];
-    
-    console.log('Parameters being sent to database function:');
-    queryParams.forEach((param, i) => {
-      const type = param === null ? 'null' : typeof param;
-      const value = param === null ? 'null' : 
-                   typeof param === 'string' ? `"${param}"` : 
-                   typeof param === 'boolean' ? param.toString() : 
-                   typeof param === 'number' ? param.toString() : 
-                   JSON.stringify(param);
-      console.log(`  ${i+1}. ${paramNames[i]}: ${value} (${type})`);
-    });
-    
-    // Also log the raw query parameters array
-    console.log('Raw queryParams array:', queryParams);
-    console.log('=== END DETAILED PARAMETER LOGGING ===');
+    // ⚡ Reduced logging for better console readability
+    // const paramNames = [
+    //   'p_dealer_id', 'p_vin', 'p_make', 'p_model', 'p_series', 'p_stock_number', 'p_new_used', 'p_body_style',
+    //   'p_vehicle_type', 'p_certified', 'p_color', 'p_interior_color', 'p_engine_type', 'p_displacement', 'p_features',
+    //   'p_odometer', 'p_price', 'p_other_price', 'p_transmission', 'p_msrp', 'p_dealer_discount',
+    //   'p_consumer_rebate', 'p_dealer_accessories', 'p_total_customer_savings', 'p_total_dealer_rebate',
+    //   'p_photo_url_list', 'p_year', 'p_reference_dealer_id', 'p_inventory_status',
+    //   'p_import_config_id', 'p_import_source'
+    // ];
+    // console.log('=== DETAILED PARAMETER LOGGING ===');
+    // console.log('Parameters being sent to database function:');
+    // queryParams.forEach((param, i) => {
+    //   const type = param === null ? 'null' : typeof param;
+    //   const value = param === null ? 'null' : 
+    //                typeof param === 'string' ? `"${param}"` : 
+    //                typeof param === 'boolean' ? param.toString() : 
+    //                typeof param === 'number' ? param.toString() : 
+    //                JSON.stringify(param);
+    //   console.log(`  ${i+1}. ${paramNames[i]}: ${value} (${type})`);
+    // });
+    // console.log('Raw queryParams array:', queryParams);
+    // console.log('=== END DETAILED PARAMETER LOGGING ===');
   
     try {
       const existingBefore = await client.query(
@@ -1523,7 +1524,7 @@ class ImportService {
       const alreadyExisted = existingBefore.rows.length > 0;
 
       const result = await client.query(sqlQuery, queryParams);
-      console.log('Database function result:', result.rows[0]);
+      // console.log('Database function result:', result.rows[0]);
 
       const vehicleId = result.rows[0]?.vehicle_id;
       return {
@@ -2074,14 +2075,19 @@ class ImportService {
   validateRecord(record, fieldMappings) {
     const errors = [];
     const validatedRecord = { ...record };
-    
+
+    // ✅ FIX: Only enforce truly required fields (VIN, Make, Model)
+    // All other fields (price, msrp, colors, features, etc.) are optional
+    const TRULY_REQUIRED_FIELDS = ['vin', 'make', 'model'];
+
     for (const mapping of fieldMappings) {
       // Handle both camelCase and snake_case field names
       const targetField = mapping.target_field || mapping.targetField;
       const isRequired = mapping.is_required || mapping.isRequired;
       const fieldType = mapping.field_type || mapping.fieldType;
-      
-      if (isRequired && !record[targetField]) {
+
+      // Only validate if field is in the TRULY_REQUIRED_FIELDS list
+      if (isRequired && TRULY_REQUIRED_FIELDS.includes(targetField) && !record[targetField]) {
         errors.push(`Required field ${targetField} is missing`);
       }
       
@@ -2292,7 +2298,11 @@ class ImportService {
       throw new Error('Dealer ID not found in import configuration');
     }
 
+    // ⚡ NEW: Use preview-style import flow for sync (more reliable, same as manual import)
     if (!transformedData || transformedData.length === 0) {
+      console.log('⚡ Using preview-style import for sync (same method as manual import)');
+      
+      // Step 1: File selection logic
       const names = await this.getMatchingRemoteFilenames(config);
       if (names !== null) {
         if (names.length === 0) {
@@ -2322,8 +2332,53 @@ class ImportService {
           return { needsFileSelection: true, matchingFiles: names };
         }
       }
+      
+      // Step 2: Download file
+      console.log('📥 Downloading file from remote server...');
+      const downloadResult = await this.downloadFile(config, { remoteFileName: selectedFileName });
+      const fileName = downloadResult.fileName;
+      const localPath = downloadResult.localPath;
+      
+      // Step 3: Parse file
+      console.log('📄 Parsing file:', localPath);
+      const records = await this.parseFile(localPath, config);
+      console.log(`✅ Parsed ${records.length} records from file`);
+      
+      // Step 4: Apply data transformations (same as manual import does)
+      console.log('🔄 Applying data transformations (same as manual import)...');
+      const headers = records.length > 0 ? Object.keys(records[0]) : [];
+      const transformedRecords = records.map(row => this.applyDataTransformations(row, headers));
+      console.log(`✅ Transformed ${transformedRecords.length} records`);
+      
+      // Step 5: Prepare CSV data format for preview method
+      const csvData = {
+        headers: headers,
+        totalRows: records.length,
+        fileName: fileName,
+        sampleData: transformedRecords.slice(0, 10) // First 10 for logging
+      };
+      
+      // Step 6: Clean up local file
+      if (localPath && fs.existsSync(localPath)) {
+        try {
+          fs.unlinkSync(localPath);
+          console.log('🗑️ Temporary file deleted:', localPath);
+        } catch (error) {
+          console.warn('⚠️ Could not delete temporary file:', error.message);
+        }
+      }
+      
+      // Step 7: Use the preview import method (same as manual import)
+      console.log('✨ Delegating to preview import method (proven reliable flow)...');
+      return await this.executeImportFromPreview(
+        config,
+        csvData,
+        selectedRows,
+        transformedRecords  // ← Pass transformed data (same as manual import)
+      );
     }
 
+    // Original flow: If transformedData was already provided (manual import path)
     const client = await this.pool.connect();
     try {
       // Create import history record
@@ -3195,9 +3250,10 @@ class ImportService {
           // Use the validated record which includes properly formatted photo_url_list
           transformedRecord = validationResult.validatedRecord;
 
-          // Validate required fields
-          const requiredFields = ['vin', 'make', 'model', 'year'];
-          const missingFields = requiredFields.filter(field => 
+          // ✅ FIX: Validate only truly required fields (VIN, Make, Model)
+          // Year is optional as some vehicles might not have it yet
+          const requiredFields = ['vin', 'make', 'model'];
+          const missingFields = requiredFields.filter(field =>
             !transformedRecord[field] || transformedRecord[field] === ''
           );
 
