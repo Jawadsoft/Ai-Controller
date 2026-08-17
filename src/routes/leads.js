@@ -71,9 +71,10 @@ router.get('/', async (req, res) => {
     // Super admin should NOT see dealership leads
     if (req.user.dealer_id) {
       // Staff can see leads by dealer_id, but sales agents only see their assigned leads
+      // OR leads from conversations where customer scanned their QR code
       if (req.user.staff_role === 'sales' && req.user.staff_id) {
         sqlQuery = `
-          SELECT l.*, v.make, v.model, v.year, v.vin, d.business_name as dealer_name,
+          SELECT DISTINCT l.*, v.make, v.model, v.year, v.vin, d.business_name as dealer_name,
                  ds_assigned.user_id as assigned_user_id, u_assigned.name as assigned_agent_name,
                  u_assigned.email as assigned_agent_email
           FROM leads l 
@@ -81,7 +82,10 @@ router.get('/', async (req, res) => {
           LEFT JOIN dealers d ON l.dealer_id = d.id 
           LEFT JOIN dealership_staff ds_assigned ON l.assigned_to = ds_assigned.id
           LEFT JOIN users u_assigned ON ds_assigned.user_id = u_assigned.id
-          WHERE l.dealer_id = $1 AND l.assigned_to = $2
+          LEFT JOIN daive_conversations dc ON l.id = dc.lead_id
+          LEFT JOIN customer_staff_claims csc ON dc.session_id = csc.session_id
+          WHERE l.dealer_id = $1 
+            AND (l.assigned_to = $2 OR csc.staff_id = $2)
           ORDER BY l.created_at DESC
         `;
         params = [req.user.dealer_id, req.user.staff_id];

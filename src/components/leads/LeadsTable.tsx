@@ -198,7 +198,11 @@ export const LeadsTable = ({ leads, onEdit, onDelete, onRefresh, showAssignedOnl
   const canAssignLeads = isSuperAdmin() || isDealerAdmin();
 
   // Filter leads based on assignment
-  const filteredLeads = showAssignedOnly 
+  // Filter leads based on toggle:
+  // - showAssignedOnly = true: Show only leads assigned to current staff
+  // - showAssignedOnly = false: Show all leads (including QR-scanned leads from backend)
+  // Note: For sales staff, backend already filters to show only assigned + QR-scanned leads
+  const filteredLeads = showAssignedOnly
     ? leads.filter(lead => lead.assigned_to === user?.staffId)
     : leads;
 

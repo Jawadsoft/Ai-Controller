@@ -402,7 +402,7 @@ const Leads = () => {
             className={showAssignedOnly ? 'bg-orange-500 hover:bg-orange-600 text-white' : 'border-orange-200 text-orange-600 hover:bg-orange-50'}
           >
             <Users className="h-4 w-4 mr-1.5" />
-            {showAssignedOnly ? 'All Leads' : 'My Leads'}
+            {showAssignedOnly ? 'Show All Leads' : 'Show My Leads'}
           </Button>
             <Dialog open={showConversationDialog} onOpenChange={setShowConversationDialog}>
               <DialogTrigger asChild>
