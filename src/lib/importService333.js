@@ -389,6 +389,11 @@ class ImportService {
   async updateImportConfig(importConfigId, configData) {
     const client = await this.pool.connect();
     try {
+      // Debug logging for password update
+      console.log('🔧 Updating import config:', importConfigId);
+      console.log('📝 Password provided:', configData.connection?.password ? 
+        `YES (length: ${configData.connection.password.length})` : 'NO');
+      
       await client.query('BEGIN');
 
       // Update main import config
@@ -411,8 +416,14 @@ class ImportService {
           const availableFiles = configData.availableFiles || [];
           const lastFileScan = configData.lastFileScan || null;
 
-          if (configData.connection.password) {
+          // Check if password is provided and not empty
+          const hasPassword = configData.connection.password && 
+                            typeof configData.connection.password === 'string' && 
+                            configData.connection.password.trim() !== '';
+          
+          if (hasPassword) {
             // Update with password
+            console.log('✅ Updating connection settings WITH password');
             await client.query(`
               UPDATE import_connection_settings 
               SET connection_type = $1, host_url = $2, port = $3, username = $4, 
@@ -433,7 +444,8 @@ class ImportService {
               importConfigId
             ]);
           } else {
-            // Update without password
+            // Update without password (keep existing password)
+            console.log('⚠️ Updating connection settings WITHOUT password (keeping existing)');
             await client.query(`
               UPDATE import_connection_settings 
               SET connection_type = $1, host_url = $2, port = $3, username = $4, 
