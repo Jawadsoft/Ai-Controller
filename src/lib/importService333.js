@@ -334,16 +334,9 @@ class ImportService {
         WHERE import_config_id = $1
       `, [importConfigId]);
 
-      // Decrypt password if it exists (needed for execution)
-      let decryptedPassword = null;
-      if (connectionResult.rows[0]?.password_encrypted) {
-        try {
-          decryptedPassword = this.decryptPassword(connectionResult.rows[0].password_encrypted);
-        } catch (error) {
-          console.error('Error decrypting password:', error);
-          // Keep as null if decryption fails
-        }
-      }
+      // For security, return a placeholder for password instead of decrypted value
+      // The password will only be updated if user explicitly provides a new one
+      const passwordPlaceholder = connectionResult.rows[0]?.password_encrypted ? '••••••••••' : '';
 
       // Combine all settings
       const fullConfig = {
@@ -352,7 +345,7 @@ class ImportService {
         host_url: connectionResult.rows[0]?.host_url,
         port: connectionResult.rows[0]?.port,
         username: connectionResult.rows[0]?.username,
-        password: decryptedPassword, // Decrypted password for execution
+        password: passwordPlaceholder, // Placeholder to indicate password exists
         remote_directory: connectionResult.rows[0]?.remote_directory,
         file_pattern: connectionResult.rows[0]?.file_pattern,
         file_match_keyword: connectionResult.rows[0]?.file_match_keyword,
@@ -381,6 +374,30 @@ class ImportService {
       };
 
       return fullConfig;
+    } finally {
+      client.release();
+    }
+  }
+
+  // Get decrypted password for execution (not for display)
+  async getDecryptedPassword(importConfigId) {
+    const client = await this.pool.connect();
+    try {
+      const result = await client.query(`
+        SELECT password_encrypted FROM import_connection_settings
+        WHERE import_config_id = $1
+      `, [importConfigId]);
+
+      if (result.rows.length === 0 || !result.rows[0].password_encrypted) {
+        return null;
+      }
+
+      try {
+        return this.decryptPassword(result.rows[0].password_encrypted);
+      } catch (error) {
+        console.error('Error decrypting password:', error);
+        return null;
+      }
     } finally {
       client.release();
     }
@@ -416,10 +433,12 @@ class ImportService {
           const availableFiles = configData.availableFiles || [];
           const lastFileScan = configData.lastFileScan || null;
 
-          // Check if password is provided and not empty
+          // Check if password is provided and not empty or placeholder
+          const isPlaceholder = configData.connection.password === '••••••••••';
           const hasPassword = configData.connection.password && 
                             typeof configData.connection.password === 'string' && 
-                            configData.connection.password.trim() !== '';
+                            configData.connection.password.trim() !== '' &&
+                            !isPlaceholder;
           
           if (hasPassword) {
             // Update with password
@@ -2291,12 +2310,16 @@ class ImportService {
   async executeImport(importConfigId, options = {}) {
     const { selectedRows = [], fieldMappings = [], transformedData = null, remoteFileName: providedFileName } = options;
     let selectedFileName = providedFileName; // Use mutable variable
-    
+
     const config = await this.getImportConfig(importConfigId);
     if (!config) {
       throw new Error('Import configuration not found');
     }
-    
+
+    // Get actual decrypted password for execution (not the placeholder)
+    const actualPassword = await this.getDecryptedPassword(importConfigId);
+    config.password = actualPassword;
+
     console.log(`Executing import - Config ID: ${importConfigId}, Dealer ID: ${config.dealer_id}`);
     console.log('Config details:', {
       connection_type: config.connection_type,

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,9 +11,13 @@ export const EmailVerification = () => {
   console.log('🚀 EmailVerification component loaded!');
   console.log('📍 Current URL:', window.location.href);
   console.log('📍 Current pathname:', window.location.pathname);
+  console.log('📍 Current hash:', window.location.hash);
   
-  const { token } = useParams();
-  console.log('🔑 Token from useParams:', token);
+  // Extract token from query parameters
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get('token');
+  console.log('🔑 Token from query params:', token);
+  console.log('🔍 All query params:', Object.fromEntries(searchParams.entries()));
   
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -37,7 +41,7 @@ export const EmailVerification = () => {
       console.log('📍 Token:', verificationToken);
       console.log('🌐 Backend URL:', import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000');
       
-      const backendUrl = `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'}/api/auth/verify-email/${verificationToken}`;
+      const backendUrl = `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'}/api/customer-auth/verify-email/${verificationToken}`;
       console.log('🔗 Full API URL:', backendUrl);
       
       const response = await fetch(backendUrl, {
@@ -91,7 +95,7 @@ export const EmailVerification = () => {
       console.log('📧 Resending verification email to:', email);
       console.log('🌐 Backend URL:', import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000');
       
-      const backendUrl = `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'}/api/auth/resend-verification`;
+      const backendUrl = `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'}/api/customer-auth/resend-verification`;
       console.log('🔗 Full API URL:', backendUrl);
       
       const response = await fetch(backendUrl, {

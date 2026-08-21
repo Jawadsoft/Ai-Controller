@@ -98,7 +98,7 @@ const QuickAuthModal: React.FC<QuickAuthModalProps> = ({
             password: formData.password,
             first_name: formData.first_name,
             last_name: formData.last_name,
-            phone: formData.phone,
+            phone: formData.phone || undefined, // Convert empty string to undefined for optional validation
             is_registration: true,
           }),
         });
@@ -106,6 +106,13 @@ const QuickAuthModal: React.FC<QuickAuthModalProps> = ({
         const sessionData = await sessionResponse.json();
 
         if (!sessionResponse.ok) {
+          // Handle validation errors from express-validator
+          if (sessionData.errors && Array.isArray(sessionData.errors)) {
+            const errorMessages = sessionData.errors.map((err: any) => 
+              `${err.path}: ${err.msg}`
+            ).join(', ');
+            throw new Error(errorMessages || 'Validation failed');
+          }
           throw new Error(sessionData.error || 'Failed to create session');
         }
 

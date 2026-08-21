@@ -1299,31 +1299,43 @@ router.post('/update-trim-type', async (req, res) => {
           let vehicleType = 'sedan'; // default
           
           if (vehicle.body_style) {
-            switch (vehicle.body_style) {
-              case '4D Sport Utility':
-                vehicleType = 'SUV';
-                break;
-              case '4D Sedan':
-                vehicleType = 'sedan';
-                break;
-              case '2D Coupe':
-                vehicleType = 'coupe';
-                break;
-              case '4D Hatchback':
-              case '5D Hatchback':
-                vehicleType = 'hatchback';
-                break;
-              case '2D Convertible':
-                vehicleType = 'convertible';
-                break;
-              case '4D Crew Cab':
-              case '2D Standard Cab':
-              case '4D SuperCrew':
-                vehicleType = 'truck';
-                break;
-              case '4D Passenger Van':
-                vehicleType = 'van';
-                break;
+            // Normalize body_style to lowercase for flexible matching
+            const bodyStyleLower = vehicle.body_style.toLowerCase().trim();
+            
+            // Check for SUV (handles both "SUV" and "4D Sport Utility")
+            if (bodyStyleLower === 'suv' || bodyStyleLower.includes('sport utility')) {
+              vehicleType = 'SUV';
+            }
+            // Check for Sedan (handles both "Sedan" and "4D Sedan")
+            else if (bodyStyleLower === 'sedan' || bodyStyleLower.includes('sedan')) {
+              vehicleType = 'sedan';
+            }
+            // Check for Coupe (handles both "Coupe" and "2D Coupe")
+            else if (bodyStyleLower === 'coupe' || bodyStyleLower.includes('coupe')) {
+              vehicleType = 'coupe';
+            }
+            // Check for Convertible (handles both "Convertible" and "2D Convertible")
+            else if (bodyStyleLower === 'convertible' || bodyStyleLower.includes('convertible')) {
+              vehicleType = 'convertible';
+            }
+            // Check for Hatchback (handles "Hatchback", "4D Hatchback", "5D Hatchback")
+            else if (bodyStyleLower === 'hatchback' || bodyStyleLower.includes('hatchback')) {
+              vehicleType = 'hatchback';
+            }
+            // Check for Truck (handles "Truck", "Crew Cab", "Standard Cab", "SuperCrew")
+            else if (bodyStyleLower === 'truck' || 
+                     bodyStyleLower.includes('truck') || 
+                     bodyStyleLower.includes('cab') || 
+                     bodyStyleLower.includes('supercrew')) {
+              vehicleType = 'truck';
+            }
+            // Check for Van (handles both "Van" and "4D Passenger Van")
+            else if (bodyStyleLower === 'van' || bodyStyleLower.includes('van')) {
+              vehicleType = 'van';
+            }
+            // Check for Wagon
+            else if (bodyStyleLower === 'wagon' || bodyStyleLower.includes('wagon')) {
+              vehicleType = 'wagon';
             }
           }
           

@@ -880,6 +880,10 @@ router.post('/configs/:id/test-connection', authenticateToken, async (req, res) 
       return res.status(403).json({ error: 'Access denied' });
     }
 
+    // Get actual decrypted password for testing connection
+    const actualPassword = await importService.getDecryptedPassword(configId);
+    config.password = actualPassword;
+
     // Test connection using config details
     const { Client } = await import('ssh2');
     
